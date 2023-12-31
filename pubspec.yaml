@@ -1,0 +1,19 @@
+name: pat
+description: Patience Card Games (Solitaire)
+version: 1.0.0
+publish_to: none
+
+environment:
+  sdk: ">=3.0.0 <4.0.0"
+
+dependencies:
+  flame: ^1.12.0
+  flutter:
+    sdk: flutter
+
+dev_dependencies:
+  flutter_lints: ^3.0.1
+  # flame_lint: ^0.1.3
+flutter:
+  assets:
+    - assets/images/
