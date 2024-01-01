@@ -122,13 +122,8 @@ class CardView extends PositionComponent
   // to where they started.
 
   @override
-  void onTapDown(TapDownEvent event) {
-    print('Tap Down on ${pile.pileType} at $position');
-  }
-
-  @override
   void onTapUp(TapUpEvent event) {
-    print('Tap Up on ${pile.pileType} at $position');
+    // print('Tap Up on ${pile.pileType} at $position');
     handleTap();
   }
 
@@ -137,20 +132,20 @@ class CardView extends PositionComponent
     // For user-friendliness we accept taps that include a short drag.
 
     MoveResult tapResult = pile.tapMove(this);
-    print('Tap seen ${pile.pileType} result: $tapResult');
+    // print('Tap seen ${pile.pileType} result: $tapResult');
     if (tapResult == MoveResult.notValid) {
       return;
     } else if (pile.pileType == PileType.stock) {
-      print(
-          'Tap on Stock Pile: $tapResult Waste Pile present ${world.hasWastePile}');
+      // print(
+          // 'Tap on Stock Pile: $tapResult Waste Pile present ${world.hasWastePile}');
       if (tapResult == MoveResult.pileEmpty) {
         if (pile.pileSpec.tapEmptyRule == TapEmptyRule.tapNotAllowed) {
-          print('${pile.pileType} TAP ON EMPTY PILE WAS IGNORED');
+          // print('${pile.pileType} TAP ON EMPTY PILE WAS IGNORED');
           return;
         }
         if (world.hasWastePile) {
           final wasteCards = world.waste.removeAllCards();
-          print('Turned-over Waste cards: $wasteCards');
+          // print('Turned-over Waste cards: $wasteCards');
           for (final card in wasteCards) {
             // Top Waste Pile cards go face-down to bottom of Stock Pile.
             if (card.isFaceUpView) card.flipView();
@@ -168,8 +163,8 @@ class CardView extends PositionComponent
     } else {
       bool putOK = false;
       for (Pile target in world.foundations) {
-        print(
-            'Try ${target.pileType} at row ${target.gridRow} col ${target.gridCol}');
+        // print(
+            // 'Try ${target.pileType} at row ${target.gridRow} col ${target.gridCol}');
         putOK = target.checkPut(this, MoveMethod.tap);
         if (putOK) {
           pile.flipTopCardMaybe(); // Turn up next card on source pile, if reqd.
@@ -193,7 +188,7 @@ class CardView extends PositionComponent
   // Handle drag-and-drop events
   @override
   void onTapCancel(TapCancelEvent event) {
-    print('Tap Cancel on ${pile.pileType} at $position');
+    // print('Tap Cancel on ${pile.pileType} at $position');
     if (pile.pileType == PileType.stock) {
       _isDragging = false;
       handleTap();
@@ -205,11 +200,11 @@ class CardView extends PositionComponent
     super.onDragStart(event);
     if (pile.pileType == PileType.stock) {
       _isDragging = false;
-      print('Drag start on Stock');
+      // print('Drag start on Stock');
       return;
     }
     // Clone the position, else _whereCardStarted changes as the position does.
-    print('Drag start on ${pile.pileType} at $position');
+    // print('Drag start on ${pile.pileType} at $position');
     _whereCardStarted = position.clone();
     movingCards = [];
     MoveResult dragResult = pile.dragMove(this, movingCards);
@@ -218,13 +213,13 @@ class CardView extends PositionComponent
     } else {
       _isDragging = true;
       var cardPriority = movingPriority;
-      String moving = 'Moving: ';
+      // String moving = 'Moving: ';
       for (final movingCard in movingCards) {
         movingCard.priority = cardPriority;
-        moving += '${movingCard.toString()} ${movingCard.priority}, ';
         cardPriority++;
+        // moving += '${movingCard.toString()} ${movingCard.priority}, ';
       }
-      print(moving);
+      // print(moving);
     }
   }
 
@@ -265,10 +260,10 @@ class CardView extends PositionComponent
     final targets =
         parent!.componentsAtPoint(position).whereType<Pile>().toList();
     if (targets.isNotEmpty) {
-      print('');
+      // print('');
       final target = targets.first;
-      print('Drop-target Pile found! ${target.pileType}'
-          ' row ${target.gridRow} col ${target.gridCol}');
+      // print('Drop-target Pile found! ${target.pileType}'
+          // ' row ${target.gridRow} col ${target.gridCol}');
       if (target.checkPut(this, MoveMethod.drag)) {
         pile.flipTopCardMaybe(); // Turn up next card on source pile, if reqd.
         // Found a Pile: move card(s) the rest of the way onto it.

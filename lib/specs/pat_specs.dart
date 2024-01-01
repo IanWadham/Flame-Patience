@@ -313,6 +313,7 @@ class PatData {
   );
 }
 
+/*
 void printGameSpec(GameSpec game) {
   String gameSpec = ('\nGame Data:\n'
       '  Game ID     ${game.gameID}\n'
@@ -334,3 +335,4 @@ void printGameSpec(GameSpec game) {
   }
   print(gameSpec);
 }
+*/

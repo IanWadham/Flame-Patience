@@ -13,7 +13,6 @@ typedef SpriteData = ({
 });
 
 class ImageSpecs {
-  // List<SpriteData> spriteData = [];
 
   SpriteData fill = (
     rank: -1,
@@ -27,7 +26,7 @@ class ImageSpecs {
   List<CardView> loadCards(
       String dataName, String dataString, int nImages, int nPacks) {
     List<SpriteData> spriteData = parseImageData(dataName, dataString, nImages);
-    print('Length of spriteData = ${spriteData.length}');
+    // print('Length of spriteData = ${spriteData.length}');
     List<CardView> cards = [];
     SpriteData data = spriteData.last;
     String cacheName = '$dataName.png';
@@ -84,8 +83,8 @@ class ImageSpecs {
     }
     // print('Lines length = ${lines.length}');
     if (lines.length != n) {
-      print('ERROR: Found ${lines.length} image specifications: should be $n');
-      print('Last line: ${lines.last}|');
+      // print('ERROR: Found ${lines.length} image specifications: should be $n');
+      // print('Last line: ${lines.last}|');
     }
     RegExp spaces = RegExp('\\s+');
     for (String line in lines) {

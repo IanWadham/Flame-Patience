@@ -46,9 +46,9 @@ class Pile extends PositionComponent {
 
   MoveResult dragMove(CardView card, List<CardView> dragList) {
     DragRule dragRule = pileSpec.dragRule;
-    String message = 'Drag $pileType row $gridRow col $gridCol:';
+    // String message = 'Drag $pileType row $gridRow col $gridCol:';
     if (_cards.isEmpty) {
-      print('$message _cards is Empty');
+      // print('$message _cards is Empty');
       return MoveResult.pileEmpty;
     }
     switch (pileType) {
@@ -57,25 +57,25 @@ class Pile extends PositionComponent {
       case PileType.waste:
       case PileType.tableau:
         if (dragRule == DragRule.dragNotAllowed) {
-          print('$message drag not allowed');
+          // print('$message drag not allowed');
           return MoveResult.notValid;
         }
         final cardOnTop = isTopCard(card);
         if (dragRule == DragRule.fromTop && !cardOnTop) {
-          print('$message ${card.toString()} not on top of Pile');
+          // print('$message ${card.toString()} not on top of Pile');
           return MoveResult.notValid;
         }
         if (cardOnTop) {
           dragList.add(_cards.removeLast());
-          print('$message removed top card of Pile');
+          // print('$message removed top card of Pile');
           return MoveResult.valid;
         }
         assert(card.isFaceUpView && _cards.contains(card));
         final index = _cards.indexOf(card);
-        print('$message ${card.toString()} index $index $_cards');
+        // print('$message ${card.toString()} index $index $_cards');
         dragList.addAll(_cards.getRange(index, _cards.length));
         _cards.removeRange(index, _cards.length);
-        print('Pile $_cards, moving $dragList');
+        // print('Pile $_cards, moving $dragList');
         return MoveResult.valid;
       // Depends on Game Type. In 48, need to look inside Waste,
       // but not go anywhere or put the card anywhere.
@@ -86,43 +86,43 @@ class Pile extends PositionComponent {
 
   MoveResult tapMove(CardView card) {
     TapRule tapRule = pileSpec.tapRule;
-    String message = 'Tap $pileType row $gridRow col $gridCol:';
+    // String message = 'Tap $pileType row $gridRow col $gridCol:';
     if (pileSpec.tapRule == TapRule.tapNotAllowed) {
-      print('$message tap not allowed');
+      // print('$message tap not allowed');
       return MoveResult.notValid; // e.g. Foundation Piles do not accept taps.
     }
     final needFaceUp = (pileType != PileType.stock);
     if (!isTopCard(card) || (needFaceUp != card.isFaceUpView)) {
-      print('$message tap not on top card or face-up is not $needFaceUp');
+      // print('$message tap not on top card or face-up is not $needFaceUp');
       return MoveResult.notValid; // Stock needs face-down, other piles face-up.
     }
     if (_cards.isEmpty && (pileType != PileType.stock)) {
-      print('$message _cards is Empty');
+      // print('$message _cards is Empty');
       return MoveResult.pileEmpty;
     }
     // TODO - Redundant? Same as previous !isTopCard(card) check?
     if (_cards.isNotEmpty && (card != _cards.last)) {
-      print('$message ${card.toString()} is not on top');
+      // print('$message ${card.toString()} is not on top');
       return MoveResult.notValid;
     }
     switch (pileType) {
       case PileType.stock:
         if (card.isBaseCard) {
-          print('$message empty Stock Pile');
+          // print('$message empty Stock Pile');
           return MoveResult.pileEmpty;
         } else {
           _cards.removeLast();
-          print('$message take ${card.toString()} from top');
+          // print('$message take ${card.toString()} from top');
           return MoveResult.valid;
         }
       case PileType.waste:
       case PileType.tableau:
         if (tapRule != TapRule.goOut) {
-          print('$message $tapRule invalid - should be TapRule.goOut');
+          // print('$message $tapRule invalid - should be TapRule.goOut');
           return MoveResult.notValid;
         } else {
           _cards.removeLast();
-          print('$message take ${card.toString()} from top');
+          // print('$message take ${card.toString()} from top');
           return MoveResult.valid;
         }
       case PileType.foundation:
@@ -137,14 +137,14 @@ class Pile extends PositionComponent {
 
   bool checkPut(CardView card, MoveMethod method) {
     // Player can put or drop cards onto Foundation or Tableau Piles only.
-    String message = 'Check Put: ${card.toString()} $pileType'
-        ' $method row $gridRow col $gridCol:';
+    // String message = 'Check Put: ${card.toString()} $pileType'
+        // ' $method row $gridRow col $gridCol:';
     if ((pileType == PileType.foundation) || (pileType == PileType.tableau)) {
       if (_cards.isEmpty) {
         final firstOK =
             (pileSpec.putFirst == 0) || (card.rank == pileSpec.putFirst);
-        String result = firstOK ? 'first card OK' : 'first card FAILED';
-        print('$message $result');
+        // String result = firstOK ? 'first card OK' : 'first card FAILED';
+        // print('$message $result');
         return firstOK;
       } else {
         int pileSuit = _cards.last.suit;
@@ -159,33 +159,33 @@ class Pile extends PositionComponent {
           case PutRule.descendingAlternateColorsBy1:
             final isCardOK = (card.isRed == !_cards.last.isRed) &&
                 (card.rank == _cards.last.rank - 1);
-            print('$message ${isCardOK ? "card OK" : "card FAILED"}');
+            // print('$message ${isCardOK ? "card OK" : "card FAILED"}');
             return isCardOK;
           case PutRule.putNotAllowed:
             return false; // Cannot put card on this Foundation Pile.
         }
         if ((card.rank != (_cards.last.rank + delta)) ||
             (card.suit != pileSuit)) {
-          print('$message checkPut FAIL');
+          // print('$message checkPut FAIL');
           return false;
         }
       }
-      print('$message checkPut OK');
+      // print('$message checkPut OK');
       return true;
     } // End of Tableau or Foundation Pile check.
-    print('$message can only put on Foundation or Tableau Piles.');
+    // print('$message can only put on Foundation or Tableau Piles.');
     return false;
   }
 
   List<CardView> removeAllCards() {
     final List<CardView> result = [];
     if ((pileType == PileType.waste) && !_lastWastePile) {
-      print('Waste Pile cards: $_cards');
+      // print('Waste Pile cards: $_cards');
       while (_cards.isNotEmpty) {
         result.add(_cards.removeLast()); // Last Waste card -> first in result.
       }
       _lastWastePile = pileSpec.tapEmptyRule == TapEmptyRule.turnOverWasteOnce;
-      print('Pile $pileType: WARNING - LAST Waste Pile!');
+      // print('Pile $pileType: WARNING - LAST Waste Pile!');
     }
     return result;
   }
@@ -206,8 +206,8 @@ class Pile extends PositionComponent {
       card.position = _cards[_cards.length - 2].position + fanOut;
     }
     // ??????? card.position = _lastCardPosition;
-    print(
-        'Put ${card.toString()} $pileType $gridRow $gridCol pos ${card.position} pri ${card.priority}');
+    // print(
+        // 'Put ${card.toString()} $pileType $gridRow $gridCol pos ${card.position} pri ${card.priority}');
     // if ((method == MoveMethod.tap) && (card == _cards.last)) {
     // print('PutRule row $gridRow col $gridCol: OK, ${pileSpec.putRule}');
     // _cards.removeLast();
