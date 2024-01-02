@@ -19,6 +19,7 @@ class CardView extends PositionComponent
           size: Vector2(PatWorld.cardWidth, PatWorld.cardHeight),
         );
 
+  // final bool debugMode = true;
   final int indexOfCard;
   final Sprite face;
   final Sprite back;
@@ -48,14 +49,14 @@ class CardView extends PositionComponent
   void flipView() => _viewFaceUp = !_viewFaceUp;
 
   static final Paint cardBorderPaint = Paint()
-    ..color = const Color(0xffbbbbbb)
+    ..color = const Color(0xffbbbbbb) // Grey.
     ..style = PaintingStyle.stroke
     ..strokeWidth = 10;
 
   static final Paint baseBorderPaint = Paint()
-    ..color = const Color(0xffff0000)
+    ..color = const Color(0xffdd2200) // Darkish red-orange.
     ..style = PaintingStyle.stroke
-    ..strokeWidth = 10;
+    ..strokeWidth = 30;
 
   @override
   void render(Canvas canvas) {
@@ -63,20 +64,15 @@ class CardView extends PositionComponent
       face.render(
         canvas,
         size: PatWorld.cardSize,
-        // anchor: Anchor.topCenter,
       );
     } else if (!isBaseCard) {
       back.render(
         canvas,
-
         size: PatWorld.cardSize,
-        // anchor: Anchor.topCenter,
       );
     } else {
       // Draw the Base Card in outline only.
-      RRect cardRect =
-          PatWorld.cardRect; // .shift(Offset(PatWorld.cardMargin / 2, 0));
-      // canvas.drawRRect(cardRect, cardBorderPaint);
+      RRect cardRect = PatWorld.cardRect.deflate(PatWorld.shrinkage);
       canvas.drawRRect(cardRect, baseBorderPaint);
     }
     return;
@@ -258,7 +254,7 @@ class CardView extends PositionComponent
 
     // Find out what is under the center-point of this card when it is dropped.
     final targets =
-        parent!.componentsAtPoint(position).whereType<Pile>().toList();
+        parent!.componentsAtPoint(position + Vector2(0.0, PatWorld.cardHeight / 2.0)).whereType<Pile>().toList();
     if (targets.isNotEmpty) {
       // print('');
       final target = targets.first;

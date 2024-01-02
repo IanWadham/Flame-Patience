@@ -42,8 +42,6 @@ class Pile extends PositionComponent {
         pileSpec.faceUpFanOut.$2 * PatWorld.cardHeight);
   }
 
-  // TODO - Implement methods, based on pileSpec.
-
   MoveResult dragMove(CardView card, List<CardView> dragList) {
     DragRule dragRule = pileSpec.dragRule;
     // String message = 'Drag $pileType row $gridRow col $gridCol:';
@@ -190,29 +188,19 @@ class Pile extends PositionComponent {
     return result;
   }
 
-  // ??????? Vector2 _lastCardPosition = Vector2(0.0, 0.0);
-
   void put(CardView card, MoveMethod method) {
     _cards.add(card);
     card.pile = this;
     card.priority = _cards.length;
     if (_cards.length == 1) {
-      // ??????? _lastCardPosition = position;
       card.position = position;
     } else {
       final prevFaceUp = _cards[_cards.length - 2].isFaceUpView;
       final fanOut = prevFaceUp ? _faceUpFanOut : _faceDownFanOut;
-      // ??????? _lastCardPosition = _lastCardPosition + fanOut;
       card.position = _cards[_cards.length - 2].position + fanOut;
     }
-    // ??????? card.position = _lastCardPosition;
-    // print(
-        // 'Put ${card.toString()} $pileType $gridRow $gridCol pos ${card.position} pri ${card.priority}');
-    // if ((method == MoveMethod.tap) && (card == _cards.last)) {
-    // print('PutRule row $gridRow col $gridCol: OK, ${pileSpec.putRule}');
-    // _cards.removeLast();
-    // rule = pileSpec.putRule;
-    // }
+    // print('Put ${card.toString()} $pileType $gridRow $gridCol'
+        // ' pos ${card.position} pri ${card.priority}');
   }
 
   void flipTopCardMaybe() {
@@ -260,19 +248,15 @@ class Pile extends PositionComponent {
     ..color = PatGame.pileBackground
     ..style = PaintingStyle.fill;
 
-  final shrinkage = 40.0;
-
   @override
   void render(Canvas canvas) {
     // Debugging: outline the boundaries of the piles.
-    final cellSize = PatWorld.cellSize;
-    // Rect cell = Rect.fromLTWH(cellSize.x / 2, 0.0, cellSize.x, cellSize.y);
-    Rect cell = Rect.fromLTWH(0.0, 0.0, cellSize.x, cellSize.y);
-    canvas.drawRect(cell, pileOutlinePaint);
+    // final cellSize = PatWorld.cellSize;
+    // Rect cell = Rect.fromLTWH(0.0, 0.0, cellSize.x, cellSize.y);
+    // canvas.drawRect(cell, pileOutlinePaint);
 
-    RRect pileRect = PatWorld.cardRect.deflate(shrinkage);
-    // Offset rectShift = Offset(cellSize.x / 2 + shrinkage, 0 /*shrinkage / 2*/);
-    Offset rectShift = Offset(shrinkage, 0 /*shrinkage / 2*/);
+    RRect pileRect = PatWorld.cardRect.deflate(PatWorld.shrinkage);
+    Offset rectShift = Offset(PatWorld.cardMargin / 2.0, 0);
     canvas.drawRRect(pileRect.shift(rectShift), pileBackgroundPaint);
     canvas.drawRRect(pileRect.shift(rectShift), pileOutlinePaint);
   }
