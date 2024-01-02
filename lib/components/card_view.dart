@@ -56,7 +56,7 @@ class CardView extends PositionComponent
   static final Paint baseBorderPaint = Paint()
     ..color = const Color(0xffdd2200) // Darkish red-orange.
     ..style = PaintingStyle.stroke
-    ..strokeWidth = 30;
+    ..strokeWidth = 20;
 
   @override
   void render(Canvas canvas) {
@@ -253,8 +253,10 @@ class CardView extends PositionComponent
     }
 
     // Find out what is under the center-point of this card when it is dropped.
-    final targets =
-        parent!.componentsAtPoint(position + Vector2(0.0, PatWorld.cardHeight / 2.0)).whereType<Pile>().toList();
+    final targets = parent!
+        .componentsAtPoint(position + Vector2(0.0, height / 2.0))
+        .whereType<Pile>()
+        .toList();
     if (targets.isNotEmpty) {
       // print('');
       final target = targets.first;

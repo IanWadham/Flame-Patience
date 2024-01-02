@@ -13,6 +13,8 @@ class Pile extends PositionComponent {
       : pileType = pileSpec.pileType,
         gridRow = row,
         gridCol = col,
+        baseWidth = PatWorld.cellSize.x,
+        baseHeight = PatWorld.cellSize.y,
         nCardsToDeal = deal,
         super(
           anchor: Anchor.topCenter,
@@ -26,12 +28,14 @@ class Pile extends PositionComponent {
 
   final int gridRow;
   final int gridCol;
+  final double baseWidth;
+  final double baseHeight;
   final int nCardsToDeal;
 
   final List<CardView> _cards = [];
 
-  late Vector2 _faceDownFanOut;
-  late Vector2 _faceUpFanOut;
+  late final Vector2 _faceDownFanOut;
+  late final Vector2 _faceUpFanOut;
 
   bool _lastWastePile = false;
 
@@ -40,6 +44,13 @@ class Pile extends PositionComponent {
         pileSpec.faceDownFanOut.$2 * PatWorld.cardHeight);
     _faceUpFanOut = Vector2(pileSpec.faceUpFanOut.$1 * PatWorld.cardWidth,
         pileSpec.faceUpFanOut.$2 * PatWorld.cardHeight);
+  }
+
+  void setPileHitArea() {
+    double deltaX = (_cards.length < 2 ? 0.0 : _cards.last.x - x);
+    double deltaY = (_cards.length < 2 ? 0.0 : _cards.last.y - y);
+    width = (deltaX >= 0.0) ? baseWidth + deltaX : baseWidth - deltaX;
+    height = (deltaY >= 0.0) ? baseHeight + deltaY : baseHeight - deltaY;
   }
 
   MoveResult dragMove(CardView card, List<CardView> dragList) {
@@ -63,8 +74,13 @@ class Pile extends PositionComponent {
           // print('$message ${card.toString()} not on top of Pile');
           return MoveResult.notValid;
         }
+        if (card.isFaceDownView) {
+          // print('$message ${card.toString()} not face-up');
+          return MoveResult.notValid;
+        }
         if (cardOnTop) {
           dragList.add(_cards.removeLast());
+          setPileHitArea();
           // print('$message removed top card of Pile');
           return MoveResult.valid;
         }
@@ -74,6 +90,7 @@ class Pile extends PositionComponent {
         dragList.addAll(_cards.getRange(index, _cards.length));
         _cards.removeRange(index, _cards.length);
         // print('Pile $_cards, moving $dragList');
+        setPileHitArea();
         return MoveResult.valid;
       // Depends on Game Type. In 48, need to look inside Waste,
       // but not go anywhere or put the card anywhere.
@@ -121,6 +138,7 @@ class Pile extends PositionComponent {
         } else {
           _cards.removeLast();
           // print('$message take ${card.toString()} from top');
+          setPileHitArea();
           return MoveResult.valid;
         }
       case PileType.foundation:
@@ -201,6 +219,7 @@ class Pile extends PositionComponent {
     }
     // print('Put ${card.toString()} $pileType $gridRow $gridCol'
         // ' pos ${card.position} pri ${card.priority}');
+    setPileHitArea();
   }
 
   void flipTopCardMaybe() {
@@ -221,6 +240,7 @@ class Pile extends PositionComponent {
   void returnCard(CardView card) {
     _cards.add(card);
     card.priority = _cards.length;
+    setPileHitArea();
   }
 
   void flipCards(CardView card, TapRule tapRule, Pile target) {
