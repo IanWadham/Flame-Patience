@@ -4,7 +4,7 @@ import 'package:flutter/material.dart';
 import 'pat_world.dart';
 import 'specs/pat_specs.dart';
 
-enum Action { newDeal, sameDeal, newGame }
+enum Action { newDeal, sameDeal, newGame, undo, redo }
 
 class PatGame extends FlameGame<PatWorld> {
   // The PatGame constructor creates the first PatWorld.
@@ -17,14 +17,16 @@ class PatGame extends FlameGame<PatWorld> {
   // shuffle and deal. Action.sameDeal re-deals the same cards as before. The
   // actual seed is computed in KlondikeWorld, but is held here in case the
   // player chooses Action.sameDeal.
-  PatGameID gameID = PatGameID.klondikeDraw1;
+  int gameIndex = 0;
   int seed = 1;
   Action action = Action.newDeal;
 
   static final Color screenBackground = Colors.amber.shade100;
-  // static final Color pileBackground = Colors.amber.shade200;
   static final Color pileBackground = Colors.lime.shade300;
   static final Color pileOutline = Colors.brown.shade400;
+
+  void changeGame() =>
+      gameIndex = (gameIndex < PatData.gameList.length - 1) ? ++gameIndex : 0;
 
   @override
   Color backgroundColor() => screenBackground;

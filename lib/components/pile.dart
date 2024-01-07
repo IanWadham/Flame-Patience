@@ -4,18 +4,19 @@ import 'package:flame/components.dart';
 
 import '../pat_game.dart';
 import '../pat_world.dart';
+import '../specs/pat_enums.dart';
 import '../specs/pat_specs.dart';
 import 'card_view.dart';
 
-class Pile extends PositionComponent {
-  Pile(this.pileSpec,
+class Pile extends PositionComponent with HasWorldReference<PatWorld> {
+  Pile(this.pileSpec, this.pileIndex,
       {required int row, required int col, int deal = 0, super.position})
       : pileType = pileSpec.pileType,
         gridRow = row,
         gridCol = col,
+        nCardsToDeal = deal,
         baseWidth = PatWorld.cellSize.x,
         baseHeight = PatWorld.cellSize.y,
-        nCardsToDeal = deal,
         super(
           anchor: Anchor.topCenter,
           size: PatWorld.cellSize,
@@ -26,11 +27,17 @@ class Pile extends PositionComponent {
   final PileSpec pileSpec;
   final PileType pileType;
 
+  final int pileIndex;
   final int gridRow;
   final int gridCol;
+  final int nCardsToDeal;
   final double baseWidth;
   final double baseHeight;
-  final int nCardsToDeal;
+
+  // TODO - This is moderately successful, but still a few jump-ups. Can we
+  //        extend it? Or, in the case of a multi-card drop, could we continue
+  //        calculating the offsets from the moving cards - as in a failed drop?
+  Vector2 get nextPosition => _cards.isEmpty ? position : _cards.last.position;
 
   final List<CardView> _cards = [];
 
@@ -115,14 +122,11 @@ class Pile extends PositionComponent {
       // print('$message _cards is Empty');
       return MoveResult.pileEmpty;
     }
-    // TODO - Redundant? Same as previous !isTopCard(card) check?
-    if (_cards.isNotEmpty && (card != _cards.last)) {
-      // print('$message ${card.toString()} is not on top');
-      return MoveResult.notValid;
-    }
     switch (pileType) {
       case PileType.stock:
         if (card.isBaseCard) {
+          // TODO - Can check World for Waste Pile and do the flipover NOW.
+          //        Does this make it easier to undo and redo?
           // print('$message empty Stock Pile');
           return MoveResult.pileEmpty;
         } else {
@@ -147,14 +151,46 @@ class Pile extends PositionComponent {
     return MoveResult.notValid;
   }
 
+  List<CardView> grabCards(int nCards) {
+    List<CardView> tail = [];
+    int index = _cards.length - nCards;
+    if (index >= 0) {
+      tail.addAll(_cards.getRange(index, _cards.length));
+      _cards.removeRange(index, _cards.length);
+    }
+    return tail;
+  }
+
+  void dropCards(List<CardView> tail) {
+    for (final card in tail) {
+      put(card);
+    }
+  }
+
+  void setTopFaceUp(bool goFaceUp) {
+    // TODO - POLISH THIS.
+    if (_cards.isNotEmpty) {
+      CardView card = _cards.last;
+      print(
+          'setTopFaceUp($goFaceUp): $pileIndex $pileType ${card.toString()} FaceUp ${card.isFaceUpView}');
+      if (goFaceUp) {
+        // Card moving into play from FaceDown view.
+        if (_cards.last.isFaceDownView) _cards.last.flipView();
+      } else {
+        // Undoing a move that included a flip to FaceUp view.
+        if (_cards.last.isFaceUpView) _cards.last.flipView();
+      }
+    }
+  }
+
   bool isTopCard(CardView card) {
     return _cards.isNotEmpty && card == _cards.last;
   }
 
-  bool checkPut(CardView card, MoveMethod method) {
+  bool checkPut(CardView card) {
     // Player can put or drop cards onto Foundation or Tableau Piles only.
     // String message = 'Check Put: ${card.toString()} $pileType'
-        // ' $method row $gridRow col $gridCol:';
+    // ' row $gridRow col $gridCol:';
     if ((pileType == PileType.foundation) || (pileType == PileType.tableau)) {
       if (_cards.isEmpty) {
         final firstOK =
@@ -194,6 +230,8 @@ class Pile extends PositionComponent {
   }
 
   List<CardView> removeAllCards() {
+    // TODO - _lastWastePile MUST be a World OR static state-variable.
+    //        It won't work if every Pile has such a variable...
     final List<CardView> result = [];
     if ((pileType == PileType.waste) && !_lastWastePile) {
       // print('Waste Pile cards: $_cards');
@@ -206,7 +244,22 @@ class Pile extends PositionComponent {
     return result;
   }
 
-  void put(CardView card, MoveMethod method) {
+  void turnPileOver(Pile to) {
+    print('Turn Pile Over: $pileType $_cards');
+    while (_cards.isNotEmpty) {
+      if (_cards.last.isBaseCard) {
+        print('MUST NOT TURN OVER BASE CARD...');
+        break;
+      }
+      CardView card = _cards.removeLast();
+      card.flipView();
+      to.put(card);
+      print(
+          'Put to ${to.pileType} ${card.toString()} faceDown ${card.isFaceDownView}');
+    }
+  }
+
+  void put(CardView card) {
     _cards.add(card);
     card.pile = this;
     card.priority = _cards.length;
@@ -218,11 +271,11 @@ class Pile extends PositionComponent {
       card.position = _cards[_cards.length - 2].position + fanOut;
     }
     // print('Put ${card.toString()} $pileType $gridRow $gridCol'
-        // ' pos ${card.position} pri ${card.priority}');
+    // ' pos ${card.position} pri ${card.priority}');
     setPileHitArea();
   }
 
-  void flipTopCardMaybe() {
+  bool flipTopCardMaybe() {
     // Used in piles like Klondike Tableaus, where top cards must be face-up.
     if (pileSpec.dealFaceRule == DealFaceRule.lastFaceUp) {
       if (_cards.isNotEmpty && _cards.last.isFaceDownView) {
@@ -233,8 +286,10 @@ class Pile extends PositionComponent {
             _cards.last.priority = savedPriority;
           },
         );
+        return true; // Needed to flip the card.
       }
     }
+    return false;
   }
 
   void returnCard(CardView card) {
@@ -251,7 +306,7 @@ class Pile extends PositionComponent {
       card.doMoveAndFlip(
         target.position,
         whenDone: () {
-          target.put(card, MoveMethod.tap);
+          target.put(card);
         },
       );
     }
@@ -276,7 +331,7 @@ class Pile extends PositionComponent {
     // canvas.drawRect(cell, pileOutlinePaint);
 
     RRect pileRect = PatWorld.cardRect.deflate(PatWorld.shrinkage);
-    Offset rectShift = Offset(PatWorld.cardMargin / 2.0, 0);
+    Offset rectShift = const Offset(PatWorld.cardMargin / 2.0, 0);
     canvas.drawRRect(pileRect.shift(rectShift), pileBackgroundPaint);
     canvas.drawRRect(pileRect.shift(rectShift), pileOutlinePaint);
   }

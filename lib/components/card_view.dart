@@ -6,7 +6,8 @@ import 'package:flame/events.dart';
 import 'package:flutter/animation.dart';
 
 import '../pat_world.dart';
-import '../specs/pat_specs.dart';
+import '../models/card_moves.dart';
+import '../specs/pat_enums.dart';
 import 'pile.dart';
 
 // TODO - Separate the card-views and card-models.
@@ -40,6 +41,7 @@ class CardView extends PositionComponent
   int get rank => (indexOfCard - 1) ~/ 4 % 13 + 1;
   bool get isRed => suit < 2;
   bool get isBlack => suit >= 2;
+  String get name => toString();
 
   // bool get isBaseCard => (indexOfCard == 0);
 
@@ -125,7 +127,7 @@ class CardView extends PositionComponent
 
   void handleTap() {
     // Can be called by onTapUp or after a very short (failed) drag-and-drop.
-    // For user-friendliness we accept taps that include a short drag.
+    // For ease of gameplay the game accepts taps that include a short drag.
 
     MoveResult tapResult = pile.tapMove(this);
     // print('Tap seen ${pile.pileType} result: $tapResult');
@@ -133,7 +135,7 @@ class CardView extends PositionComponent
       return;
     } else if (pile.pileType == PileType.stock) {
       // print(
-          // 'Tap on Stock Pile: $tapResult Waste Pile present ${world.hasWastePile}');
+      // 'Tap on Stock Pile: $tapResult Waste Pile present ${world.hasWastePile}');
       if (tapResult == MoveResult.pileEmpty) {
         if (pile.pileSpec.tapEmptyRule == TapEmptyRule.tapNotAllowed) {
           // print('${pile.pileType} TAP ON EMPTY PILE WAS IGNORED');
@@ -145,14 +147,27 @@ class CardView extends PositionComponent
           for (final card in wasteCards) {
             // Top Waste Pile cards go face-down to bottom of Stock Pile.
             if (card.isFaceUpView) card.flipView();
-            pile.put(card, MoveMethod.tap);
+            pile.put(card);
           }
+          world.cardMoves.storeMove(
+              from: world.waste,
+              to: world.stock,
+              nCards: 1,
+              lead: name,
+              flips: Flips.noChange);
+          // TODO: MUST set the Flips correctly.
         }
         return;
       } else if (world.hasWastePile) {
         // TODO - Maybe passing "this" is superfluous: unless we want to
         //        assert() that this card is actually on top of the Pile.
         pile.flipCards(this, pile.pileSpec.tapRule, world.waste);
+        world.cardMoves.storeMove(
+            from: world.stock,
+            to: world.waste,
+            nCards: 1,
+            lead: name,
+            flips: Flips.toUp); // TODO: MUST set the Flips correctly.
       } else {
         return; // TODO - Deal more cards to Tableaus? e.g. Mod3.
       }
@@ -160,16 +175,23 @@ class CardView extends PositionComponent
       bool putOK = false;
       for (Pile target in world.foundations) {
         // print(
-            // 'Try ${target.pileType} at row ${target.gridRow} col ${target.gridCol}');
-        putOK = target.checkPut(this, MoveMethod.tap);
+        // 'Try ${target.pileType} at row ${target.gridRow} col ${target.gridCol}');
+        putOK = target.checkPut(this);
         if (putOK) {
-          pile.flipTopCardMaybe(); // Turn up next card on source pile, if reqd.
           doMove(
             target.position,
             onComplete: () {
-              target.put(this, MoveMethod.tap);
+              target.put(this);
             },
           );
+          // Turn up next card on source pile, if required.
+          Flips flip = pile.flipTopCardMaybe() ? Flips.fromUp : Flips.noChange;
+          world.cardMoves.storeMove(
+              from: pile,
+              to: target,
+              nCards: 1,
+              lead: name,
+              flips: flip); // TODO: MUST set the Flips correctly.
           break;
         }
       } // End of Foundation Pile checks.
@@ -196,7 +218,7 @@ class CardView extends PositionComponent
     super.onDragStart(event);
     if (pile.pileType == PileType.stock) {
       _isDragging = false;
-      // print('Drag start on Stock');
+      // print('Drag start on Stock'); // TODO - Handle TAP on Stock Pile?
       return;
     }
     // Clone the position, else _whereCardStarted changes as the position does.
@@ -226,7 +248,9 @@ class CardView extends PositionComponent
     }
     final delta = event.localDelta;
     // movingCards.forEach((card) => card.position.add(delta));
-    movingCards.forEach((card) {card.position.add(delta);});
+    movingCards.forEach((card) {
+      card.position.add(delta);
+    });
   }
 
   @override
@@ -261,18 +285,29 @@ class CardView extends PositionComponent
       // print('');
       final target = targets.first;
       // print('Drop-target Pile found! ${target.pileType}'
-          // ' row ${target.gridRow} col ${target.gridCol}');
-      if (target.checkPut(this, MoveMethod.drag)) {
-        pile.flipTopCardMaybe(); // Turn up next card on source pile, if reqd.
+      // ' row ${target.gridRow} col ${target.gridCol}');
+      if (target.checkPut(this)) {
         // Found a Pile: move card(s) the rest of the way onto it.
+        final whereCardIsGoing = target.nextPosition;
         for (final droppedCard in movingCards) {
+          final offset = droppedCard.position - position;
           doMove(
-            target.position,
+            // whereCardIsGoing + offset, // TODO - Conflicts with put() & returnCard()..
+            whereCardIsGoing,
             onComplete: () {
-              target.put(droppedCard, MoveMethod.drag);
+              // target.returnCard(droppedCard);
+              target.put(droppedCard);
             },
           );
         }
+        // Turn up next card on source pile, if required.
+        Flips flip = pile.flipTopCardMaybe() ? Flips.fromUp : Flips.noChange;
+        world.cardMoves.storeMove(
+            from: pile,
+            to: target,
+            nCards: movingCards.length,
+            lead: name,
+            flips: flip); // TODO: MUST set the Flips correctly.
         movingCards.clear();
         return;
       }

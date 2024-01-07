@@ -10,16 +10,16 @@ class FlatButton extends ButtonComponent {
     super.onReleased,
     super.position,
   }) : super(
-          button: ButtonBackground(const Color(0xffece8a3)),
+          button: ButtonBackground(const Color(0xff444444)), // Dark grey.
           buttonDown: ButtonBackground(Colors.red),
           children: [
             TextComponent(
               text: text,
               textRenderer: TextPaint(
                 style: TextStyle(
-                  fontSize: 0.5 * size!.y,
+                  fontSize: 0.45 * size!.y,
                   fontWeight: FontWeight.bold,
-                  color: const Color(0xffdbaf58),
+                  color: const Color(0xff444444), // Dark grey.
                 ),
               ),
               position: size / 2.0,

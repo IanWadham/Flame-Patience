@@ -6,8 +6,12 @@ import 'package:flame/flame.dart';
 
 import 'components/pile.dart';
 import 'components/card_view.dart';
+import 'components/flat_button.dart';
+
+import 'models/card_moves.dart';
 
 import 'pat_game.dart';
+import 'specs/pat_enums.dart';
 import 'specs/pat_specs.dart';
 import 'specs/card_image_specs.dart';
 
@@ -21,7 +25,7 @@ class PatWorld extends World with HasGameReference<PatGame> {
   static const cardHeight = 1200.0;
   static const cardMargin = 100.0;
   static const topMargin = 500.0;
-  static const shrinkage = 40.0; // Applied to Pile Rect and Base Card rendering.
+  static const shrinkage = 40.0; // Used in Pile and Base Card rendering.
   static final cardRect = RRect.fromRectAndRadius(
     const Rect.fromLTWH(0, 0, cardWidth, cardHeight),
     const Radius.circular(75.0),
@@ -47,6 +51,7 @@ class PatWorld extends World with HasGameReference<PatGame> {
 
   late final Pile stock;
   late final Pile waste;
+  late final CardMoves cardMoves;
 
   final List<Pile> foundations = [];
   final List<Pile> tableaus = [];
@@ -58,19 +63,9 @@ class PatWorld extends World with HasGameReference<PatGame> {
     String cardDeckImagesData = '$cardDeckName.png';
     String cardDeckSpriteData = 'assets/images/$cardDeckName.txt';
 
-    bool gameNotFound = true;
-    for (final GameSpec game in PatData.gameList) {
-      if (game.gameID == gameID) {
-        // printGameSpec(game);
-        gameNotFound = false; // Game Spec found.
-        _gameSpec = game;
-        break;
-      }
-    }
-    if (gameNotFound) {
-      // print('$gameID: Game not found');
-      return;
-    }
+    print('Game Index is ${game.gameIndex} name '
+        '${PatData.gameList[game.gameIndex].gameName}');
+    _gameSpec = PatData.gameList[game.gameIndex];
 
     await Flame.images.load(cardDeckImagesData);
     String cardDataString = await Flame.bundle.loadString(cardDeckSpriteData);
@@ -83,6 +78,7 @@ class PatWorld extends World with HasGameReference<PatGame> {
 
     var foundStockSpec = false;
     var foundWasteSpec = false;
+    var pileIndex = 0;
     for (GamePileSpec gamePile in _gameSpec.gamePilesSpec) {
       PileSpec spec = gamePile.pileSpec;
       int nPilesOfThisType = gamePile.nPilesSpec;
@@ -95,6 +91,7 @@ class PatWorld extends World with HasGameReference<PatGame> {
             topLeft + Vector2((col + 0.5) * cellSize.x, row * cellSize.y);
         final pile = Pile(
           spec,
+          pileIndex,
           position: position,
           row: row,
           col: col,
@@ -103,8 +100,10 @@ class PatWorld extends World with HasGameReference<PatGame> {
         pile.init();
 
         piles.add(pile);
+        pileIndex++;
 
-        // print('New pile: row $row col $col pos $position ${pile.pileType}');
+        print('New pile: row $row col $col deal $deal '
+            'pos $position ${pile.pileType}');
         switch (pile.pileType) {
           case PileType.stock:
             if (!_gameSpec.hasStockPile) break;
@@ -123,6 +122,8 @@ class PatWorld extends World with HasGameReference<PatGame> {
         }
       }
     }
+
+    cardMoves = CardMoves(piles);
 
     // List<CardView> will have (1 + 52 * nPacks) cards in it.
     //
@@ -159,8 +160,8 @@ class PatWorld extends World with HasGameReference<PatGame> {
     if (pileSpecErrorCount > 0) return;
 
     // print('${piles.length} piles, Stock: $hasStockPile'
-        // ' Waste: $hasWastePile Foundations: ${foundations.length}'
-        // ' Tableaus: ${tableaus.length} Dealer OK');
+    // ' Waste: $hasWastePile Foundations: ${foundations.length}'
+    // ' Tableaus: ${tableaus.length} Dealer OK');
 
     var cardPriority = 1;
     final dealerPosition = Vector2(
@@ -173,6 +174,10 @@ class PatWorld extends World with HasGameReference<PatGame> {
 
     addAll(piles);
     addAll(cards);
+
+    addButton('New game', 0.5 * cellSize.x, Action.newGame);
+    addButton('Undo move', 3.5 * cellSize.x, Action.undo);
+    addButton('Redo move', 4.5 * cellSize.x, Action.redo);
 
     int nCols = _gameSpec.nCellsWide;
     int nRows = _gameSpec.nCellsHigh;
@@ -192,12 +197,35 @@ class PatWorld extends World with HasGameReference<PatGame> {
     deal(_gameSpec.dealSequence);
   }
 
+  void addButton(String label, double buttonX, Action action) {
+    final button = FlatButton(
+      label,
+      size: Vector2(0.9 * cardWidth, 0.55 * topMargin),
+      position: Vector2(buttonX, topMargin / 2),
+      onReleased: () {
+        switch (action) {
+          case Action.newGame:
+            game.changeGame();
+            game.world = PatWorld();
+          case Action.undo:
+            cardMoves.undoMove();
+          case Action.redo:
+            cardMoves.redoMove();
+          case Action.newDeal:
+          case Action.sameDeal:
+            break;
+        }
+      },
+    );
+    add(button);
+  }
+
   void deal(DealSequence dealSequence) {
     final List<CardView> cardsToDeal = [];
     for (final CardView card in cards) {
       if (card.isBaseCard) {
         if (hasStockPile) {
-          stock.put(card, MoveMethod.deal);
+          stock.put(card);
         }
       } else {
         cardsToDeal.add(card);
@@ -214,8 +242,8 @@ class PatWorld extends World with HasGameReference<PatGame> {
           (pile.pileType == PileType.waste)) {
         continue; // These must be dealt last.
       }
-      // print('Target? ${pile.pileType} row ${pile.gridRow} col ${pile.gridCol}'
-          // ' nCards ${pile.nCardsToDeal}');
+      print('Target? ${pile.pileType} row ${pile.gridRow} col ${pile.gridCol}'
+          ' nCards ${pile.nCardsToDeal}');
       if (pile.nCardsToDeal > 0) {
         dealTargets.add(DealTarget(pile));
         dealTargets.last.init();
@@ -229,8 +257,8 @@ class PatWorld extends World with HasGameReference<PatGame> {
         while (target.nCardsLeftToDeal > 0 && cardsToDeal.isNotEmpty) {
           CardView card = cardsToDeal.removeLast();
           // print('Deal ${card.toString()} target ${target.pile.pileType}'
-              // ' row ${target.pile.gridRow} col ${target.pile.gridCol}'
-              // ' nCards left ${target.nCardsLeftToDeal})');
+          // ' row ${target.pile.gridRow} col ${target.pile.gridCol}'
+          // ' nCards left ${target.nCardsLeftToDeal})');
           switch (target.dealFaceRule) {
             case DealFaceRule.faceUp:
               card.flipView();
@@ -242,7 +270,7 @@ class PatWorld extends World with HasGameReference<PatGame> {
             case DealFaceRule.notUsed:
               break;
           }
-          target.pile.put(card, MoveMethod.deal);
+          target.pile.put(card);
           target.nCardsLeftToDeal--;
         }
       } else if (dealSequence == DealSequence.pilesInTurn) {
@@ -252,7 +280,7 @@ class PatWorld extends World with HasGameReference<PatGame> {
     if (hasStockPile && cardsToDeal.isNotEmpty) {
       // print('${cardsToDeal.length} CARDS LEFT TO DEAL: $cardsToDeal');
       for (CardView card in cardsToDeal) {
-        stock.put(card, MoveMethod.deal);
+        stock.put(card);
       }
       cardsToDeal.clear();
     }
