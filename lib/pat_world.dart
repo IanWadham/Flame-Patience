@@ -1,3 +1,4 @@
+import 'dart:core';
 import 'dart:async';
 import 'dart:ui';
 
@@ -17,10 +18,6 @@ import 'specs/card_image_specs.dart';
 
 class PatWorld extends World with HasGameReference<PatGame> {
   static const cardDeckName = 'Ancient_Egyptians'; // A Setting is needed.
-  // final PatGameID gameID = PatGameID.fortyAndEight;
-  // final PatGameID gameID = PatGameID.mod3;
-  final PatGameID gameID = PatGameID.klondikeDraw1;
-
   static const cardWidth = 900.0;
   static const cardHeight = 1200.0;
   static const cardMargin = 100.0;
@@ -45,156 +42,100 @@ class PatWorld extends World with HasGameReference<PatGame> {
   final List<CardView> cards = [];
   final List<Pile> piles = [];
 
-  bool hasStockPile = false;
-  bool hasWastePile = false;
-  var wasteTurnoverCount = 0;
-
-  late final Pile stock;
-  late final Pile waste;
-  late final CardMoves cardMoves;
-
   final List<Pile> foundations = [];
   final List<Pile> tableaus = [];
 
-  late final GameSpec _gameSpec;
+  final cardMoves = CardMoves();
+
+  Pile get stock => piles[_stockPileIndex];
+  Pile get waste => piles[_wastePileIndex];
+
+  bool get hasStockPile => _stockPileIndex >= 0;
+  bool get hasWastePile => _wastePileIndex >= 0;
+  int get stockPileIndex => _stockPileIndex;
+  int get wastePileIndex => _wastePileIndex;
+
+  int _stockPileIndex = -1; // No Stock Pile yet: not all games have one.
+  int _wastePileIndex = -1; // No Waste Pile yet: not all games have one.
 
   @override
   Future<void> onLoad() async {
-    String cardDeckImagesData = '$cardDeckName.png';
-    String cardDeckSpriteData = 'assets/images/$cardDeckName.txt';
-
     print('Game Index is ${game.gameIndex} name '
         '${PatData.gameList[game.gameIndex].gameName}');
-    _gameSpec = PatData.gameList[game.gameIndex];
+    final gameSpec = PatData.gameList[game.gameIndex];
 
-    await Flame.images.load(cardDeckImagesData);
-    String cardDataString = await Flame.bundle.loadString(cardDeckSpriteData);
-
-    // List<Pile> can have any number of piles in it, depending on the game and
-    // its layout. Many games have a Stock Pile and a Waste Pile, for dealing
-    // hidden cards during play, but some have a Stock Pile only and can deal
-    // onto the Tableaus during play, and some have no Stock Pile because all
-    // cards are dealt face-up at the start of play, e.g. Freecell.
-
-    var foundStockSpec = false;
-    var foundWasteSpec = false;
-    var pileIndex = 0;
-    for (GamePileSpec gamePile in _gameSpec.gamePilesSpec) {
-      PileSpec spec = gamePile.pileSpec;
-      int nPilesOfThisType = gamePile.nPilesSpec;
-      assert(nPilesOfThisType == gamePile.pileTrios.length);
-      for (PileTrio trio in gamePile.pileTrios) {
-        int row = trio.$1;
-        int col = trio.$2;
-        int deal = trio.$3;
-        Vector2 position =
-            topLeft + Vector2((col + 0.5) * cellSize.x, row * cellSize.y);
-        final pile = Pile(
-          spec,
-          pileIndex,
-          position: position,
-          row: row,
-          col: col,
-          deal: deal,
-        );
-        pile.init();
-
-        piles.add(pile);
-        pileIndex++;
-
-        print('New pile: row $row col $col deal $deal '
-            'pos $position ${pile.pileType}');
-        switch (pile.pileType) {
-          case PileType.stock:
-            if (!_gameSpec.hasStockPile) break;
-            stock = pile;
-            hasStockPile = true;
-            foundStockSpec = true;
-          case PileType.waste:
-            if (!_gameSpec.hasWastePile) break;
-            waste = pile;
-            hasWastePile = true;
-            foundWasteSpec = true;
-          case PileType.foundation:
-            foundations.add(pile);
-          case PileType.tableau:
-            tableaus.add(pile);
-        }
-      }
-    }
-
-    cardMoves = CardMoves(piles);
-
-    // List<CardView> will have (1 + 52 * nPacks) cards in it.
+    // Create List<CardView> cards: it will have (1 + 52 * nPacks) cards in it.
     //
     // The first is a Base Card, which does NOT take part in gameplay, but acts
     // as a base for the Stock Pile (if any). It exists to intercept taps on an
-    // empty Stock Pile, has two back-sprites and is rendered only in outline.
+    // empty Stock Pile. It has two back-sprites but is painted only in outline.
     //
     // The others, indexed from 1 to 52 or 1 to 104, are the actual playing
     // cards. Each has a front and a back Sprite, to be rendered as required.
-    // The cardSpecs Spritesheet as 53 images on it: 52 for the card faces and
-    // 1 for the card backs, which is copied 52 or 104 times.
+    // The cardSpecs Spritesheet has 53 images on it: 52 for the card faces
+    // and one for the card backs. The latter is copied 52 or 104 times.
+    // cards = loadCardImages(cardDeckName);
+
+    String cardDeckImagesData = '$cardDeckName.png';
+    String cardDeckSpriteData = 'assets/images/$cardDeckName.txt';
+    await Flame.images.load(cardDeckImagesData);
+    Future<String> data = Flame.bundle.loadString(cardDeckSpriteData);
+    final String cardDataString = await Future.any([data,]);
 
     ImageSpecs cardSpecs = ImageSpecs();
-    cards.addAll(
-      cardSpecs.loadCards(cardDeckName, cardDataString, 53, _gameSpec.nPacks),
-    );
-    // print('Cards: $cards');
+    cards.addAll(cardSpecs.loadCards(
+        cardDeckName, cardDataString, 53, gameSpec.nPacks),);
 
-    var pileSpecErrorCount = 0;
-    var nNeeded = 4 * _gameSpec.nPacks;
-    if (!foundStockSpec && hasStockPile) {
-      // print('NO Stock Spec: hasStockPile $hasStockPile found $foundStockSpec');
-      pileSpecErrorCount++;
-    } else if (!foundWasteSpec && hasWastePile) {
-      // print('NO Waste Spec: hasWastePile $hasWastePile found $foundWasteSpec');
-      pileSpecErrorCount++;
-    } else if (foundations.length < nNeeded) {
-      // print('Only ${foundations.length} Foundation Specs: expected $nNeeded');
-      pileSpecErrorCount++;
-    } else if (tableaus.isEmpty) {
-      // print('NO Tableau Specs found');
-      pileSpecErrorCount++;
-    }
-    if (pileSpecErrorCount > 0) return;
+    // Create List<Pile> piles: it can have any number of piles in it, depending
+    // on the game and its layout. Many games have a Stock Pile and Waste Pile,
+    // for dealing hidden cards during play, but some have no Waste Pile and
+    // can deal onto the Tableaus during play, and some have no Stock Pile
+    // because all cards are dealt face-up at the start of play, e.g. Freecell.
 
-    // print('${piles.length} piles, Stock: $hasStockPile'
-    // ' Waste: $hasWastePile Foundations: ${foundations.length}'
-    // ' Tableaus: ${tableaus.length} Dealer OK');
+    int nExceptions = generatePiles(gameSpec);
+    if (nExceptions > 0)
+        throw FormatException('FOUND $nExceptions FormatExceptions');
 
+    // Set up a CardMoves Model class that records valid Moves and can undo
+    // or redo them. The basic Move is to take one or more cards from the
+    // end of one pile and add it/them to the end of another pile, working
+    // within the rules of the current game and remembering any card flips
+    // that were required. There is also a Move to turn over the whole Stock
+    // or Waste Pile. The validity of each Move is checked just once, during
+    // the Tap or DragAndDrop callback that accepted and created the Move.
+
+    cardMoves.init(piles); // Not a Flame Component, not added to World.
+
+    // Move all cards to a place in this game-layout from which they are dealt.
+
+    final dealerX = (gameSpec.dealerCol + 0.5) * cellSize.x;
+    final dealerY = gameSpec.dealerRow * cellSize.x;
+    final dealerPosition = Vector2(dealerX, dealerY);
     var cardPriority = 1;
-    final dealerPosition = Vector2(
-        _gameSpec.dealerCol * cellSize.x, _gameSpec.dealerRow * cellSize.y);
     for (CardView card in cards) {
-      card.position = dealerPosition + Vector2(cellSize.x / 2.0, 0.0);
-      card.priority = cardPriority;
-      cardPriority++;
+      card.position = dealerPosition;
+      card.priority = cardPriority++;
     }
 
-    addAll(piles);
+    // Set up the FlameGame's World and Camera, then shuffle and deal the cards.
+
     addAll(cards);
+    addAll(piles);
 
     addButton('New game', 0.5 * cellSize.x, Action.newGame);
     addButton('Undo move', 3.5 * cellSize.x, Action.undo);
     addButton('Redo move', 4.5 * cellSize.x, Action.redo);
 
-    int nCols = _gameSpec.nCellsWide;
-    int nRows = _gameSpec.nCellsHigh;
-    Vector2 playAreaSize =
-        topLeft + Vector2(nCols * cellSize.x, nRows * cellSize.y);
-    // print('$nRows by $nCols cells of size $cellSize, Play area: $playAreaSize');
+    final playAreaWidth = gameSpec.nCellsWide * cellSize.x;
+    final playAreaHeight = gameSpec.nCellsHigh * cellSize.y;
+    final playAreaSize = topLeft + Vector2(playAreaWidth, playAreaHeight);
 
     final camera = game.camera;
     camera.viewfinder.visibleGameSize = playAreaSize;
     camera.viewfinder.position = Vector2(playAreaSize.x / 2.0, 0.0);
     camera.viewfinder.anchor = Anchor.topCenter;
-  }
 
-  @override
-  void onMount() {
-    // print('Cards BEFORE Deal: $cards');
-    deal(_gameSpec.dealSequence);
+    deal(gameSpec.dealSequence);
   }
 
   void addButton(String label, double buttonX, Action action) {
@@ -225,7 +166,7 @@ class PatWorld extends World with HasGameReference<PatGame> {
     for (final CardView card in cards) {
       if (card.isBaseCard) {
         if (hasStockPile) {
-          stock.put(card);
+          piles[_stockPileIndex].put(card);
         }
       } else {
         cardsToDeal.add(card);
@@ -280,22 +221,94 @@ class PatWorld extends World with HasGameReference<PatGame> {
     if (hasStockPile && cardsToDeal.isNotEmpty) {
       // print('${cardsToDeal.length} CARDS LEFT TO DEAL: $cardsToDeal');
       for (CardView card in cardsToDeal) {
-        stock.put(card);
+        piles[_stockPileIndex].put(card);
       }
       cardsToDeal.clear();
     }
   }
 
-  // Probably OBSOLETE...
-  int findPile(PileType pileType) {
-    int index = 0;
-    for (Pile pile in piles) {
-      if (pile.pileType == pileType) {
-        return index;
+  int generatePiles(GameSpec gameSpec) {
+    var pileSpecErrorCount = 0;
+    var foundStockSpec = false;
+    var foundWasteSpec = false;
+    var pileIndex = 0;
+    for (GamePileSpec gamePile in gameSpec.gamePilesSpec) {
+      final pileSpec = gamePile.pileSpec;
+      final nPilesOfThisType = gamePile.nPilesSpec;
+      if (pileSpec == PatData.unusedPile) {
+        continue; // Possible placeholder for Games lacking Stock or Waste Pile.
       }
-      index++;
+      if (nPilesOfThisType != gamePile.pileTrios.length) {
+        throw FormatException('${pileSpec.pileType} requires $nPilesOfThisType '
+            'piles: number of pileTrios is ${gamePile.pileTrios.length}');
+      }
+      for (PileTrio trio in gamePile.pileTrios) {
+        int row = trio.$1;
+        int col = trio.$2;
+        int deal = trio.$3;
+        double pileX = (col + 0.5) * cellSize.x;
+        double pileY = row * cellSize.y;
+        final position = topLeft + Vector2(pileX, pileY);
+        final pile = Pile( pileSpec,
+          pileIndex,
+          position: position,
+          row: row,
+          col: col,
+          deal: deal,
+        );
+        pile.init();
+
+        piles.add(pile);
+
+        // print('New pile: row $row col $col deal $deal '
+            // 'pos $position ${pile.pileType}');
+        switch (pile.pileType) {
+          case PileType.stock:
+            if (!gameSpec.hasStockPile) {
+              throw FormatException(
+                  'Stock Pile specified but GameSpec hasStockPile is false');
+              pileSpecErrorCount++;
+            }
+            _stockPileIndex = pileIndex;
+            foundStockSpec = true;
+          case PileType.waste:
+            if (!gameSpec.hasWastePile) {
+              throw FormatException(
+                  'Waste Pile specified but GameSpec hasWastePile is false');
+              pileSpecErrorCount++;
+            }
+            _wastePileIndex = pileIndex;
+            foundWasteSpec = true;
+          case PileType.foundation:
+            foundations.add(pile);
+          case PileType.tableau:
+            tableaus.add(pile);
+          case PileType.notUsed:
+            break;
+        }
+        pileIndex++;
+      }
     }
-    return -1;
+
+    var foundationsNeeded = 4 * gameSpec.nPacks;
+    if (!foundStockSpec && gameSpec.hasStockPile) {
+      throw FormatException(
+          'NO Stock Pile specified but GameSpec hasStockPile is true');
+      pileSpecErrorCount++;
+    } else if (!foundWasteSpec && gameSpec.hasWastePile) {
+      throw FormatException(
+          'NO Waste Pile specified but GameSpec hasWastePile is true');
+      pileSpecErrorCount++;
+    } else if (foundations.length != foundationsNeeded) {
+      throw FormatException(
+          '${foundations.length} Foundations found: $foundationsNeeded needed');
+      pileSpecErrorCount++;
+    } else if (tableaus.isEmpty) {
+      throw FormatException('NO Tableau Pile specifications found');
+      pileSpecErrorCount++;
+    }
+    // If there are errors in the Pile Specs, probably will not get this far.
+    return pileSpecErrorCount;
   }
 }
 
