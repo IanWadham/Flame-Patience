@@ -24,12 +24,14 @@ typedef CardMove = ({
 });
 
 class CardMoves {
-  CardMoves(this._piles);
-
-  final List<Pile> _piles;
+  final List<Pile> _piles = [];
 
   var _redoIndex = 0;
   final List<CardViewMove> _playerMoves = [];
+
+  void init(List<Pile> piles) {
+    _piles.addAll(piles);
+  }
 
   void storeMove({
     required Pile from,
