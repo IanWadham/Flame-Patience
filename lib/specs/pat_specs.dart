@@ -1,5 +1,23 @@
 import 'pat_enums.dart';
 
+// These typedefs give one-word names to definitions of Dart Record types. In
+// each case, the actual `type` is everything that lies between `(` and `)`.
+// Record type definitions resemble parameter definitions in a function,
+// including the availability of named and positional fields, using `{}` to
+// demarcate named fields. All the records defined in these typedefs use
+// named fields exclusively, except for PileTrio which has positional fields.
+//
+// NOTE: When defining a Game, all the fields in all the Records MUST be given
+//       values, regardless of whether the fields are named or positional. If
+//       any is missing or misnamed, there will be compilation failures. Also,
+//       field values based on `enums` must be drawn from those provided in
+//       the `specs/pat_enums.dart` file.
+//
+//       All this implies that, when you add data for a Game, much of it is
+//       automatically validated at compile-time. Some additional validation
+//       is done at run_time, using `throw` statements, but the rest of the
+//       testing and debugging of the new game is up to you.
+
 typedef GameSpec = ({
   PatGameID gameID,
   String gameName,
@@ -32,15 +50,13 @@ typedef PileSpec = ({
   PutRule putRule,
   int putFirst,
   DealFaceRule dealFaceRule,
-  FanOut faceDownFanOut,
-  FanOut faceUpFanOut,
+  double fanOutX,
+  double fanOutY,
 });
-
-typedef FanOut = (double horizontal, double vertical);
 
 class PatData {
   static const List<GameSpec> gameList = [
-    (
+    ( // GameSpec
       gameID: PatGameID.klondikeDraw1,
       gameName: 'Klondike - Draw 1',
       nPacks: 1,
@@ -52,21 +68,21 @@ class PatData {
       dealerCol: 0,
       dealSequence: DealSequence.wholePileAtOnce,
       gamePilesSpec: [
-        (
+        ( // GamePileSpec
           pileSpec: standardStock,
           nPilesSpec: 1,
           pileTrios: [
             (0, 0, 24),
           ]
         ),
-        (
+        ( // GamePileSpec
           pileSpec: standardWaste,
           nPilesSpec: 1,
           pileTrios: [
             (0, 1, 0),
           ]
         ),
-        (
+        ( // GamePileSpec
           pileSpec: standardFoundation,
           nPilesSpec: 4,
           pileTrios: [
@@ -76,7 +92,7 @@ class PatData {
             (0, 6, 0),
           ]
         ),
-        (
+        ( // GamePileSpec
           pileSpec: klondikeTableau,
           nPilesSpec: 7,
           pileTrios: [
@@ -91,7 +107,7 @@ class PatData {
         ),
       ],
     ),
-    (
+    ( // GameSpec
       gameID: PatGameID.fortyAndEight,
       gameName: 'Forty & Eight',
       nPacks: 2,
@@ -103,21 +119,21 @@ class PatData {
       dealerCol: 0,
       dealSequence: DealSequence.wholePileAtOnce,
       gamePilesSpec: [
-        (
+        ( // GamePileSpec
           pileSpec: fortyAndEightStock,
           nPilesSpec: 1,
           pileTrios: [
             (4, 7, 72),
           ]
         ),
-        (
+        ( // GamePileSpec
           pileSpec: fortyAndEightWaste,
           nPilesSpec: 1,
           pileTrios: [
             (4, 6, 0),
           ]
         ),
-        (
+        ( // GamePileSpec
           pileSpec: standardFoundation,
           nPilesSpec: 8,
           pileTrios: [
@@ -131,7 +147,7 @@ class PatData {
             (0, 7, 0),
           ]
         ),
-        (
+        ( // GamePileSpec
           pileSpec: fortyAndEightTableau,
           nPilesSpec: 8,
           pileTrios: [
@@ -149,6 +165,8 @@ class PatData {
     ),
   ]; // End List<GameSpec> gameList
 
+  // Ready-made configurations of Piles, as used in the above games.
+
   static const PileSpec standardStock = (
     pileType: PileType.stock,
     pileName: 'standardStock',
@@ -159,8 +177,8 @@ class PatData {
     putRule: PutRule.putNotAllowed,
     putFirst: 0,
     dealFaceRule: DealFaceRule.faceDown,
-    faceDownFanOut: (0.0, 0.0),
-    faceUpFanOut: (0.0, 0.0),
+    fanOutX: 0.0,
+    fanOutY: 0.0,
   );
 
   static const PileSpec fortyAndEightStock = (
@@ -173,8 +191,8 @@ class PatData {
     putRule: PutRule.putNotAllowed,
     putFirst: 0,
     dealFaceRule: DealFaceRule.faceDown,
-    faceDownFanOut: (0.0, 0.0),
-    faceUpFanOut: (0.0, 0.0),
+    fanOutX: 0.0,
+    fanOutY: 0.0,
   );
 
   static const PileSpec standardWaste = (
@@ -187,8 +205,8 @@ class PatData {
     putRule: PutRule.putNotAllowed,
     putFirst: 0,
     dealFaceRule: DealFaceRule.faceUp,
-    faceDownFanOut: (0.0, 0.0),
-    faceUpFanOut: (0.0, 0.0),
+    fanOutX: 0.0,
+    fanOutY: 0.0,
   );
 
   static const PileSpec fortyAndEightWaste = (
@@ -201,8 +219,8 @@ class PatData {
     putRule: PutRule.putNotAllowed,
     putFirst: 0,
     dealFaceRule: DealFaceRule.faceUp,
-    faceDownFanOut: (0.0, 0.0),
-    faceUpFanOut: (-0.125, 0.0),
+    fanOutX: -0.18,
+    fanOutY: 0.0,
   );
 
   static const PileSpec klondikeTableau = (
@@ -215,8 +233,8 @@ class PatData {
     putRule: PutRule.descendingAlternateColorsBy1,
     putFirst: 13, // King.
     dealFaceRule: DealFaceRule.lastFaceUp,
-    faceDownFanOut: (0.0, 0.075),
-    faceUpFanOut: (0.0, 0.25),
+    fanOutX: 0.0,
+    fanOutY: 0.25,
   );
 
   static const PileSpec fortyAndEightTableau = (
@@ -229,8 +247,8 @@ class PatData {
     putRule: PutRule.descendingSameSuitBy1,
     putFirst: 0, // Any card.
     dealFaceRule: DealFaceRule.faceUp,
-    faceDownFanOut: (0.0, 0.0),
-    faceUpFanOut: (0.0, 0.25),
+    fanOutX: 0.0,
+    fanOutY: 0.25,
   );
 
   static const PileSpec standardFoundation = (
@@ -243,8 +261,23 @@ class PatData {
     putRule: PutRule.ascendingSameSuitBy1,
     putFirst: 1, // Ace.
     dealFaceRule: DealFaceRule.faceDown,
-    faceDownFanOut: (0.0, 0.0),
-    faceUpFanOut: (0.0, 0.0),
+    fanOutX: 0.0,
+    fanOutY: 0.0,
+  );
+
+  static const PileSpec unusedPile = (
+    // Initialization possibility for games that have unused PileTypes.
+    pileType: PileType.notUsed,
+    pileName: 'unusedPile',
+    hasBaseCard: false,
+    dragRule: DragRule.dragNotAllowed,
+    tapRule: TapRule.tapNotAllowed,
+    tapEmptyRule: TapEmptyRule.tapNotAllowed,
+    putRule: PutRule.putNotAllowed,
+    putFirst: 0,
+    dealFaceRule: DealFaceRule.notUsed,
+    fanOutX: 0.0,
+    fanOutY: 0.0,
   );
 }
 

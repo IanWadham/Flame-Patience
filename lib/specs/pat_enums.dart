@@ -11,6 +11,7 @@ enum PileType {
   waste,
   tableau,
   foundation,
+  notUsed,
 }
 
 enum MoveResult {
