@@ -3,6 +3,8 @@ import 'package:flame/input.dart';
 import 'package:flame/text.dart';
 import 'package:flutter/material.dart';
 
+import '../pat_game.dart';
+
 class FlatButton extends ButtonComponent {
   FlatButton(
     String text, {
@@ -10,8 +12,8 @@ class FlatButton extends ButtonComponent {
     super.onReleased,
     super.position,
   }) : super(
-          button: ButtonBackground(const Color(0xff444444)), // Dark grey.
-          buttonDown: ButtonBackground(Colors.red),
+          button: ButtonBackground(PatGame.pileOutline),
+          buttonDown: ButtonBackground(PatGame.buttonHighlight),
           children: [
             TextComponent(
               text: text,
@@ -19,7 +21,7 @@ class FlatButton extends ButtonComponent {
                 style: TextStyle(
                   fontSize: 0.45 * size!.y,
                   fontWeight: FontWeight.bold,
-                  color: const Color(0xff444444), // Dark grey.
+                  color: PatGame.pileOutline,
                 ),
               ),
               position: size / 2.0,
