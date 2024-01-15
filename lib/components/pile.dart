@@ -22,8 +22,9 @@ class Pile extends PositionComponent with HasWorldReference<PatWorld> {
           size: PatWorld.cellSize,
           priority: -1,
         );
+  static var _lastWastePile = false; // Used if Stock Pile passes are limited.
 
-  // final bool debugMode = true;
+  final bool debugMode = true;
   final PileSpec pileSpec;
   final PileType pileType;
 
@@ -34,39 +35,40 @@ class Pile extends PositionComponent with HasWorldReference<PatWorld> {
   final double baseWidth;
   final double baseHeight;
 
-  // TODO - This is moderately successful, but still a few jump-ups. Can we
-  //        extend it? Or, in the case of a multi-card drop, could we continue
-  //        calculating the offsets from the moving cards - as in a failed drop?
-  Vector2 get nextPosition => _cards.isEmpty ? position : _cards.last.position;
-
   final List<CardView> _cards = [];
 
+  var fanOut = Vector2(0.0, 0.0);
   late final Vector2 _faceDownFanOut;
   late final Vector2 _faceUpFanOut;
 
-  bool _lastWastePile = false;
-
   void init() {
-    _faceDownFanOut = Vector2(pileSpec.faceDownFanOut.$1 * PatWorld.cardWidth,
-        pileSpec.faceDownFanOut.$2 * PatWorld.cardHeight);
-    _faceUpFanOut = Vector2(pileSpec.faceUpFanOut.$1 * PatWorld.cardWidth,
-        pileSpec.faceUpFanOut.$2 * PatWorld.cardHeight);
+    // _faceDownFanOut = Vector2(pileSpec.faceDownFanOut.$1 * PatWorld.cardWidth,
+        // pileSpec.faceDownFanOut.$2 * PatWorld.cardHeight);
+    _faceUpFanOut = Vector2(pileSpec.fanOutX * PatWorld.cardWidth,
+        pileSpec.fanOutY * PatWorld.cardHeight);
+    fanOut = _faceUpFanOut;
+    _faceDownFanOut = Vector2(0.3 * _faceUpFanOut.x, 0.3 * _faceUpFanOut.y);
   }
 
   void setPileHitArea() {
-    double deltaX = (_cards.length < 2 ? 0.0 : _cards.last.x - x);
-    double deltaY = (_cards.length < 2 ? 0.0 : _cards.last.y - y);
-    width = (deltaX >= 0.0) ? baseWidth + deltaX : baseWidth - deltaX;
-    height = (deltaY >= 0.0) ? baseHeight + deltaY : baseHeight - deltaY;
+    if (pileType == PileType.tableau) {
+      double deltaX = (_cards.length < 2 ? 0.0 : _cards.last.x - x);
+      double deltaY = (_cards.length < 2 ? 0.0 : _cards.last.y - y);
+      width = (deltaX >= 0.0) ? baseWidth + deltaX : baseWidth - deltaX;
+      height = (deltaY >= 0.0) ? baseHeight + deltaY : baseHeight - deltaY;
+    }
   }
 
   MoveResult dragMove(CardView card, List<CardView> dragList) {
     DragRule dragRule = pileSpec.dragRule;
+    dragList.clear();
+    // TODO - Turn over Stock NOW, if needed, and return notValid.
     // String message = 'Drag $pileType row $gridRow col $gridCol:';
     if (_cards.isEmpty) {
       // print('$message _cards is Empty');
       return MoveResult.pileEmpty;
     }
+    // TODO - No switch needed. Only Stock is barred from dragging.
     switch (pileType) {
       case PileType.stock:
       case PileType.foundation:
@@ -103,6 +105,8 @@ class Pile extends PositionComponent with HasWorldReference<PatWorld> {
       // but not go anywhere or put the card anywhere.
       // Depends on Game Type. In 48, need empty Tableaus for moving >1 card.
       // In Klondike, can drag many cards but must satisfy checkPut on drop.
+      case PileType.notUsed:
+        return MoveResult.notValid;
     }
   }
 
@@ -146,7 +150,9 @@ class Pile extends PositionComponent with HasWorldReference<PatWorld> {
           return MoveResult.valid;
         }
       case PileType.foundation:
-      // ??????? What is needed here? Anything?
+      // TODO - ??????? What is needed here? Anything?
+      case PileType.notUsed:
+        return MoveResult.notValid;
     }
     return MoveResult.notValid;
   }
@@ -162,6 +168,7 @@ class Pile extends PositionComponent with HasWorldReference<PatWorld> {
   }
 
   void dropCards(List<CardView> tail) {
+    print('Drop $tail on $pileType index $pileIndex, contents $_cards');
     for (final card in tail) {
       put(card);
     }
@@ -229,23 +236,19 @@ class Pile extends PositionComponent with HasWorldReference<PatWorld> {
     return false;
   }
 
-  List<CardView> removeAllCards() {
-    // TODO - _lastWastePile MUST be a World OR static state-variable.
-    //        It won't work if every Pile has such a variable...
-    final List<CardView> result = [];
-    if ((pileType == PileType.waste) && !_lastWastePile) {
-      // print('Waste Pile cards: $_cards');
-      while (_cards.isNotEmpty) {
-        result.add(_cards.removeLast()); // Last Waste card -> first in result.
-      }
-      _lastWastePile = pileSpec.tapEmptyRule == TapEmptyRule.turnOverWasteOnce;
-      // print('Pile $pileType: WARNING - LAST Waste Pile!');
-    }
-    return result;
-  }
-
   void turnPileOver(Pile to) {
-    print('Turn Pile Over: $pileType $_cards');
+    // TODO - Fix coding of _lastWastePile, TapEmptyRule and turnOverWasteOnce.
+    // TODO - _lastWastePile must be toggled in Pile.turnPileOver(Pile pileName)
+    //        and must respond correctly to undos and redos of the first
+    //        turnover while not allowing a second turnover.
+    // TODO - Can we undo ALL of the second Waste Pile and then undo the first
+    //        turnover and go back to _lastWastPile = false? It seems not.
+    // Turn over Waste->Stock, undo that or redo it.
+    print('Turn Pile Over: $pileType last Waste $_lastWastePile $_cards');
+    if (_lastWastePile && (pileType == PileType.waste)) {
+      // Don't allow the last Waste Pile to be turned over.
+      return;
+    }
     while (_cards.isNotEmpty) {
       if (_cards.last.isBaseCard) {
         print('MUST NOT TURN OVER BASE CARD...');
@@ -254,8 +257,13 @@ class Pile extends PositionComponent with HasWorldReference<PatWorld> {
       CardView card = _cards.removeLast();
       card.flipView();
       to.put(card);
-      print(
-          'Put to ${to.pileType} ${card.toString()} faceDown ${card.isFaceDownView}');
+      print('Put ${to.pileType} ${card.name} faceDown ${card.isFaceDownView}');
+    }
+    // Normal or redo move is Waste->Stock, undo is Stock->Waste.
+    Pile stock = (pileType == PileType.stock) ? this : to;
+    if (stock.pileSpec.tapEmptyRule == TapEmptyRule.turnOverWasteOnce) {
+      // Allow the first Waste Pile turnover to be done, undone and redone.
+      _lastWastePile = !_lastWastePile;
     }
   }
 
@@ -275,7 +283,7 @@ class Pile extends PositionComponent with HasWorldReference<PatWorld> {
     setPileHitArea();
   }
 
-  bool flipTopCardMaybe() {
+  bool needFlipTopCard() {
     // Used in piles like Klondike Tableaus, where top cards must be face-up.
     if (pileSpec.dealFaceRule == DealFaceRule.lastFaceUp) {
       if (_cards.isNotEmpty && _cards.last.isFaceDownView) {
@@ -286,19 +294,13 @@ class Pile extends PositionComponent with HasWorldReference<PatWorld> {
             _cards.last.priority = savedPriority;
           },
         );
-        return true; // Needed to flip the card.
+        return true; // Need to flip the card.
       }
     }
     return false;
   }
 
-  void returnCard(CardView card) {
-    _cards.add(card);
-    card.priority = _cards.length;
-    setPileHitArea();
-  }
-
-  void flipCards(CardView card, TapRule tapRule, Pile target) {
+  void dealCardFromStock(CardView card, TapRule tapRule, Pile target) {
     assert(target.pileType == PileType.waste);
     assert(pileType == PileType.stock);
     assert((tapRule == TapRule.turnOver1) || (tapRule == TapRule.turnOver3));

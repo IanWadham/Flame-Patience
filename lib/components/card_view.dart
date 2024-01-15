@@ -41,7 +41,7 @@ class CardView extends PositionComponent
   int get rank => (indexOfCard - 1) ~/ 4 % 13 + 1;
   bool get isRed => suit < 2;
   bool get isBlack => suit >= 2;
-  String get name => toString();
+  String get name => PatWorld.ranks[rank] + PatWorld.suits[suit]; // toString()
 
   // bool get isBaseCard => (indexOfCard == 0);
 
@@ -109,7 +109,9 @@ class CardView extends PositionComponent
   // A tap on a face-up card makes it auto-move and go out to a Foundation Pile
   // (if acceptable), but if it is face-down on a Stock Pile, it turns over and
   // moves to the Waste Pile. In Klondike Draw 3, three cards are turned over
-  // and moved.
+  // and moved. Some games have a Stock Pile but no Waste Pile: what happens
+  // then depends on the rules of the game. And some have neither a Stock Pile
+  // nor a Waste Pile (i.e. all the cards are dealt face-up, as in Free Cell).
   //
   // USE OF DRAG AND DROP MOVES:
   //
@@ -121,7 +123,6 @@ class CardView extends PositionComponent
 
   @override
   void onTapUp(TapUpEvent event) {
-    // print('Tap Up on ${pile.pileType} at $position');
     handleTap();
   }
 
@@ -129,78 +130,9 @@ class CardView extends PositionComponent
     // Can be called by onTapUp or after a very short (failed) drag-and-drop.
     // For ease of gameplay the game accepts taps that include a short drag.
 
-    MoveResult tapResult = pile.tapMove(this);
-    // print('Tap seen ${pile.pileType} result: $tapResult');
-    if (tapResult == MoveResult.notValid) {
-      return;
-    } else if (pile.pileType == PileType.stock) {
-      // print(
-      // 'Tap on Stock Pile: $tapResult Waste Pile present ${world.hasWastePile}');
-      if (tapResult == MoveResult.pileEmpty) {
-        if (pile.pileSpec.tapEmptyRule == TapEmptyRule.tapNotAllowed) {
-          // print('${pile.pileType} TAP ON EMPTY PILE WAS IGNORED');
-          return;
-        }
-        if (world.hasWastePile) {
-          final wasteCards = world.waste.removeAllCards();
-          // print('Turned-over Waste cards: $wasteCards');
-          for (final card in wasteCards) {
-            // Top Waste Pile cards go face-down to bottom of Stock Pile.
-            if (card.isFaceUpView) card.flipView();
-            pile.put(card);
-          }
-          world.cardMoves.storeMove(
-              from: world.waste,
-              to: world.stock,
-              nCards: 1,
-              lead: name,
-              flips: Flips.noChange);
-          // TODO: MUST set the Flips correctly.
-        }
-        return;
-      } else if (world.hasWastePile) {
-        // TODO - Maybe passing "this" is superfluous: unless we want to
-        //        assert() that this card is actually on top of the Pile.
-        pile.flipCards(this, pile.pileSpec.tapRule, world.waste);
-        world.cardMoves.storeMove(
-            from: world.stock,
-            to: world.waste,
-            nCards: 1,
-            lead: name,
-            flips: Flips.toUp); // TODO: MUST set the Flips correctly.
-      } else {
-        return; // TODO - Deal more cards to Tableaus? e.g. Mod3.
-      }
-    } else {
-      bool putOK = false;
-      for (Pile target in world.foundations) {
-        // print(
-        // 'Try ${target.pileType} at row ${target.gridRow} col ${target.gridCol}');
-        putOK = target.checkPut(this);
-        if (putOK) {
-          doMove(
-            target.position,
-            onComplete: () {
-              target.put(this);
-            },
-          );
-          // Turn up next card on source pile, if required.
-          Flips flip = pile.flipTopCardMaybe() ? Flips.fromUp : Flips.noChange;
-          world.cardMoves.storeMove(
-              from: pile,
-              to: target,
-              nCards: 1,
-              lead: name,
-              flips: flip); // TODO: MUST set the Flips correctly.
-          break;
-        }
-      } // End of Foundation Pile checks.
-      if (!putOK) {
-        // TODO - Use same animation as for failed drag? Or go instantaneous?
-        //        Probably no need for animation: shouldn't have gone far.
-        pile.returnCard(this);
-      }
-    }
+    bool success = world.cardMoves.tapMove(this, pile);
+    // TODO - Beep, flash or other view-type things if not successful.
+    return;
   }
 
   // Handle drag-and-drop events
@@ -216,28 +148,25 @@ class CardView extends PositionComponent
   @override
   void onDragStart(DragStartEvent event) {
     super.onDragStart(event);
-    if (pile.pileType == PileType.stock) {
-      _isDragging = false;
-      // print('Drag start on Stock'); // TODO - Handle TAP on Stock Pile?
-      return;
-    }
-    // Clone the position, else _whereCardStarted changes as the position does.
-    // print('Drag start on ${pile.pileType} at $position');
-    _whereCardStarted = position.clone();
-    movingCards = [];
-    MoveResult dragResult = pile.dragMove(this, movingCards);
-    if (dragResult == MoveResult.notValid) {
-      _isDragging = false;
-    } else {
+    _isDragging = false;
+
+    // The rules for this pile in this game might allow a multi-card move. The
+    // cards to be moved, including one or none, are returned in movingCards.
+    // Alternatively, dragging a Stock card or Base Card is treated as a tap.
+
+    if (world.cardMoves.dragStart(this, pile, movingCards)) {
+    // if (pile.dragMove(this, movingCards) == MoveResult.valid) {
       _isDragging = true;
+      // Clone position, otherwise _whereCardStarted changes as the card moves.
+      // _whereCardStarted = position.clone();
       var cardPriority = movingPriority;
-      // String moving = 'Moving: ';
+      String moving = 'Moving: ';
       for (final movingCard in movingCards) {
         movingCard.priority = cardPriority;
         cardPriority++;
-        // moving += '${movingCard.toString()} ${movingCard.priority}, ';
+        moving += '${movingCard.toString()} ${movingCard.priority}, ';
       }
-      // print(moving);
+      print(moving);
     }
   }
 
@@ -247,11 +176,12 @@ class CardView extends PositionComponent
       return;
     }
     final delta = event.localDelta;
-    // movingCards.forEach((card) => card.position.add(delta));
-    movingCards.forEach((card) {
-      card.position.add(delta);
-    });
+    movingCards.forEach((card) => card.position.add(delta));
   }
+
+  // TODO - Move SOME of this code into CardMoves.dragAndDropMove().
+    // bool success = world.cardMoves.dragAndDropMove(movingCards, target);
+    // TODO - Beep, flash or other view-type things if not successful.
 
   @override
   void onDragEnd(DragEndEvent event) {
@@ -260,70 +190,14 @@ class CardView extends PositionComponent
       return;
     }
     _isDragging = false;
-
-    // If short drag, return card to Pile and treat it as having been tapped.
-    final shortDrag =
-        (position - _whereCardStarted).length < PatWorld.dragTolerance;
-    if (shortDrag && (movingCards.length == 1)) {
-      doMove(
-        _whereCardStarted,
-        onComplete: () {
-          pile.returnCard(this);
-          // Card moves to a Foundation Pile next, if valid, or it stays put.
-          handleTap();
-        },
-      );
-      return;
-    }
-
-    // Find out what is under the center-point of this card when it is dropped.
+    // Find out what is under the center-point of this card when dropped.
     final targets = parent!
         .componentsAtPoint(position + Vector2(0.0, height / 2.0))
         .whereType<Pile>()
         .toList();
-    if (targets.isNotEmpty) {
-      // print('');
-      final target = targets.first;
-      // print('Drop-target Pile found! ${target.pileType}'
-      // ' row ${target.gridRow} col ${target.gridCol}');
-      if (target.checkPut(this)) {
-        // Found a Pile: move card(s) the rest of the way onto it.
-        final whereCardIsGoing = target.nextPosition;
-        for (final droppedCard in movingCards) {
-          final offset = droppedCard.position - position;
-          doMove(
-            // whereCardIsGoing + offset, // TODO - Conflicts with put() & returnCard()..
-            whereCardIsGoing,
-            onComplete: () {
-              // target.returnCard(droppedCard);
-              target.put(droppedCard);
-            },
-          );
-        }
-        // Turn up next card on source pile, if required.
-        Flips flip = pile.flipTopCardMaybe() ? Flips.fromUp : Flips.noChange;
-        world.cardMoves.storeMove(
-            from: pile,
-            to: target,
-            nCards: movingCards.length,
-            lead: name,
-            flips: flip); // TODO: MUST set the Flips correctly.
-        movingCards.clear();
-        return;
-      }
-    }
-
-    // Invalid drop (middle of nowhere, invalid pile or invalid card for pile).
-    movingCards.forEach((card) {
-      final offset = card.position - position;
-      card.doMove(
-        _whereCardStarted + offset,
-        onComplete: () {
-          pile.returnCard(card);
-        },
-      );
-    });
-    movingCards.clear();
+    // Drop the cards, if valid, or try a tap move if drag was too short,
+    // or, if all else fails, return the card(s) to where they started.
+    world.cardMoves.dragEnd(targets, PatWorld.dragTolerance);
   }
 
   //#region Effects

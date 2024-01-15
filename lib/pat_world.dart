@@ -103,8 +103,9 @@ class PatWorld extends World with HasGameReference<PatGame> {
     // that were required. There is also a Move to turn over the whole Stock
     // or Waste Pile. The validity of each Move is checked just once, during
     // the Tap or DragAndDrop callback that accepted and created the Move.
+    // The cardMoves object is not a Component, so is not added to the World.
 
-    cardMoves.init(piles); // Not a Flame Component, not added to World.
+    cardMoves.init(cards, piles, stockPileIndex, wastePileIndex);
 
     // Move all cards to a place in this game-layout from which they are dealt.
 
@@ -290,7 +291,8 @@ class PatWorld extends World with HasGameReference<PatGame> {
       }
     }
 
-    var foundationsNeeded = 4 * gameSpec.nPacks;
+    final foundationsNeeded = gameSpec.gameID == PatGameID.mod3 ? 24
+        : 4 * gameSpec.nPacks;
     if (!foundStockSpec && gameSpec.hasStockPile) {
       throw FormatException(
           'NO Stock Pile specified but GameSpec hasStockPile is true');
