@@ -37,7 +37,7 @@ enum PutRule {
   ascendingSameSuitBy1,
   ascendingSameSuitBy3,
   descendingSameSuitBy1,
-  descendingAlternateColorsBy1
+  descendingAlternateColorsBy1,
 }
 
 enum TapRule {

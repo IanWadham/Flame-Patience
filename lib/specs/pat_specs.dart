@@ -163,6 +163,90 @@ class PatData {
         ),
       ],
     ),
+    ( // GameSpec
+      gameID: PatGameID.mod3,
+      gameName: 'Mod 3',
+      nPacks: 2,
+      nCellsWide: 9,
+      nCellsHigh: 5,
+      hasStockPile: true,
+      hasWastePile: false,
+      dealerRow: 2,
+      dealerCol: 9,
+      dealSequence: DealSequence.wholePileAtOnce,
+      gamePilesSpec: [
+        ( // GamePileSpec
+          pileSpec: standardStock,
+          nPilesSpec: 1,
+          pileTrios: [
+            (3, 8, 74),
+          ]
+        ),
+        // ( // GamePileSpec
+          // pileSpec: standardWaste,
+          // nPilesSpec: 1,
+          // pileTrios: [
+            // (0, 1, 0),
+          // ]
+        // ),
+        ( // GamePileSpec
+          pileSpec: mod3Foundation2J,
+          nPilesSpec: 8,
+          pileTrios: [
+            (0, 0, 1),
+            (0, 1, 1),
+            (0, 2, 1),
+            (0, 3, 1),
+            (0, 4, 1),
+            (0, 5, 1),
+            (0, 6, 1),
+            (0, 7, 1),
+          ]
+        ),
+        ( // GamePileSpec
+          pileSpec: mod3Foundation3Q,
+          nPilesSpec: 8,
+          pileTrios: [
+            (1, 0, 1),
+            (1, 1, 1),
+            (1, 2, 1),
+            (1, 3, 1),
+            (1, 4, 1),
+            (1, 5, 1),
+            (1, 6, 1),
+            (1, 7, 1),
+          ]
+        ),
+        ( // GamePileSpec
+          pileSpec: mod3Foundation4K,
+          nPilesSpec: 8,
+          pileTrios: [
+            (2, 0, 1),
+            (2, 1, 1),
+            (2, 2, 1),
+            (2, 3, 1),
+            (2, 4, 1),
+            (2, 5, 1),
+            (2, 6, 1),
+            (2, 7, 1),
+          ]
+        ),
+        ( // GamePileSpec
+          pileSpec: mod3Tableau,
+          nPilesSpec: 8,
+          pileTrios: [
+            (3, 0, 1),
+            (3, 1, 1),
+            (3, 2, 1),
+            (3, 3, 1),
+            (3, 4, 1),
+            (3, 5, 1),
+            (3, 6, 1),
+            (3, 7, 1),
+          ]
+        ),
+      ],
+    ),
   ]; // End List<GameSpec> gameList
 
   // Ready-made configurations of Piles, as used in the above games.
@@ -251,6 +335,20 @@ class PatData {
     fanOutY: 0.25,
   );
 
+  static const PileSpec mod3Tableau = (
+    pileType: PileType.tableau,
+    pileName: 'mod3Tableau',
+    hasBaseCard: false,
+    dragRule: DragRule.fromTop,
+    tapRule: TapRule.goOut,
+    tapEmptyRule: TapEmptyRule.tapNotAllowed,
+    putRule: PutRule.putNotAllowed,
+    putFirst: 0, // Any card.
+    dealFaceRule: DealFaceRule.faceUp,
+    fanOutX: 0.0,
+    fanOutY: 0.1,
+  );
+
   static const PileSpec standardFoundation = (
     pileType: PileType.foundation,
     pileName: 'standardFoundation',
@@ -263,6 +361,48 @@ class PatData {
     dealFaceRule: DealFaceRule.faceDown,
     fanOutX: 0.0,
     fanOutY: 0.0,
+  );
+
+  static const PileSpec mod3Foundation2J = (
+    pileType: PileType.foundation,
+    pileName: 'mod3Foundation',
+    hasBaseCard: false,
+    dragRule: DragRule.fromTop,
+    tapRule: TapRule.goOut,
+    tapEmptyRule: TapEmptyRule.tapNotAllowed,
+    putRule: PutRule.ascendingSameSuitBy3,
+    putFirst: 2, // Two.
+    dealFaceRule: DealFaceRule.faceUp,
+    fanOutX: 0.0,
+    fanOutY: 0.05,
+  );
+
+  static const PileSpec mod3Foundation3Q = (
+    pileType: PileType.foundation,
+    pileName: 'mod3Foundation',
+    hasBaseCard: false,
+    dragRule: DragRule.fromTop,
+    tapRule: TapRule.goOut,
+    tapEmptyRule: TapEmptyRule.tapNotAllowed,
+    putRule: PutRule.ascendingSameSuitBy3,
+    putFirst: 3, // Three.
+    dealFaceRule: DealFaceRule.faceUp,
+    fanOutX: 0.0,
+    fanOutY: 0.05,
+  );
+
+  static const PileSpec mod3Foundation4K = (
+    pileType: PileType.foundation,
+    pileName: 'mod3Foundation',
+    hasBaseCard: false,
+    dragRule: DragRule.fromTop,
+    tapRule: TapRule.goOut,
+    tapEmptyRule: TapEmptyRule.tapNotAllowed,
+    putRule: PutRule.ascendingSameSuitBy3,
+    putFirst: 4, // Four.
+    dealFaceRule: DealFaceRule.faceUp,
+    fanOutX: 0.0,
+    fanOutY: 0.05,
   );
 
   static const PileSpec unusedPile = (
