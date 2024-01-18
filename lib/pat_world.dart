@@ -28,8 +28,6 @@ class PatWorld extends World with HasGameReference<PatGame> {
     const Radius.circular(75.0),
   );
   static final Vector2 cardSize = Vector2(cardWidth, cardHeight);
-  static final Vector2 cellSize =
-      Vector2(cardWidth + cardMargin, cardHeight + cardMargin);
   static final topLeft = Vector2(0.0, topMargin);
 
   /// Constant used to decide when a short drag is treated as a TapUp event.
@@ -63,6 +61,8 @@ class PatWorld extends World with HasGameReference<PatGame> {
     print('Game Index is ${game.gameIndex} name '
         '${PatData.gameList[game.gameIndex].gameName}');
     final gameSpec = PatData.gameList[game.gameIndex];
+    final cellSize = Vector2(cardWidth + gameSpec.cardPadX,
+        cardHeight + gameSpec.cardPadY);
 
     // Create List<CardView> cards: it will have (1 + 52 * nPacks) cards in it.
     //
@@ -92,7 +92,7 @@ class PatWorld extends World with HasGameReference<PatGame> {
     // can deal onto the Tableaus during play, and some have no Stock Pile
     // because all cards are dealt face-up at the start of play, e.g. Freecell.
 
-    int nExceptions = generatePiles(gameSpec);
+    int nExceptions = generatePiles(gameSpec, cellSize);
     if (nExceptions > 0)
         throw FormatException('FOUND $nExceptions FormatExceptions');
 
@@ -184,8 +184,8 @@ class PatWorld extends World with HasGameReference<PatGame> {
           (pile.pileType == PileType.waste)) {
         continue; // These must be dealt last.
       }
-      print('Target? ${pile.pileType} row ${pile.gridRow} col ${pile.gridCol}'
-          ' nCards ${pile.nCardsToDeal}');
+      print('Deal ${pile.pileType} row ${pile.gridRow} col ${pile.gridCol}'
+          ' nCards ${pile.nCardsToDeal} pos ${pile.position}');
       if (pile.nCardsToDeal > 0) {
         dealTargets.add(DealTarget(pile));
         dealTargets.last.init();
@@ -224,11 +224,12 @@ class PatWorld extends World with HasGameReference<PatGame> {
       for (CardView card in cardsToDeal) {
         piles[_stockPileIndex].put(card);
       }
+      piles[_stockPileIndex].dump();
       cardsToDeal.clear();
     }
   }
 
-  int generatePiles(GameSpec gameSpec) {
+  int generatePiles(GameSpec gameSpec, Vector2 cellSize) {
     var pileSpecErrorCount = 0;
     var foundStockSpec = false;
     var foundWasteSpec = false;
@@ -250,14 +251,17 @@ class PatWorld extends World with HasGameReference<PatGame> {
         double pileX = (col + 0.5) * cellSize.x;
         double pileY = row * cellSize.y;
         final position = topLeft + Vector2(pileX, pileY);
-        final pile = Pile( pileSpec,
+        print('New Pile ${pileSpec.pileType} $pileIndex pos $position row $row col $col');
+        final pile = Pile(
+          pileSpec,
           pileIndex,
+          cellSize.x,
+          cellSize.y,
           position: position,
           row: row,
           col: col,
           deal: deal,
         );
-        pile.init();
 
         piles.add(pile);
 

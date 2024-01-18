@@ -24,10 +24,13 @@ typedef GameSpec = ({
   int nPacks,
   int nCellsWide,
   int nCellsHigh,
+  double cardPadX,
+  double cardPadY,
   bool hasStockPile,
   bool hasWastePile,
   int dealerRow,
   int dealerCol,
+  int excludedRank,
   DealSequence dealSequence,
   List<GamePileSpec> gamePilesSpec,
 });
@@ -52,6 +55,9 @@ typedef PileSpec = ({
   DealFaceRule dealFaceRule,
   double fanOutX,
   double fanOutY,
+  // NOTE: Cells' fan out Down space = (0.5 * cardMargin): more in Mod3 cells.
+  int growthCols, // Usually 0, can be +ve for fan out R or -ve for fan out L.
+  int growthRows, // Usually 0, can be +ve for fan out Down, -ve unlikely.
 });
 
 class PatData {
@@ -62,11 +68,14 @@ class PatData {
       nPacks: 1,
       nCellsWide: 7,
       nCellsHigh: 4,
+      cardPadX: 100,
+      cardPadY: 100,
       hasStockPile: true,
       hasWastePile: true,
       dealerRow: 3,
       dealerCol: 0,
       dealSequence: DealSequence.wholePileAtOnce,
+      excludedRank: 0, // Deal ALL cards.
       gamePilesSpec: [
         ( // GamePileSpec
           pileSpec: standardStock,
@@ -113,11 +122,14 @@ class PatData {
       nPacks: 2,
       nCellsWide: 8,
       nCellsHigh: 5,
+      cardPadX: 100,
+      cardPadY: 100,
       hasStockPile: true,
       hasWastePile: true,
       dealerRow: 3,
       dealerCol: 0,
       dealSequence: DealSequence.wholePileAtOnce,
+      excludedRank: 0, // Deal ALL cards.
       gamePilesSpec: [
         ( // GamePileSpec
           pileSpec: fortyAndEightStock,
@@ -168,12 +180,15 @@ class PatData {
       gameName: 'Mod 3',
       nPacks: 2,
       nCellsWide: 9,
-      nCellsHigh: 5,
+      nCellsHigh: 4,
+      cardPadX: 100,
+      cardPadY: 500,
       hasStockPile: true,
       hasWastePile: false,
       dealerRow: 2,
       dealerCol: 9,
       dealSequence: DealSequence.wholePileAtOnce,
+      excludedRank: 1, // Exclude Aces.
       gamePilesSpec: [
         ( // GamePileSpec
           pileSpec: standardStock,
@@ -258,11 +273,14 @@ class PatData {
     dragRule: DragRule.dragNotAllowed,
     tapRule: TapRule.turnOver1,
     tapEmptyRule: TapEmptyRule.turnOverWasteUnlimited,
+    // tapEmptyRule: TapEmptyRule.turnOverWasteOnce,
     putRule: PutRule.putNotAllowed,
     putFirst: 0,
     dealFaceRule: DealFaceRule.faceDown,
     fanOutX: 0.0,
     fanOutY: 0.0,
+    growthCols: 0,
+    growthRows: 0,
   );
 
   static const PileSpec fortyAndEightStock = (
@@ -277,6 +295,8 @@ class PatData {
     dealFaceRule: DealFaceRule.faceDown,
     fanOutX: 0.0,
     fanOutY: 0.0,
+    growthCols: 0,
+    growthRows: 0,
   );
 
   static const PileSpec standardWaste = (
@@ -291,6 +311,8 @@ class PatData {
     dealFaceRule: DealFaceRule.faceUp,
     fanOutX: 0.0,
     fanOutY: 0.0,
+    growthCols: 0,
+    growthRows: 0,
   );
 
   static const PileSpec fortyAndEightWaste = (
@@ -303,8 +325,10 @@ class PatData {
     putRule: PutRule.putNotAllowed,
     putFirst: 0,
     dealFaceRule: DealFaceRule.faceUp,
-    fanOutX: -0.18,
+    fanOutX: -0.2,
     fanOutY: 0.0,
+    growthCols: -6,
+    growthRows: 0,
   );
 
   static const PileSpec klondikeTableau = (
@@ -319,6 +343,8 @@ class PatData {
     dealFaceRule: DealFaceRule.lastFaceUp,
     fanOutX: 0.0,
     fanOutY: 0.25,
+    growthCols: 0,
+    growthRows: 2,
   );
 
   static const PileSpec fortyAndEightTableau = (
@@ -333,6 +359,8 @@ class PatData {
     dealFaceRule: DealFaceRule.faceUp,
     fanOutX: 0.0,
     fanOutY: 0.25,
+    growthCols: 0,
+    growthRows: 2,
   );
 
   static const PileSpec mod3Tableau = (
@@ -347,6 +375,8 @@ class PatData {
     dealFaceRule: DealFaceRule.faceUp,
     fanOutX: 0.0,
     fanOutY: 0.1,
+    growthCols: 0,
+    growthRows: 0,
   );
 
   static const PileSpec standardFoundation = (
@@ -361,6 +391,8 @@ class PatData {
     dealFaceRule: DealFaceRule.faceDown,
     fanOutX: 0.0,
     fanOutY: 0.0,
+    growthCols: 0,
+    growthRows: 0,
   );
 
   static const PileSpec mod3Foundation2J = (
@@ -374,7 +406,9 @@ class PatData {
     putFirst: 2, // Two.
     dealFaceRule: DealFaceRule.faceUp,
     fanOutX: 0.0,
-    fanOutY: 0.05,
+    fanOutY: 0.1,
+    growthCols: 0,
+    growthRows: 0,
   );
 
   static const PileSpec mod3Foundation3Q = (
@@ -388,7 +422,9 @@ class PatData {
     putFirst: 3, // Three.
     dealFaceRule: DealFaceRule.faceUp,
     fanOutX: 0.0,
-    fanOutY: 0.05,
+    fanOutY: 0.1,
+    growthCols: 0,
+    growthRows: 0,
   );
 
   static const PileSpec mod3Foundation4K = (
@@ -402,7 +438,9 @@ class PatData {
     putFirst: 4, // Four.
     dealFaceRule: DealFaceRule.faceUp,
     fanOutX: 0.0,
-    fanOutY: 0.05,
+    fanOutY: 0.1,
+    growthCols: 0,
+    growthRows: 0,
   );
 
   static const PileSpec unusedPile = (
@@ -418,6 +456,8 @@ class PatData {
     dealFaceRule: DealFaceRule.notUsed,
     fanOutX: 0.0,
     fanOutY: 0.0,
+    growthCols: 0,
+    growthRows: 0,
   );
 }
 

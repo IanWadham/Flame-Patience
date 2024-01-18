@@ -9,20 +9,21 @@ import '../specs/pat_specs.dart';
 import 'card_view.dart';
 
 class Pile extends PositionComponent with HasWorldReference<PatWorld> {
-  Pile(this.pileSpec, this.pileIndex,
+  Pile(this.pileSpec, this.pileIndex, this.baseWidth, this.baseHeight,
       {required int row, required int col, int deal = 0, super.position})
       : pileType = pileSpec.pileType,
         gridRow = row,
         gridCol = col,
         nCardsToDeal = deal,
-        baseWidth = PatWorld.cellSize.x,
-        baseHeight = PatWorld.cellSize.y,
         super(
           anchor: Anchor.topCenter,
-          size: PatWorld.cellSize,
+          size: Vector2(baseWidth, baseHeight),
           priority: -1,
         );
   static var _lastWastePile = false; // Used if Stock Pile passes are limited.
+
+  static const fanOutX = 0.2 * PatWorld.cardWidth;
+  static const fanOutY = 0.25 * PatWorld.cardHeight;
 
   final bool debugMode = true;
   final PileSpec pileSpec;
@@ -37,17 +38,15 @@ class Pile extends PositionComponent with HasWorldReference<PatWorld> {
 
   final List<CardView> _cards = [];
 
-  var fanOut = Vector2(0.0, 0.0);
-  late final Vector2 _faceDownFanOut;
-  late final Vector2 _faceUpFanOut;
+  var _initFanOut = false;
+  var _baseFanOut = Vector2(0.0, 0.0);
+  var _fanOutFaceUp = Vector2(0.0, 0.0);
+  var _fanOutFaceDown = Vector2(0.0, 0.0);
+  var limitX = 0.0;
+  var limitY = 0.0;
 
-  void init() {
-    // _faceDownFanOut = Vector2(pileSpec.faceDownFanOut.$1 * PatWorld.cardWidth,
-        // pileSpec.faceDownFanOut.$2 * PatWorld.cardHeight);
-    _faceUpFanOut = Vector2(pileSpec.fanOutX * PatWorld.cardWidth,
-        pileSpec.fanOutY * PatWorld.cardHeight);
-    fanOut = _faceUpFanOut;
-    _faceDownFanOut = Vector2(0.3 * _faceUpFanOut.x, 0.3 * _faceUpFanOut.y);
+  void dump() {
+    print('DUMP Pile $pileIndex, $pileType: $_cards');
   }
 
   void setPileHitArea() {
@@ -68,46 +67,37 @@ class Pile extends PositionComponent with HasWorldReference<PatWorld> {
       // print('$message _cards is Empty');
       return MoveResult.pileEmpty;
     }
-    // TODO - No switch needed. Only Stock is barred from dragging.
-    switch (pileType) {
-      case PileType.stock:
-      case PileType.foundation:
-      case PileType.waste:
-      case PileType.tableau:
-        if (dragRule == DragRule.dragNotAllowed) {
-          // print('$message drag not allowed');
-          return MoveResult.notValid;
-        }
-        final cardOnTop = isTopCard(card);
-        if (dragRule == DragRule.fromTop && !cardOnTop) {
-          // print('$message ${card.toString()} not on top of Pile');
-          return MoveResult.notValid;
-        }
-        if (card.isFaceDownView) {
-          // print('$message ${card.toString()} not face-up');
-          return MoveResult.notValid;
-        }
-        if (cardOnTop) {
-          dragList.add(_cards.removeLast());
-          setPileHitArea();
-          // print('$message removed top card of Pile');
-          return MoveResult.valid;
-        }
-        assert(card.isFaceUpView && _cards.contains(card));
-        final index = _cards.indexOf(card);
-        // print('$message ${card.toString()} index $index $_cards');
-        dragList.addAll(_cards.getRange(index, _cards.length));
-        _cards.removeRange(index, _cards.length);
-        // print('Pile $_cards, moving $dragList');
-        setPileHitArea();
-        return MoveResult.valid;
-      // Depends on Game Type. In 48, need to look inside Waste,
-      // but not go anywhere or put the card anywhere.
-      // Depends on Game Type. In 48, need empty Tableaus for moving >1 card.
-      // In Klondike, can drag many cards but must satisfy checkPut on drop.
-      case PileType.notUsed:
-        return MoveResult.notValid;
+    if (dragRule == DragRule.dragNotAllowed) {
+      // print('$message drag not allowed');
+      return MoveResult.notValid;
     }
+    final cardOnTop = isTopCard(card);
+    if (dragRule == DragRule.fromTop && !cardOnTop) {
+      // print('$message ${card.toString()} not on top of Pile');
+      return MoveResult.notValid;
+    }
+    if (card.isFaceDownView) {
+      // print('$message ${card.toString()} not face-up');
+      return MoveResult.notValid;
+    }
+    if (cardOnTop) {
+      dragList.add(_cards.removeLast());
+      setPileHitArea();
+      // print('$message removed top card of Pile');
+      return MoveResult.valid;
+    }
+    assert(card.isFaceUpView && _cards.contains(card));
+    final index = _cards.indexOf(card);
+    // print('$message ${card.toString()} index $index $_cards');
+    dragList.addAll(_cards.getRange(index, _cards.length));
+    _cards.removeRange(index, _cards.length);
+    // TODO - Adjust Fan Out.
+    // print('Pile $_cards, moving $dragList');
+    setPileHitArea();
+    return MoveResult.valid;
+    // TODO - Multi-card move rules for various games.
+    // Depends on Game Type. In 48, need empty Tableaus for moving >1 card.
+    // In Klondike, can drag many cards but must satisfy checkPut on drop.
   }
 
   MoveResult tapMove(CardView card) {
@@ -136,6 +126,7 @@ class Pile extends PositionComponent with HasWorldReference<PatWorld> {
         } else {
           _cards.removeLast();
           // print('$message take ${card.toString()} from top');
+          // TODO - Adjust Fan Out.
           return MoveResult.valid;
         }
       case PileType.waste:
@@ -145,6 +136,7 @@ class Pile extends PositionComponent with HasWorldReference<PatWorld> {
           return MoveResult.notValid;
         } else {
           _cards.removeLast();
+          // TODO - Adjust Fan Out.
           // print('$message take ${card.toString()} from top');
           setPileHitArea();
           return MoveResult.valid;
@@ -163,6 +155,7 @@ class Pile extends PositionComponent with HasWorldReference<PatWorld> {
     if (index >= 0) {
       tail.addAll(_cards.getRange(index, _cards.length));
       _cards.removeRange(index, _cards.length);
+      // TODO - Adjust Fan Out.
     }
     return tail;
   }
@@ -245,6 +238,8 @@ class Pile extends PositionComponent with HasWorldReference<PatWorld> {
     //        turnover and go back to _lastWastPile = false? It seems not.
     // Turn over Waste->Stock, undo that or redo it.
     print('Turn Pile Over: $pileType last Waste $_lastWastePile $_cards');
+    this.dump();
+    to.dump();
     if (_lastWastePile && (pileType == PileType.waste)) {
       // Don't allow the last Waste Pile to be turned over.
       return;
@@ -259,6 +254,7 @@ class Pile extends PositionComponent with HasWorldReference<PatWorld> {
       to.put(card);
       print('Put ${to.pileType} ${card.name} faceDown ${card.isFaceDownView}');
     }
+    // TODO - Adjust Fan Out of Waste Pile, if Waste->Stock..
     // Normal or redo move is Waste->Stock, undo is Stock->Waste.
     Pile stock = (pileType == PileType.stock) ? this : to;
     if (stock.pileSpec.tapEmptyRule == TapEmptyRule.turnOverWasteOnce) {
@@ -274,13 +270,54 @@ class Pile extends PositionComponent with HasWorldReference<PatWorld> {
     if (_cards.length == 1) {
       card.position = position;
     } else {
+      if (!_initFanOut) { // Initialize the FanOut variables.
+        print('$pileType index $pileIndex Xgrowth ${pileSpec.growthCols} Ygrowth ${pileSpec.growthRows}');
+        print('Pile position $position');
+        final extraY = baseHeight - PatWorld.cardHeight - PatWorld.cardMargin/2;
+        limitX = position.x + pileSpec.growthCols * baseWidth;
+        limitY = position.y + pileSpec.growthRows * baseHeight + extraY;;
+        print('$pileType index $pileIndex Limit X $limitX, limit Y $limitY extra Y $extraY');
+        _baseFanOut = Vector2(
+          pileSpec.fanOutX * PatWorld.cardWidth,
+          pileSpec.fanOutY * PatWorld.cardHeight
+        );
+        _fanOutFaceUp = _baseFanOut;
+        _fanOutFaceDown = _baseFanOut * 0.3;
+        _initFanOut = true;
+        print('$pileType $pileIndex FanOut $_baseFanOut');
+      }
       final prevFaceUp = _cards[_cards.length - 2].isFaceUpView;
-      final fanOut = prevFaceUp ? _faceUpFanOut : _faceDownFanOut;
+      final fanOut = prevFaceUp ? _fanOutFaceUp : _fanOutFaceDown;
+      print('$pileType $pileIndex card ${card.name} FanOut $fanOut');
       card.position = _cards[_cards.length - 2].position + fanOut;
+    }
+    if (card.position.y >= limitY) {
+      print('OVERFLOW Y: ${card.position.y} limit $limitY');
+      bunchUpCards(onY: true);
+    } else if (((pileSpec.growthCols > 0) && (card.position.x >= limitX)) ||
+        ((pileSpec.growthCols < 0) && (card.position.x <= limitX))) {
+      print('OVERFLOW X: ${card.position.x} limit $limitX ${pileSpec.growthCols} cols growth');
+      bunchUpCards(onY: false);
     }
     // print('Put ${card.toString()} $pileType $gridRow $gridCol'
     // ' pos ${card.position} pri ${card.priority}');
     setPileHitArea();
+  }
+
+  void bunchUpCards({required bool onY}) {
+    var spaceNeeded = 0.0;
+    int nCards = _cards.length;
+    for (int n = 1; n < nCards; n++) {
+      spaceNeeded += _cards[n - 1].isFaceUpView ? 1.0 : 0.3;
+    }
+    _fanOutFaceUp = onY ?
+      Vector2(_fanOutFaceUp.x, (limitY - position.y) / spaceNeeded) :
+      Vector2((limitX - position.x) / spaceNeeded, _fanOutFaceUp.y);
+    _fanOutFaceDown = _fanOutFaceUp * 0.3;
+    for (int n = 1; n < nCards; n++) {
+      var delta = _cards[n-1].isFaceUpView ? _fanOutFaceUp : _fanOutFaceDown;
+      _cards[n].position = _cards[n - 1].position + delta;
+    }
   }
 
   bool needFlipTopCard() {
