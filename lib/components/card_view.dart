@@ -41,7 +41,7 @@ class CardView extends PositionComponent
   int get rank => (indexOfCard - 1) ~/ 4 % 13 + 1;
   bool get isRed => suit < 2;
   bool get isBlack => suit >= 2;
-  String get name => PatWorld.ranks[rank] + PatWorld.suits[suit]; // toString()
+  String get name => (indexOfCard == 0) ? 'BC' : PatWorld.ranks[rank] + PatWorld.suits[suit]; // toString()
 
   // bool get isBaseCard => (indexOfCard == 0);
 
@@ -81,7 +81,8 @@ class CardView extends PositionComponent
   }
 
   @override
-  String toString() => PatWorld.ranks[rank] + PatWorld.suits[suit];
+  // String toString() => PatWorld.ranks[rank] + PatWorld.suits[suit];
+  String toString() => name;
 
   // CARD MOVES:
   //
