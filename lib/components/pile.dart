@@ -21,6 +21,11 @@ class Pile extends PositionComponent with HasWorldReference<PatWorld> {
           priority: -1,
         ) {
 
+    // The initial Fan Out values are calulated here because they depend upon
+    // const values inside the Pile's PileSpec Record (see parameter pileSpec).
+    // Also, the _fanOutFaceUp and _fanOutFaceDown properties can vary during
+    // gameplay, depending on availability of space, so they must be var.
+
     if (pileSpec.fanOutX != 0.0 || pileSpec.fanOutY != 0.0) {
       // Initialize the FanOut variables. Allow extra space for FanOut down.
       print('  $pileType index $pileIndex '
