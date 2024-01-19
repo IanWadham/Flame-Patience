@@ -19,11 +19,28 @@ class Pile extends PositionComponent with HasWorldReference<PatWorld> {
           anchor: Anchor.topCenter,
           size: Vector2(baseWidth, baseHeight),
           priority: -1,
-        );
+        ) {
+
+    if (pileSpec.fanOutX != 0.0 || pileSpec.fanOutY != 0.0) {
+      // Initialize the FanOut variables. Allow extra space for FanOut down.
+      print('  $pileType index $pileIndex '
+          'Xgrowth ${pileSpec.growthCols} Ygrowth ${pileSpec.growthRows}');
+      final dy = baseHeight - PatWorld.cardHeight - PatWorld.cardMargin / 2;
+      limitX = position.x + pileSpec.growthCols * baseWidth;
+      limitY = position.y + pileSpec.growthRows * baseHeight + dy;
+      _baseFanOut = Vector2(pileSpec.fanOutX * PatWorld.cardWidth,
+          pileSpec.fanOutY * PatWorld.cardHeight);
+      _fanOutFaceUp = _baseFanOut;
+      _fanOutFaceDown = _baseFanOut * Pile.faceDownFanOutFactor;
+      print('  Limit X $limitX, limit Y $limitY extra Y $dy FanOut $_baseFanOut');
+      _hasFanOut = true;
+    } else {
+      print('  $pileType has NO FanOut in this game');
+    }
+  }
   static var _lastWastePile = false; // Used if Stock Pile passes are limited.
 
-  static const fanOutX = 0.2 * PatWorld.cardWidth;
-  static const fanOutY = 0.25 * PatWorld.cardHeight;
+  static const faceDownFanOutFactor = 0.3;
 
   final bool debugMode = true;
   final PileSpec pileSpec;
@@ -38,7 +55,8 @@ class Pile extends PositionComponent with HasWorldReference<PatWorld> {
 
   final List<CardView> _cards = [];
 
-  var _initFanOut = false;
+  // These properties are calculated from the Pile Spec in the constructor body.
+  var _hasFanOut = false;
   var _baseFanOut = Vector2(0.0, 0.0);
   var _fanOutFaceUp = Vector2(0.0, 0.0);
   var _fanOutFaceDown = Vector2(0.0, 0.0);
@@ -171,8 +189,8 @@ class Pile extends PositionComponent with HasWorldReference<PatWorld> {
     // TODO - POLISH THIS.
     if (_cards.isNotEmpty) {
       CardView card = _cards.last;
-      print(
-          'setTopFaceUp($goFaceUp): $pileIndex $pileType ${card.toString()} FaceUp ${card.isFaceUpView}');
+      print('setTopFaceUp($goFaceUp): $pileIndex $pileType ${card.toString()} '
+          'FaceUp ${card.isFaceUpView}');
       if (goFaceUp) {
         // Card moving into play from FaceDown view.
         if (_cards.last.isFaceDownView) _cards.last.flipView();
@@ -267,37 +285,25 @@ class Pile extends PositionComponent with HasWorldReference<PatWorld> {
     _cards.add(card);
     card.pile = this;
     card.priority = _cards.length;
-    if (_cards.length == 1) {
+    if (!_hasFanOut || _cards.length == 1) {
+      // The card is aligned with the Pile's position.
       card.position = position;
     } else {
-      if (!_initFanOut) { // Initialize the FanOut variables.
-        print('$pileType index $pileIndex Xgrowth ${pileSpec.growthCols} Ygrowth ${pileSpec.growthRows}');
-        print('Pile position $position');
-        final extraY = baseHeight - PatWorld.cardHeight - PatWorld.cardMargin/2;
-        limitX = position.x + pileSpec.growthCols * baseWidth;
-        limitY = position.y + pileSpec.growthRows * baseHeight + extraY;;
-        print('$pileType index $pileIndex Limit X $limitX, limit Y $limitY extra Y $extraY');
-        _baseFanOut = Vector2(
-          pileSpec.fanOutX * PatWorld.cardWidth,
-          pileSpec.fanOutY * PatWorld.cardHeight
-        );
-        _fanOutFaceUp = _baseFanOut;
-        _fanOutFaceDown = _baseFanOut * 0.3;
-        _initFanOut = true;
-        print('$pileType $pileIndex FanOut $_baseFanOut');
-      }
+      // Fan out the second and subsequent cards.
       final prevFaceUp = _cards[_cards.length - 2].isFaceUpView;
       final fanOut = prevFaceUp ? _fanOutFaceUp : _fanOutFaceDown;
       print('$pileType $pileIndex card ${card.name} FanOut $fanOut');
       card.position = _cards[_cards.length - 2].position + fanOut;
-    }
-    if (card.position.y >= limitY) {
-      print('OVERFLOW Y: ${card.position.y} limit $limitY');
-      bunchUpCards(onY: true);
-    } else if (((pileSpec.growthCols > 0) && (card.position.x >= limitX)) ||
-        ((pileSpec.growthCols < 0) && (card.position.x <= limitX))) {
-      print('OVERFLOW X: ${card.position.x} limit $limitX ${pileSpec.growthCols} cols growth');
-      bunchUpCards(onY: false);
+      if (card.position.y >= limitY) {
+        print('OVERFLOW Y: ${card.position.y} limit $limitY');
+        bunchUpCards(onY: true);
+      }
+      if (((pileSpec.growthCols > 0) && (card.position.x >= limitX)) ||
+          ((pileSpec.growthCols < 0) && (card.position.x <= limitX))) {
+        print('OVERFLOW X: ${card.position.x} limit $limitX '
+            '${pileSpec.growthCols} cols growth');
+        bunchUpCards(onY: false);
+      }
     }
     // print('Put ${card.toString()} $pileType $gridRow $gridCol'
     // ' pos ${card.position} pri ${card.priority}');
@@ -308,14 +314,15 @@ class Pile extends PositionComponent with HasWorldReference<PatWorld> {
     var spaceNeeded = 0.0;
     int nCards = _cards.length;
     for (int n = 1; n < nCards; n++) {
-      spaceNeeded += _cards[n - 1].isFaceUpView ? 1.0 : 0.3;
+      spaceNeeded +=
+          _cards[n - 1].isFaceUpView ? 1.0 : Pile.faceDownFanOutFactor;
     }
-    _fanOutFaceUp = onY ?
-      Vector2(_fanOutFaceUp.x, (limitY - position.y) / spaceNeeded) :
-      Vector2((limitX - position.x) / spaceNeeded, _fanOutFaceUp.y);
-    _fanOutFaceDown = _fanOutFaceUp * 0.3;
+    _fanOutFaceUp = onY
+        ? Vector2(_fanOutFaceUp.x, (limitY - position.y) / spaceNeeded)
+        : Vector2((limitX - position.x) / spaceNeeded, _fanOutFaceUp.y);
+    _fanOutFaceDown = _fanOutFaceUp * Pile.faceDownFanOutFactor;
     for (int n = 1; n < nCards; n++) {
-      var delta = _cards[n-1].isFaceUpView ? _fanOutFaceUp : _fanOutFaceDown;
+      var delta = _cards[n - 1].isFaceUpView ? _fanOutFaceUp : _fanOutFaceDown;
       _cards[n].position = _cards[n - 1].position + delta;
     }
   }
@@ -364,11 +371,7 @@ class Pile extends PositionComponent with HasWorldReference<PatWorld> {
 
   @override
   void render(Canvas canvas) {
-    // Debugging: outline the boundaries of the piles.
-    // final cellSize = PatWorld.cellSize;
-    // Rect cell = Rect.fromLTWH(0.0, 0.0, cellSize.x, cellSize.y);
-    // canvas.drawRect(cell, pileOutlinePaint);
-
+    // Outline and fill the image of the Pile (a little smaller than a card).
     RRect pileRect = PatWorld.cardRect.deflate(PatWorld.shrinkage);
     Offset rectShift = const Offset(PatWorld.cardMargin / 2.0, 0);
     canvas.drawRRect(pileRect.shift(rectShift), pileBackgroundPaint);
