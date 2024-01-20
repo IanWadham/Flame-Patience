@@ -105,6 +105,7 @@ class Pile extends PositionComponent with HasWorldReference<PatWorld> {
     }
     if (cardOnTop) {
       dragList.add(_cards.removeLast());
+      _expandFanOut();
       setPileHitArea();
       // print('$message removed top card of Pile');
       return MoveResult.valid;
@@ -114,7 +115,7 @@ class Pile extends PositionComponent with HasWorldReference<PatWorld> {
     // print('$message ${card.toString()} index $index $_cards');
     dragList.addAll(_cards.getRange(index, _cards.length));
     _cards.removeRange(index, _cards.length);
-    // TODO - Adjust Fan Out.
+    _expandFanOut();
     // print('Pile $_cards, moving $dragList');
     setPileHitArea();
     return MoveResult.valid;
@@ -149,7 +150,7 @@ class Pile extends PositionComponent with HasWorldReference<PatWorld> {
         } else {
           _cards.removeLast();
           // print('$message take ${card.toString()} from top');
-          // TODO - Adjust Fan Out.
+          _expandFanOut(); // In case there is a game that fans out the Stock.
           return MoveResult.valid;
         }
       case PileType.waste:
@@ -159,13 +160,12 @@ class Pile extends PositionComponent with HasWorldReference<PatWorld> {
           return MoveResult.notValid;
         } else {
           _cards.removeLast();
-          // TODO - Adjust Fan Out.
+          _expandFanOut();
           // print('$message take ${card.toString()} from top');
           setPileHitArea();
           return MoveResult.valid;
         }
       case PileType.foundation:
-      // TODO - ??????? What is needed here? Anything?
       case PileType.notUsed:
         return MoveResult.notValid;
     }
@@ -178,7 +178,7 @@ class Pile extends PositionComponent with HasWorldReference<PatWorld> {
     if (index >= 0) {
       tail.addAll(_cards.getRange(index, _cards.length));
       _cards.removeRange(index, _cards.length);
-      // TODO - Adjust Fan Out.
+      _expandFanOut();
     }
     return tail;
   }
@@ -278,6 +278,7 @@ class Pile extends PositionComponent with HasWorldReference<PatWorld> {
       print('Put ${to.pileType} ${card.name} faceDown ${card.isFaceDownView}');
     }
     // TODO - Adjust Fan Out of Waste Pile, if Waste->Stock..
+    //        Needed?????????????????
     // Normal or redo move is Waste->Stock, undo is Stock->Waste.
     Pile stock = (pileType == PileType.stock) ? this : to;
     if (stock.pileSpec.tapEmptyRule == TapEmptyRule.turnOverWasteOnce) {
@@ -301,13 +302,13 @@ class Pile extends PositionComponent with HasWorldReference<PatWorld> {
       card.position = _cards[_cards.length - 2].position + fanOut;
       if (card.position.y >= limitY) {
         print('OVERFLOW Y: ${card.position.y} limit $limitY');
-        bunchUpCards(onY: true);
+        _bunchUpCards(onY: true);
       }
       if (((pileSpec.growthCols > 0) && (card.position.x >= limitX)) ||
           ((pileSpec.growthCols < 0) && (card.position.x <= limitX))) {
         print('OVERFLOW X: ${card.position.x} limit $limitX '
             '${pileSpec.growthCols} cols growth');
-        bunchUpCards(onY: false);
+        _bunchUpCards(onY: false);
       }
     }
     // print('Put ${card.toString()} $pileType $gridRow $gridCol'
@@ -315,7 +316,7 @@ class Pile extends PositionComponent with HasWorldReference<PatWorld> {
     setPileHitArea();
   }
 
-  void bunchUpCards({required bool onY}) {
+  void _bunchUpCards({required bool onY}) {
     var spaceNeeded = 0.0;
     int nCards = _cards.length;
     for (int n = 1; n < nCards; n++) {
@@ -330,6 +331,47 @@ class Pile extends PositionComponent with HasWorldReference<PatWorld> {
       var delta = _cards[n - 1].isFaceUpView ? _fanOutFaceUp : _fanOutFaceDown;
       _cards[n].position = _cards[n - 1].position + delta;
     }
+  }
+
+  void _expandFanOut() {
+    if (!_hasFanOut) {
+      return; // No Fan Out in this pile.
+    }
+    print('Entering _expandFanOut()...');
+    var ratio = 1.0;
+    if (pileSpec.fanOutX != 0.0) {
+      // Calculate (current / ideal) fan out ratio: always +ve even if both -ve.
+      ratio = _fanOutFaceUp.x / _baseFanOut.x;
+      if (ratio < 1.0) {
+        // Less than ideal: increase the cards' fan outs to base value or less.
+        _fanOutFaceUp.x = _adjustFanOut(limitX - position.x, _baseFanOut.x);
+      }
+    }
+    if (pileSpec.fanOutY != 0.0) {
+      ratio = _fanOutFaceUp.y / _baseFanOut.y;
+      if (ratio < 1.0) {
+        _fanOutFaceUp.y = _adjustFanOut(limitY - position.y, _baseFanOut.y);
+      }
+      print('Ratio $ratio, _fanOutFaceUp ${_fanOutFaceUp.toString()}');
+    }
+    _fanOutFaceDown = _fanOutFaceUp * Pile.faceDownFanOutFactor;
+    int nCards = _cards.length;
+    for (int n = 1; n < _cards.length; n++) {
+      var delta = _cards[n - 1].isFaceUpView ? _fanOutFaceUp : _fanOutFaceDown;
+      _cards[n].position = _cards[n - 1].position + delta;
+    }
+  }
+
+  double _adjustFanOut(double lengthAvailable, double baseLength) {
+    var slotsNeeded = 0.0;
+    for (int n = 1; n < _cards.length; n++) {
+      slotsNeeded +=
+          _cards[n - 1].isFaceUpView ? 1.0 : Pile.faceDownFanOutFactor;
+    }
+    double faceUpLength = lengthAvailable / slotsNeeded;
+    // When fanning out left, both values are negative, hence the division.
+    if (faceUpLength / baseLength > 1.0) faceUpLength = baseLength;
+    return faceUpLength;
   }
 
   bool needFlipTopCard() {
