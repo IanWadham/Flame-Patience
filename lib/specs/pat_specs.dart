@@ -1,7 +1,8 @@
 import 'pat_enums.dart';
 
-// These typedefs give one-word names to definitions of Dart Record types. In
-// each case, the actual `type` is everything that lies between `(` and `)`.
+// These typedefs give names to definitions of Dart Record types. In each case,
+// the actual `type` is `(`, `)` and everything that lies between them.
+//
 // Record type definitions resemble parameter definitions in a function,
 // including the availability of named and positional fields, using `{}` to
 // demarcate named fields. All the records defined in these typedefs use
@@ -16,7 +17,7 @@ import 'pat_enums.dart';
 //       All this implies that, when you add data for a Game, much of it is
 //       automatically validated at compile-time. Some additional validation
 //       is done at run_time, using `throw` statements, but the rest of the
-//       testing and debugging of the new game is up to you.
+//       testing and debugging of the new game's data is up to you.
 
 typedef GameSpec = ({
   PatGameID gameID,
@@ -197,13 +198,6 @@ class PatData {
             (3, 8, 74),
           ]
         ),
-        // ( // GamePileSpec
-          // pileSpec: standardWaste,
-          // nPilesSpec: 1,
-          // pileTrios: [
-            // (0, 1, 0),
-          // ]
-        // ),
         ( // GamePileSpec
           pileSpec: mod3Foundation2J,
           nPilesSpec: 8,
@@ -264,7 +258,7 @@ class PatData {
     ),
   ]; // End List<GameSpec> gameList
 
-  // Ready-made configurations of Piles, as used in the above games.
+  // Specifications of Piles, as used in the above games.
 
   static const PileSpec standardStock = (
     pileType: PileType.stock,
@@ -273,7 +267,6 @@ class PatData {
     dragRule: DragRule.dragNotAllowed,
     tapRule: TapRule.turnOver1,
     tapEmptyRule: TapEmptyRule.turnOverWasteUnlimited,
-    // tapEmptyRule: TapEmptyRule.turnOverWasteOnce,
     putRule: PutRule.putNotAllowed,
     putFirst: 0,
     dealFaceRule: DealFaceRule.faceDown,
@@ -351,7 +344,7 @@ class PatData {
     pileType: PileType.tableau,
     pileName: 'fortyAndEightTableau',
     hasBaseCard: false,
-    dragRule: DragRule.fromAnywhere,
+    dragRule: DragRule.fromAnywhereViaEmptySpace,
     tapRule: TapRule.goOut,
     tapEmptyRule: TapEmptyRule.tapNotAllowed,
     putRule: PutRule.descendingSameSuitBy1,

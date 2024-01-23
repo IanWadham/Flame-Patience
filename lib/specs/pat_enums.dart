@@ -30,6 +30,7 @@ enum DragRule {
   dragNotAllowed,
   fromTop,
   fromAnywhere,
+  fromAnywhereViaEmptySpace,
 }
 
 enum PutRule {
