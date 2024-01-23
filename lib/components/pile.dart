@@ -43,7 +43,6 @@ class Pile extends PositionComponent with HasWorldReference<PatWorld> {
       print('  $pileType has NO FanOut in this game');
     }
   }
-  static var _lastWastePile = false; // Used if Stock Pile passes are limited.
 
   static const faceDownFanOutFactor = 0.3;
 
@@ -59,6 +58,9 @@ class Pile extends PositionComponent with HasWorldReference<PatWorld> {
   final double baseHeight;
 
   final List<CardView> _cards = [];
+
+  bool get isEmpty => _cards.isEmpty;
+  // ??????? Card get topCard => _cards.isEmpty ? baseCard : _cards.last;
 
   // These properties are calculated from the Pile Spec in the constructor body.
   var _hasFanOut = false;
@@ -252,30 +254,32 @@ class Pile extends PositionComponent with HasWorldReference<PatWorld> {
     return false;
   }
 
-  void turnPileOver(Pile to) {
-    // TODO - Fix coding of _lastWastePile, TapEmptyRule and turnOverWasteOnce.
-    // TODO - _lastWastePile must be toggled in Pile.turnPileOver(Pile pileName)
-    //        and must respond correctly to undos and redos of the first
-    //        turnover while not allowing a second turnover.
-    // TODO - Can we undo ALL of the second Waste Pile and then undo the first
-    //        turnover and go back to _lastWastPile = false? It seems not.
-    // Turn over Waste->Stock, undo that or redo it.
-    print('Turn Pile Over: $pileType last Waste $_lastWastePile $_cards');
-    this.dump();
-    to.dump();
-    if (_lastWastePile && (pileType == PileType.waste)) {
-      // Don't allow the last Waste Pile to be turned over.
-      return;
+  int turnPileOver(Pile to) {
+    // Turn over Waste->Stock, undo it or redo it.
+    // Normal or redo move is Waste->Stock, undo is Stock->Waste.
+    print('Flip Pile: $pileType last Waste ${world.lastWastePile} $_cards');
+    // ???????? this.dump();
+    // ???????? to.dump();
+    // TODO - If we cannot turn over the Waste Pile, DON'T record a Move!!!
+    //        DONE - but not fully tested...
+
+    int cardCount = 0;
+    if (pileType == PileType.waste) {
+      if (world.lastWastePile || _cards.isEmpty) {
+        // Don't allow the last Waste Pile, nor an empty Pile, to turn over.
+        return 0;
+      }
     }
     while (_cards.isNotEmpty) {
       if (_cards.last.isBaseCard) {
-        print('MUST NOT TURN OVER BASE CARD...');
+        // print('MUST NOT TURN OVER BASE CARD...');
         break;
       }
       CardView card = _cards.removeLast();
       card.flipView();
       to.put(card);
       print('Put ${to.pileType} ${card.name} faceDown ${card.isFaceDownView}');
+      cardCount++;
     }
     // TODO - Adjust Fan Out of Waste Pile, if Waste->Stock..
     //        Needed?????????????????
@@ -283,8 +287,9 @@ class Pile extends PositionComponent with HasWorldReference<PatWorld> {
     Pile stock = (pileType == PileType.stock) ? this : to;
     if (stock.pileSpec.tapEmptyRule == TapEmptyRule.turnOverWasteOnce) {
       // Allow the first Waste Pile turnover to be done, undone and redone.
-      _lastWastePile = !_lastWastePile;
+      world.lastWastePile = !world.lastWastePile;
     }
+    return cardCount;
   }
 
   void put(CardView card) {
@@ -391,18 +396,25 @@ class Pile extends PositionComponent with HasWorldReference<PatWorld> {
     return false;
   }
 
-  void dealCardFromStock(CardView card, TapRule tapRule, Pile target) {
-    assert(target.pileType == PileType.waste);
+  int dealFromStock(TapRule tapRule, Pile target) {
+    assert(target.pileType == PileType.waste ||
+        target.pileType == PileType.tableau);
     assert(pileType == PileType.stock);
     assert((tapRule == TapRule.turnOver1) || (tapRule == TapRule.turnOver3));
-    if (tapRule == TapRule.turnOver1) {
-      card.doMoveAndFlip(
-        target.position,
-        whenDone: () {
-          target.put(card);
-        },
-      );
-    }
+    assert(_cards.length > 0 && _cards.first.isBaseCard);
+    int result = 0;
+    // if (tapRule == TapRule.turnOver1 && _cards.length > 1) {
+      // CardView cardToDeal = _cards.removeLast();
+      // result = 1;
+      // cardToDeal.doMoveAndFlip(
+        // target.position,
+        // whenDone: () {
+          // target.put(cardToDeal);
+        // },
+      // );
+      // return result;
+    // }
+    return result;
     // TODO - TapRule.turnOver3. Maybe make the above a loop and have a
     //        faceUpFanOut defined for the Waste Pile
   }
