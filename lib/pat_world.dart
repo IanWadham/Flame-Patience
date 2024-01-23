@@ -35,6 +35,7 @@ class PatWorld extends World with HasGameReference<PatGame> {
 
   static const suits = '♥♦♣♠';
   static const ranks = ' A23456789TJQK';
+
   // final bool debugMode = true;
 
   final List<CardView> cards = [];
@@ -55,6 +56,8 @@ class PatWorld extends World with HasGameReference<PatGame> {
 
   int _stockPileIndex = -1; // No Stock Pile yet: not all games have one.
   int _wastePileIndex = -1; // No Waste Pile yet: not all games have one.
+
+  var lastWastePile = false; // Set if no more Stock Pile turnovers are allowed.
 
   @override
   Future<void> onLoad() async {
@@ -95,6 +98,8 @@ class PatWorld extends World with HasGameReference<PatGame> {
     int nExceptions = generatePiles(gameSpec, cellSize);
     if (nExceptions > 0)
         throw FormatException('FOUND $nExceptions FormatExceptions');
+
+    // ??????? lastWastePile = false; // Reset this PatWorld static var.
 
     // Set up a CardMoves Model class that records valid Moves and can undo
     // or redo them. The basic Move is to take one or more cards from the
