@@ -254,6 +254,14 @@ class PatData {
             (3, 7, 1),
           ]
         ),
+        ( // GamePileSpec
+          // Holds discarded Aces.
+          pileSpec: unusedCards,
+          nPilesSpec: 1,
+          pileTrios: [
+            (0, 8, 0),
+          ]
+        ),
       ],
     ),
   ]; // End List<GameSpec> gameList
@@ -436,21 +444,21 @@ class PatData {
     growthRows: 0,
   );
 
-  static const PileSpec unusedPile = (
-    // Initialization possibility for games that have unused PileTypes.
-    pileType: PileType.notUsed,
-    pileName: 'unusedPile',
+  static const PileSpec unusedCards = (
+    // Holds cards that have been dealt out of the game, e.g. Aces in Mod 3.
+    pileType: PileType.unusedCards,
+    pileName: 'unusedCardsPile',
     hasBaseCard: false,
     dragRule: DragRule.dragNotAllowed,
     tapRule: TapRule.tapNotAllowed,
     tapEmptyRule: TapEmptyRule.tapNotAllowed,
     putRule: PutRule.putNotAllowed,
-    putFirst: 0,
-    dealFaceRule: DealFaceRule.notUsed,
+    putFirst: 1,
+    dealFaceRule: DealFaceRule.faceUp,
     fanOutX: 0.0,
-    fanOutY: 0.0,
+    fanOutY: 0.25,
     growthCols: 0,
-    growthRows: 0,
+    growthRows: 2,
   );
 }
 
