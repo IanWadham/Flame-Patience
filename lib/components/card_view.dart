@@ -133,6 +133,7 @@ class CardView extends PositionComponent
 
     bool success = world.cardMoves.tapMove(this, pile);
     // TODO - Beep, flash or other view-type things if not successful.
+    print('CardView: Returned from tap on $name, pile ${pile.pileIndex} ${pile.pileType} success $success');
     return;
   }
 

@@ -126,20 +126,35 @@ class Pile extends PositionComponent with HasWorldReference<PatWorld> {
     // In Klondike, can drag many cards but must satisfy checkPut on drop.
   }
 
-  MoveResult tapMove(CardView card) {
+  bool isCardInPile(CardView card, {required bool mustBeOnTop}) {
+    // Integrity check.
+    if (mustBeOnTop) {
+      print('Pile $pileIndex $pileType isCardInPile(): card ${card.name} '
+          'mustBeOnTop $mustBeOnTop... isTopCard()');
+      return isTopCard(card);
+    } else {
+      print('Pile $pileIndex $pileType isCardInPile(): card ${card.name} '
+          'mustBeOnTop $mustBeOnTop... contains()');
+      return _cards.contains(card);
+    }
+  }
+
+  MoveResult isTapMoveValid(CardView card) {
     TapRule tapRule = pileSpec.tapRule;
-    // String message = 'Tap $pileType row $gridRow col $gridCol:';
+    String message = 'Tap $pileType row $gridRow col $gridCol:';
     if (pileSpec.tapRule == TapRule.tapNotAllowed) {
       // print('$message tap not allowed');
       return MoveResult.notValid; // e.g. Foundation Piles do not accept taps.
     }
     final needFaceUp = (pileType != PileType.stock);
-    if (!isTopCard(card) || (needFaceUp != card.isFaceUpView)) {
-      // print('$message tap not on top card or face-up is not $needFaceUp');
+    // ??????? if (!isTopCard(card) || (needFaceUp != card.isFaceUpView)) {
+    // ???? print('$message tap not on top card or face-up is not $needFaceUp');
+    if (needFaceUp != card.isFaceUpView) {
+      print('$message card ${card.name} face-up is not $needFaceUp');
       return MoveResult.notValid; // Stock needs face-down, other piles face-up.
     }
     if (_cards.isEmpty && (pileType != PileType.stock)) {
-      // print('$message _cards is Empty');
+      print('$message _cards is Empty');
       return MoveResult.pileEmpty;
     }
     switch (pileType) {
@@ -147,28 +162,30 @@ class Pile extends PositionComponent with HasWorldReference<PatWorld> {
         if (card.isBaseCard) {
           // TODO - Can check World for Waste Pile and do the flipover NOW.
           //        Does this make it easier to undo and redo?
-          // print('$message empty Stock Pile');
+          print('$message empty Stock Pile');
           return MoveResult.pileEmpty;
         } else {
-          _cards.removeLast();
+          // TODO - Need removeLast AND expandFanOut HERE OR SOMEWHERE ELSE ????
+          // ??????? _cards.removeLast();
+          // ??????? _expandFanOut(); // In case there is a game that fans out the Stock.
           // print('$message take ${card.toString()} from top');
-          _expandFanOut(); // In case there is a game that fans out the Stock.
           return MoveResult.valid;
         }
       case PileType.waste:
       case PileType.tableau:
         if (tapRule != TapRule.goOut) {
-          // print('$message $tapRule invalid - should be TapRule.goOut');
+          print('$message $tapRule invalid - should be TapRule.goOut');
           return MoveResult.notValid;
         } else {
-          _cards.removeLast();
-          _expandFanOut();
+          // TODO - Need removeLast(), expandFanOut AND setPileHitArea HERE OR SOMEWHERE ELSE ????
+          // ??????? _cards.removeLast();
+          // ??????? _expandFanOut();
+          // ??????? setPileHitArea();
           // print('$message take ${card.toString()} from top');
-          setPileHitArea();
           return MoveResult.valid;
         }
       case PileType.foundation:
-      case PileType.notUsed:
+      case PileType.unusedCards:
         return MoveResult.notValid;
     }
     return MoveResult.notValid;
@@ -181,6 +198,9 @@ class Pile extends PositionComponent with HasWorldReference<PatWorld> {
       tail.addAll(_cards.getRange(index, _cards.length));
       _cards.removeRange(index, _cards.length);
       _expandFanOut();
+      if ((pileType == PileType.tableau) || (pileType == PileType.waste)) {
+        setPileHitArea();
+      }
     }
     return tail;
   }
@@ -209,7 +229,11 @@ class Pile extends PositionComponent with HasWorldReference<PatWorld> {
   }
 
   bool isTopCard(CardView card) {
-    return _cards.isNotEmpty && card == _cards.last;
+    return _cards.isNotEmpty ? (card == _cards.last) : false;
+    // print('isTopCard(${card.name})? _cards $_cards');
+    // print('card hashCode ${card.hashCode} last card ${_cards.last.hashCode}');
+    // print('_cards.isNotEmpty ${_cards.isNotEmpty}, _cards.last ${_cards.last}');
+    // return (_cards.isNotEmpty && (card == _cards.last));
   }
 
   bool checkPut(CardView card) {
@@ -381,7 +405,9 @@ class Pile extends PositionComponent with HasWorldReference<PatWorld> {
 
   bool needFlipTopCard() {
     // Used in piles like Klondike Tableaus, where top cards must be face-up.
+    print('Pile $pileIndex $pileType needFlip: rule ${pileSpec.dealFaceRule}');
     if (pileSpec.dealFaceRule == DealFaceRule.lastFaceUp) {
+      // print('Not empty ${_cards.isNotEmpty} card ${_cards.last.name} last face-down ${_cards.last.isFaceDownView}');
       if (_cards.isNotEmpty && _cards.last.isFaceDownView) {
         final savedPriority = _cards.last.priority;
         _cards.last.turnFaceUp(
@@ -396,24 +422,26 @@ class Pile extends PositionComponent with HasWorldReference<PatWorld> {
     return false;
   }
 
-  int dealFromStock(TapRule tapRule, Pile target) {
+  int dealFromStock(TapRule tapRule, Pile target, List<CardView> movingCards) {
     assert(target.pileType == PileType.waste ||
         target.pileType == PileType.tableau);
     assert(pileType == PileType.stock);
     assert((tapRule == TapRule.turnOver1) || (tapRule == TapRule.turnOver3));
     assert(_cards.length > 0 && _cards.first.isBaseCard);
     int result = 0;
-    // if (tapRule == TapRule.turnOver1 && _cards.length > 1) {
-      // CardView cardToDeal = _cards.removeLast();
-      // result = 1;
-      // cardToDeal.doMoveAndFlip(
-        // target.position,
-        // whenDone: () {
-          // target.put(cardToDeal);
-        // },
-      // );
-      // return result;
-    // }
+    dump();
+    if (tapRule == TapRule.turnOver1 && _cards.length > 1) {
+      CardView cardToDeal = _cards.removeLast();
+      movingCards.add(cardToDeal);
+      result = 1;
+      cardToDeal.doMoveAndFlip(
+        target.position,
+        whenDone: () {
+          target.put(cardToDeal);
+        },
+      );
+      return result;
+    }
     return result;
     // TODO - TapRule.turnOver3. Maybe make the above a loop and have a
     //        faceUpFanOut defined for the Waste Pile
