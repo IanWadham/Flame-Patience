@@ -56,6 +56,7 @@ class PatWorld extends World with HasGameReference<PatGame> {
 
   int _stockPileIndex = -1; // No Stock Pile yet: not all games have one.
   int _wastePileIndex = -1; // No Waste Pile yet: not all games have one.
+  int _unusedCardsIndex = -1; // Games with excluded Cards may have this Pile.
 
   var lastWastePile = false; // Set if no more Stock Pile turnovers are allowed.
 
@@ -232,8 +233,16 @@ class PatWorld extends World with HasGameReference<PatGame> {
       piles[_stockPileIndex].dump();
       cardsToDeal.clear();
     }
+
+    // TODO - Could do cardMoves.init() here... making a clean break between
+    //        PatWorld setup and gameplay. Could do deal and letsCelebrate???
+    if (gameSpec.excludedRank > 0) {
+      // Get CardMoves to finish the deal (e.g. remove Aces in Mod 3).
+      cardMoves.moveExcludedCardsOut(gameSpec, _unusedCardsIndex);
+    }
   }
 
+  // TODO - Maybe could do all this in a helper Class...
   int generatePiles(GameSpec gameSpec, Vector2 cellSize) {
     var pileSpecErrorCount = 0;
     var foundStockSpec = false;
@@ -242,9 +251,6 @@ class PatWorld extends World with HasGameReference<PatGame> {
     for (GamePileSpec gamePile in gameSpec.gamePilesSpec) {
       final pileSpec = gamePile.pileSpec;
       final nPilesOfThisType = gamePile.nPilesSpec;
-      if (pileSpec == PatData.unusedPile) {
-        continue; // Possible placeholder for Games lacking Stock or Waste Pile.
-      }
       if (nPilesOfThisType != gamePile.pileTrios.length) {
         throw FormatException('${pileSpec.pileType} requires $nPilesOfThisType '
             'piles: number of pileTrios is ${gamePile.pileTrios.length}');
@@ -293,7 +299,8 @@ class PatWorld extends World with HasGameReference<PatGame> {
             foundations.add(pile);
           case PileType.tableau:
             tableaus.add(pile);
-          case PileType.notUsed:
+          case PileType.unusedCards:
+            _unusedCardsIndex = pileIndex;
             break;
         }
         pileIndex++;
