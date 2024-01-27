@@ -180,8 +180,8 @@ class PatData {
       gameID: PatGameID.mod3,
       gameName: 'Mod 3',
       nPacks: 2,
-      nCellsWide: 9,
-      nCellsHigh: 4,
+      nCellsWide: 10,
+      nCellsHigh: 5,
       cardPadX: 100,
       cardPadY: 500,
       hasStockPile: true,
@@ -195,7 +195,7 @@ class PatData {
           pileSpec: standardStock,
           nPilesSpec: 1,
           pileTrios: [
-            (3, 8, 74),
+            (3, 9, 74),
           ]
         ),
         ( // GamePileSpec
@@ -259,7 +259,7 @@ class PatData {
           pileSpec: unusedCards,
           nPilesSpec: 1,
           pileTrios: [
-            (0, 8, 0),
+            (1, 9, 0),
           ]
         ),
       ],
@@ -375,9 +375,9 @@ class PatData {
     putFirst: 0, // Any card.
     dealFaceRule: DealFaceRule.faceUp,
     fanOutX: 0.0,
-    fanOutY: 0.1,
+    fanOutY: 0.18,
     growthCols: 0,
-    growthRows: 0,
+    growthRows: 1,
   );
 
   static const PileSpec standardFoundation = (
@@ -452,13 +452,13 @@ class PatData {
     dragRule: DragRule.dragNotAllowed,
     tapRule: TapRule.tapNotAllowed,
     tapEmptyRule: TapEmptyRule.tapNotAllowed,
-    putRule: PutRule.putNotAllowed,
+    putRule: PutRule.sameRank,
     putFirst: 1,
     dealFaceRule: DealFaceRule.faceUp,
     fanOutX: 0.0,
     fanOutY: 0.25,
     growthCols: 0,
-    growthRows: 2,
+    growthRows: 1,
   );
 }
 
