@@ -212,6 +212,17 @@ class Pile extends PositionComponent with HasWorldReference<PatWorld> {
     }
   }
 
+  void removeExcludedCards(int excludedRank, List<CardView> excludedCards) {
+    print('Before remove Aces $pileIndex $pileType: $_cards $excludedCards');
+    for (CardView card in _cards) {
+      if (card.rank == excludedRank) {
+        excludedCards.add(card);
+      }
+    }
+    _cards.removeWhere((card) => card.rank == excludedRank);
+    print(' After remove Aces $pileIndex $pileType: $_cards $excludedCards');
+  }
+
   void setTopFaceUp(bool goFaceUp) {
     // TODO - POLISH THIS.
     if (_cards.isNotEmpty) {
@@ -238,16 +249,17 @@ class Pile extends PositionComponent with HasWorldReference<PatWorld> {
 
   bool checkPut(CardView card) {
     // Player can put or drop cards onto Foundation or Tableau Piles only.
-    // String message = 'Check Put: ${card.toString()} $pileType'
-    // ' row $gridRow col $gridCol:';
-    if ((pileType == PileType.foundation) || (pileType == PileType.tableau)) {
+    String message = 'Check Put: ${card.toString()} $pileType'
+    ' row $gridRow col $gridCol:';
+    if ((pileType != PileType.foundation) || (pileType != PileType.waste)) {
       if (_cards.isEmpty) {
         final firstOK =
             (pileSpec.putFirst == 0) || (card.rank == pileSpec.putFirst);
-        // String result = firstOK ? 'first card OK' : 'first card FAILED';
-        // print('$message $result');
+        String result = firstOK ? 'first card OK' : 'first card FAILED';
+        print('$message $result');
         return firstOK;
       } else {
+        print('$message ${pileSpec.putRule}');
         int pileSuit = _cards.last.suit;
         int delta = 1;
         switch (pileSpec.putRule) {
@@ -262,6 +274,9 @@ class Pile extends PositionComponent with HasWorldReference<PatWorld> {
                 (card.rank == _cards.last.rank - 1);
             // print('$message ${isCardOK ? "card OK" : "card FAILED"}');
             return isCardOK;
+          case PutRule.sameRank:
+            print('$message sameRank? card ${card.rank} pile ${_cards.last.rank}');
+            return card.rank == _cards.last.rank;
           case PutRule.putNotAllowed:
             return false; // Cannot put card on this Foundation Pile.
         }
@@ -274,7 +289,7 @@ class Pile extends PositionComponent with HasWorldReference<PatWorld> {
       // print('$message checkPut OK');
       return true;
     } // End of Tableau or Foundation Pile check.
-    // print('$message can only put on Foundation or Tableau Piles.');
+    print('$message cannot put on Stock or Waste Piles.');
     return false;
   }
 

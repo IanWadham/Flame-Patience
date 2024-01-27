@@ -5,12 +5,18 @@ import 'package:flame/components.dart' show Vector2;
 import '../components/card_view.dart';
 import '../components/pile.dart';
 import '../specs/pat_enums.dart';
+import '../specs/pat_specs.dart';
 
 enum Flips {
   noChange,
   fromUp,
   toUp, /* bothUp, */
 }
+
+// TODO - Maybe add values to Flips to cover extra move-actions in Mod 3 and
+//        also change the name Flips to something else (e.g. ExtraMove?).
+//        Another idea would be to have "Forced" flags for multiple Moves that
+//        have to be Redone as one.
 
 typedef CardViewMove = ({
   int fromPile, // Starting Pile.
@@ -168,6 +174,20 @@ class CardMoves {
           if (moveResult != MoveResult.valid) {
             break; // No more Stock cards.
           }
+          // TODO - Ensure that any solitary excluded Cards now in Tableaus are
+          //        replaced with non-excluded Cards, if Stock Cards available.
+          // TODO - Record Tableau-deal moves and make them re-doable. KPat does
+          //        this by using compound moves: one move-type to deal N Cards
+          //        from Stock and a 2-Card 3-Pile move to take out an Ace and
+          //        replace it with a Stock Card. Not sure of the order of those
+          //        moves, nor how multiple Undo moves are achieved. Maybe the
+          //        Dealer does all this somehow. The deal of N cards is the
+          //        ONLY move that has "from" == Stock. The 3-Pile move has
+          //        Tableau as "from", Aces as "to" and "turn_index" == 1 to
+          //        get an extra card from Stock.
+          // NOTE - If KPat's Solver and Autodrop are BOTH OFF, compound Ace
+          //        Moves definitely occur AFTER the deal-to-Tableau Move. You
+          //        have to trigger each Ace Move manually.
         }
         return (nPiles > 0);
       }
@@ -283,18 +303,21 @@ class CardMoves {
     List<CardView> excludedCards = [];
 
     assert ((gameSpec.excludedRank >= 1) && (gameSpec.excludedRank <= 13));
-    for (Pile pile in piles) {
+    for (Pile pile in _piles) {
+      print('moveExcludedCardsOut ${pile.pileIndex} ${pile.pileType}');
       if ((pile.pileType == PileType.tableau) ||
           (pile.pileType == PileType.foundation)) {
          pile.removeExcludedCards(gameSpec.excludedRank, excludedCards);
       }
       if (unusedCardsPileIndex >= 0) {
         _piles[unusedCardsPileIndex].dropCards(excludedCards);
+        excludedCards.clear();
       }
       else {
         // TODO - Make them vanish (i.e. go to (cardWidth / 2.0, -cardHeight)).
       }
     }
+    // TODO - Fill any holes in Tableau with non-excluded Cards.
   }
 
   void storeMove({

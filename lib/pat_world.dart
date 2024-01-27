@@ -142,7 +142,8 @@ class PatWorld extends World with HasGameReference<PatGame> {
     camera.viewfinder.position = Vector2(playAreaSize.x / 2.0, 0.0);
     camera.viewfinder.anchor = Anchor.topCenter;
 
-    deal(gameSpec.dealSequence);
+    // ??????? deal(gameSpec.dealSequence);
+    deal(gameSpec);
   }
 
   void addButton(String label, double buttonX, Action action) {
@@ -168,7 +169,9 @@ class PatWorld extends World with HasGameReference<PatGame> {
     add(button);
   }
 
-  void deal(DealSequence dealSequence) {
+  // ??????? void deal(DealSequence dealSequence) {
+  void deal(GameSpec gameSpec) {
+    final dealSequence = gameSpec.dealSequence;
     final List<CardView> cardsToDeal = [];
     for (final CardView card in cards) {
       if (card.isBaseCard) {
