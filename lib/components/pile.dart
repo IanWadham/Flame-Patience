@@ -59,7 +59,14 @@ class Pile extends PositionComponent with HasWorldReference<PatWorld> {
 
   final List<CardView> _cards = [];
 
-  bool get isEmpty => _cards.isEmpty;
+  int get nCards => pileType == PileType.stock ?
+      _cards.length - 1: _cards.length;
+  bool get hasNoCards => pileType == PileType.stock ?
+      _cards.length == 1 : _cards.isEmpty;
+  // bool get isEmpty => pileType == PileType.stock ?
+      // _cards.length == 1 : _cards.isEmpty;
+  // int get length => pileType == PileType.stock ?
+      // _cards.length - 1: _cards.length;
   // ??????? Card get topCard => _cards.isEmpty ? baseCard : _cards.last;
 
   // These properties are calculated from the Pile Spec in the constructor body.
@@ -185,7 +192,7 @@ class Pile extends PositionComponent with HasWorldReference<PatWorld> {
           return MoveResult.valid;
         }
       case PileType.foundation:
-      case PileType.unusedCards:
+      case PileType.excludedCards:
         return MoveResult.notValid;
     }
     return MoveResult.notValid;

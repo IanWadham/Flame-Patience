@@ -256,7 +256,7 @@ class PatData {
         ),
         ( // GamePileSpec
           // Holds discarded Aces.
-          pileSpec: unusedCards,
+          pileSpec: mod3ExcludedCards,
           nPilesSpec: 1,
           pileTrios: [
             (1, 9, 0),
@@ -444,10 +444,10 @@ class PatData {
     growthRows: 0,
   );
 
-  static const PileSpec unusedCards = (
-    // Holds cards that have been dealt out of the game, e.g. Aces in Mod 3.
-    pileType: PileType.unusedCards,
-    pileName: 'unusedCardsPile',
+  static const PileSpec mod3ExcludedCards = (
+    // Holds cards that have been dealt out of the Mod 3 game.
+    pileType: PileType.excludedCards,
+    pileName: 'excludedCardsPile',
     hasBaseCard: false,
     dragRule: DragRule.dragNotAllowed,
     tapRule: TapRule.tapNotAllowed,

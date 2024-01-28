@@ -131,7 +131,7 @@ class CardView extends PositionComponent
     // Can be called by onTapUp or after a very short (failed) drag-and-drop.
     // For ease of gameplay the game accepts taps that include a short drag.
 
-    bool success = world.cardMoves.tapMove(this, pile);
+    bool success = world.cardMoves.tapMove(this);
     // TODO - Beep, flash or other view-type things if not successful.
     print('CardView: Returned from tap on $name, pile ${pile.pileIndex} ${pile.pileType} success $success');
     return;

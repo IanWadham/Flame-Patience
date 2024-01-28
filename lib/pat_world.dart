@@ -56,7 +56,7 @@ class PatWorld extends World with HasGameReference<PatGame> {
 
   int _stockPileIndex = -1; // No Stock Pile yet: not all games have one.
   int _wastePileIndex = -1; // No Waste Pile yet: not all games have one.
-  int _unusedCardsIndex = -1; // Games with excluded Cards may have this Pile.
+  int _excludedCardsPileIndex = -1; // Games with excluded Cards might use this.
 
   var lastWastePile = false; // Set if no more Stock Pile turnovers are allowed.
 
@@ -241,7 +241,7 @@ class PatWorld extends World with HasGameReference<PatGame> {
     //        PatWorld setup and gameplay. Could do deal and letsCelebrate???
     if (gameSpec.excludedRank > 0) {
       // Get CardMoves to finish the deal (e.g. remove Aces in Mod 3).
-      cardMoves.moveExcludedCardsOut(gameSpec, _unusedCardsIndex);
+      cardMoves.moveExcludedCardsOut(gameSpec, _excludedCardsPileIndex);
     }
   }
 
@@ -302,8 +302,8 @@ class PatWorld extends World with HasGameReference<PatGame> {
             foundations.add(pile);
           case PileType.tableau:
             tableaus.add(pile);
-          case PileType.unusedCards:
-            _unusedCardsIndex = pileIndex;
+          case PileType.excludedCards:
+            _excludedCardsPileIndex = pileIndex;
             break;
         }
         pileIndex++;
