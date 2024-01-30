@@ -32,6 +32,7 @@ typedef GameSpec = ({
   int dealerRow,
   int dealerCol,
   int excludedRank,
+  bool redealEmptyTableau,
   DealSequence dealSequence,
   List<GamePileSpec> gamePilesSpec,
 });
@@ -77,6 +78,7 @@ class PatData {
       dealerCol: 0,
       dealSequence: DealSequence.wholePileAtOnce,
       excludedRank: 0, // Deal ALL cards.
+      redealEmptyTableau: false,
       gamePilesSpec: [
         ( // GamePileSpec
           pileSpec: standardStock,
@@ -131,6 +133,7 @@ class PatData {
       dealerCol: 0,
       dealSequence: DealSequence.wholePileAtOnce,
       excludedRank: 0, // Deal ALL cards.
+      redealEmptyTableau: false,
       gamePilesSpec: [
         ( // GamePileSpec
           pileSpec: fortyAndEightStock,
@@ -181,7 +184,8 @@ class PatData {
       gameName: 'Mod 3',
       nPacks: 2,
       nCellsWide: 10,
-      nCellsHigh: 5,
+      // ??????? nCellsHigh: 5,
+      nCellsHigh: 6,
       cardPadX: 100,
       cardPadY: 500,
       hasStockPile: true,
@@ -190,6 +194,7 @@ class PatData {
       dealerCol: 9,
       dealSequence: DealSequence.wholePileAtOnce,
       excludedRank: 1, // Exclude Aces.
+      redealEmptyTableau: true,
       gamePilesSpec: [
         ( // GamePileSpec
           pileSpec: standardStock,
@@ -259,7 +264,7 @@ class PatData {
           pileSpec: mod3ExcludedCards,
           nPilesSpec: 1,
           pileTrios: [
-            (1, 9, 0),
+            (0, 9, 0),
           ]
         ),
       ],
@@ -458,7 +463,8 @@ class PatData {
     fanOutX: 0.0,
     fanOutY: 0.25,
     growthCols: 0,
-    growthRows: 1,
+    // ??????? growthRows: 1,
+    growthRows: 2,
   );
 }
 

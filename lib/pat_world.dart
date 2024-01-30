@@ -111,7 +111,8 @@ class PatWorld extends World with HasGameReference<PatGame> {
     // the Tap or DragAndDrop callback that accepted and created the Move.
     // The cardMoves object is not a Component, so is not added to the World.
 
-    cardMoves.init(cards, piles, stockPileIndex, wastePileIndex);
+    cardMoves.init(cards, piles,
+        stockPileIndex, wastePileIndex, foundations, tableaus);
 
     // Move all cards to a place in this game-layout from which they are dealt.
 

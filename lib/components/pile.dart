@@ -61,8 +61,11 @@ class Pile extends PositionComponent with HasWorldReference<PatWorld> {
 
   int get nCards => pileType == PileType.stock ?
       _cards.length - 1: _cards.length;
+  int get topCardIndex => hasNoCards ? -1 : _cards.last.indexOfCard;
+
   bool get hasNoCards => pileType == PileType.stock ?
       _cards.length == 1 : _cards.isEmpty;
+
   // bool get isEmpty => pileType == PileType.stock ?
       // _cards.length == 1 : _cards.isEmpty;
   // int get length => pileType == PileType.stock ?
@@ -150,7 +153,7 @@ class Pile extends PositionComponent with HasWorldReference<PatWorld> {
     TapRule tapRule = pileSpec.tapRule;
     String message = 'Tap $pileType row $gridRow col $gridCol:';
     if (pileSpec.tapRule == TapRule.tapNotAllowed) {
-      // print('$message tap not allowed');
+      print('$message tap not allowed');
       return MoveResult.notValid; // e.g. Foundation Piles do not accept taps.
     }
     final needFaceUp = (pileType != PileType.stock);
@@ -192,6 +195,11 @@ class Pile extends PositionComponent with HasWorldReference<PatWorld> {
           return MoveResult.valid;
         }
       case PileType.foundation:
+        // Maybe the card was dealt here but does not belong (e.g. Mod 3).
+        // Then it might be able to go out on another Foundation Pile.
+        print('Tap Fndn: $pileIndex length ${_cards.length} rank ${card.name} putFirst ${pileSpec.putFirst}');
+        return ((_cards.length == 1) && (card.rank != pileSpec.putFirst)) ?
+            MoveResult.valid : MoveResult.notValid;
       case PileType.excludedCards:
         return MoveResult.notValid;
     }
@@ -258,7 +266,12 @@ class Pile extends PositionComponent with HasWorldReference<PatWorld> {
     // Player can put or drop cards onto Foundation or Tableau Piles only.
     String message = 'Check Put: ${card.toString()} $pileType'
     ' row $gridRow col $gridCol:';
-    if ((pileType != PileType.foundation) || (pileType != PileType.waste)) {
+    // TODO - Why wasn't this (pileType == PileType.foundatiom) ||
+    //            (pileType == PileType.tableau)? And how did we get to
+    //        print 'first card OK' in any case?
+    // if ((pileType != PileType.foundation) || (pileType != PileType.waste)) {
+
+    if ((pileType == PileType.foundation) || (pileType == PileType.tableau)) {
       if (_cards.isEmpty) {
         final firstOK =
             (pileSpec.putFirst == 0) || (card.rank == pileSpec.putFirst);
@@ -290,6 +303,13 @@ class Pile extends PositionComponent with HasWorldReference<PatWorld> {
         if ((card.rank != (_cards.last.rank + delta)) ||
             (card.suit != pileSuit)) {
           // print('$message checkPut FAIL');
+          return false;
+        }
+        if ((pileType == PileType.foundation) &&
+            (_cards.first.rank != pileSpec.putFirst)) {
+          // Base card of pile has wrong rank. Can happen if the deal has put
+          // random cards on the Foundation Pile (e.g. as in Mod 3).
+          print('$message wrong first rank ${_cards.first.name}');
           return false;
         }
       }
