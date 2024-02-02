@@ -84,6 +84,10 @@ class Pile extends PositionComponent with HasWorldReference<PatWorld> {
     print('DUMP Pile $pileIndex, $pileType: $_cards');
   }
 
+  String toString() {
+    return '$pileIndex';
+  }
+
   void setPileHitArea() {
     if (pileType == PileType.tableau) {
       double deltaX = (_cards.length < 2 ? 0.0 : _cards.last.x - x);
@@ -206,10 +210,11 @@ class Pile extends PositionComponent with HasWorldReference<PatWorld> {
     return MoveResult.notValid;
   }
 
-  List<CardView> grabCards(int nCards) {
+  List<CardView> grabCards(int nRequired) {
     List<CardView> tail = [];
-    int index = _cards.length - nCards;
-    if (index >= 0) {
+    int nAvailable = (nCards >= nRequired) ? nRequired : nCards;
+    int index = _cards.length - nAvailable;
+    if (nAvailable > 0) {
       tail.addAll(_cards.getRange(index, _cards.length));
       _cards.removeRange(index, _cards.length);
       _expandFanOut();
