@@ -8,9 +8,9 @@ import '../specs/pat_enums.dart';
 import '../specs/pat_specs.dart';
 
 enum Extra {
-  // Actions that might follow card moves from one pile to another. Having
-  // this enum allows multiple Moves to be treated as one in undo/redo and
-  // will also simplify the proposed Solver's task.
+  // Actions that might follow card moves from pile to pile. Having this
+  // enum allows multiple Moves to be treated as one in undo/redo and will
+  // also simplify the proposed Solver's task.
 
   none, // The Move is a simple transfer of cards from one pile to another.
   fromCardUp, // The last card of the "from" pile must be Face Up at the finish.
@@ -30,8 +30,6 @@ typedef CardMove = ({
   int strength, // Reserved for use in Solver, default = 0.
   int leadCard, // For DEBUG: index number of first card (if known).
 });
-
-// ??????? typedef TableauData = ({int index, int length, int indexOfCard,});
 
 class CardMoves {
   final List<CardView> _cards = [];
@@ -157,13 +155,15 @@ class CardMoves {
     start.dropCards(_movingCards); // Return cards to start.
   }
 
-  void moveExcludedCardsOut(GameSpec gameSpec, int excludedCardsIndex) {
-    // Last step of PatWorld.deal() - but only if the Game excludes some cards.
-    assert ((gameSpec.excludedRank >= 1) && (gameSpec.excludedRank <= 13));
+  void completeTheDeal(GameSpec gameSpec, int excludedCardsIndex) {
+    // Last step of PatWorld.deal() - but only if the Game excludes some cards or
+    // needs to deal a new Card to a Tableau that is empty or becomes empty.
+    assert ((gameSpec.excludedRank > 0) || gameSpec.redealEmptyTableau);
+    assert (gameSpec.excludedRank <= 13);
 
     _excludedRank = gameSpec.excludedRank; // e.g. Aces in Mod 3 Game.
     _excludedCardsPileIndex = (excludedCardsIndex >= 0)
-      ? excludedCardsIndex
+      ? excludedCardsIndex // Index of a Pile to hold and show excluded cards.
       : -1; // If the Game does not have such a Pile, cards must just disappear.
     _redealEmptyTableau = gameSpec.redealEmptyTableau; // e.g. in Mod 3 Game.
 
@@ -171,16 +171,28 @@ class CardMoves {
     for (Pile pile in _piles) {
       if ((pile.pileType == PileType.tableau) ||
           (pile.pileType == PileType.foundation)) {
-         print('moveExcludedCardsOut ${pile.pileIndex} ${pile.pileType}');
+         print('completeTheDeal ${pile.pileIndex} ${pile.pileType}');
          pile.removeExcludedCards(_excludedRank, excludedCards);
       }
     }
+
+    if (excludedCards.isNotEmpty) {
+      if (_excludedCardsPileIndex >= 0) {
+        _piles[_excludedCardsPileIndex].dropCards(excludedCards);
+        excludedCards.clear();
+      }
+      else {
+        // TODO - Make them vanish (i.e. go to (cardWidth / 2.0, -cardHeight)).
+        assert(_excludedCardsPileIndex < 0, "NOT IMPLEMENTED YET");
+      }
+    }
+
     if (!gameSpec.redealEmptyTableau) return;
 
-    // Fill any holes in the Tableaus with non-excluded Cards. 
+    // Fill any holes in the Tableaus with non-excluded Cards.
     for (Pile pile in _tableaus) {
       while (pile.nCards < pile.nCardsToDeal) {
-        print('moveExcludedCardsOut refill ${pile.pileIndex} ${pile.pileType}');
+        print('completeTheDeal refill ${pile.pileIndex} ${pile.pileType}');
         pile.dropCards(_piles[_stockPileIndex].grabCards(1));
         pile.setTopFaceUp(true);
         pile.dump();
@@ -188,13 +200,17 @@ class CardMoves {
       }
     }
 
-    if (_excludedCardsPileIndex >= 0) {
-      _piles[_excludedCardsPileIndex].dropCards(excludedCards);
-      excludedCards.clear();
-    }
-    else {
-      // TODO - Make them vanish (i.e. go to (cardWidth / 2.0, -cardHeight)).
-      assert(_excludedCardsPileIndex < 0, "NOT IMPLEMENTED YET");
+    // TODO - Repeated code: polish this up when replenish Tableau is working.
+
+    if (excludedCards.isNotEmpty) {
+      if (_excludedCardsPileIndex >= 0) {
+        _piles[_excludedCardsPileIndex].dropCards(excludedCards);
+        excludedCards.clear();
+      }
+      else {
+        // TODO - Make them vanish (i.e. go to (cardWidth / 2.0, -cardHeight)).
+        assert(_excludedCardsPileIndex < 0, "NOT IMPLEMENTED YET");
+      }
     }
   }
 
@@ -351,8 +367,69 @@ class CardMoves {
   }
 
   void _replenishTableauFromStock(Pile pile, {required playerMove}) {
-    print('_replenishTableaus: ${pile.pileIndex} ${pile.pileType} '
+    print('_replenishTableauFromStock: ${pile.pileIndex} ${pile.pileType} '
         'playerMove $playerMove');
+    assert(pile.pileType == PileType.tableau);
+    assert(_stockPileIndex >= 0);
+
+    Pile stock = _piles[_stockPileIndex];
+    bool excludedCardOnTop = false;
+    if (pile.nCards > 0) {
+      excludedCardOnTop = (_cards[pile.topCardIndex].rank == _excludedRank);
+    }
+
+    while (pile.hasNoCards || excludedCardOnTop) {
+      if (excludedCardOnTop && (stock.hasNoCards || (pile.nCards > 1))) {
+        // Normal move of excluded card out of Pile.
+        print('replenishTableau normal move: excluded card out of Pile.');
+        List<CardView> excludedCards = pile.grabCards(1);
+        _piles[_excludedCardsPileIndex].dropCards(excludedCards);
+        storeMove(
+          from: pile,
+          to: _piles[_excludedCardsPileIndex],
+          nCards: 1,
+          extra: Extra.none,
+          leadCard: _piles[_excludedCardsPileIndex].topCardIndex,
+          strength: 0,
+        );
+      } else if (stock.hasNoCards) {
+        break;
+      } else if (excludedCardOnTop) {
+        // Compound move of excluded card out and Stock card in.
+        print('replenishTableau compound move: excluded out, Stock card in.');
+        List<CardView> excludedCards = pile.grabCards(1);
+        _piles[_excludedCardsPileIndex].dropCards(excludedCards);
+        pile.dropCards(stock.grabCards(1));
+        pile.setTopFaceUp(true);
+        storeMove(
+          from: pile,
+          to: _piles[_excludedCardsPileIndex],
+          nCards: 1,
+          extra: Extra.replaceExcluded,
+          leadCard: _piles[_excludedCardsPileIndex].topCardIndex,
+          strength: 0,
+        );
+      }
+      else {
+        // Normal move of Stock card to pile face-up.
+        print('replenishTableau normal move: Stock card in.');
+        pile.dropCards(stock.grabCards(1));
+        pile.setTopFaceUp(true);
+        storeMove(
+          from: stock,
+          to: pile,
+          nCards: 1,
+          extra: Extra.toCardUp,
+          leadCard: pile.topCardIndex,
+          strength: 0,
+        );
+      }
+      if (pile.nCards > 0) {
+        excludedCardOnTop = (_cards[pile.topCardIndex].rank == _excludedRank);
+      }
+      print('replenishTableau end while: noCards ${pile.hasNoCards} '
+          'excludedCardOnTop $excludedCardOnTop.');
+    } // End while (pile.hasNoCards || excludedCardOnTop).
   }
 
   bool _tapOnStockPile(CardView card, Pile fromPile, MoveResult tapResult) {
@@ -389,10 +466,6 @@ class CardMoves {
     //        must be empty and ready to receive a 2, 3 or 4. Also, this type
     //        of Foundation must be allowed to RECEIVE a tap on its top card.
     bool putOK = false;
-    // bool tableauLike = false;
-    // if (fromPile.pileType == PileType.foundation) {
-      // tableauLike = (fromPile.nCards > 0) && (fromPile.first.rank != fromPile.pileSpec.putFirst);
-    // }
     for (Pile target in _piles) {
       if (target.pileType != PileType.foundation) {
         continue;
@@ -486,32 +559,10 @@ class CardMoves {
 
     // TODO - Must NOT allow Tap or Drag on INNER card of a Tableau - ONLY Top.
 
-    // TODO - Provide support in makeMove() and moveBack() to provide:
-    //         1. multiple deals to Tableaus from Stock as one Move type,
-    //         2. excluded card move to Excluded Cards Pile WITHOUT replacement,
-    //         3. excluded card move to Excluded Cards Pile WITH replacement,
-    //         4. Stock card moving to a Tableau Pile that became empty,
-    //         5. auto Undo of Move Types 2 and 3 back to and including Type 1.
-
-    // TODO - Ensure that any solitary excluded Cards in Tableaus are
-    //        replaced with non-excluded Cards, if Stock Cards available.
-
-    // TODO - Record Tableau-deal moves and make them re-doable. KPat does
-    //        this by using compound moves: a move-type to deal N Cards
-    //        from Stock to N Tableaus and a 2-Card 3-Pile move to take
-    //        out an Ace and replace it with a Stock Card. The Moves are
-    //        done in that order, i.e. One N-card move then <N Ace moves.
-    //
-    //        The deal of N cards is the ONLY move that has "from" ==
-    //        Stock. The 3-Pile move has a Tableau as "from", Aces as "to"
-    //        and "turn_index" == 1 to get an extra card from Stock.
-    // NOTE - If KPat's Solver and Autodrop are BOTH OFF, compound Ace
-    //        Moves definitely occur AFTER the deal-to-Tableau Move. You
-    //        have to trigger each Ace Move manually.
-    // TODO - Need to have index of each Tableau Pile, its length and its
-    //        top card (or no-card). WHILE length == 1 and top card is an
-    //        excluded card, move card to excludedPile and move a Stock
-    //        to the Tableau Pile, if there are any Stock Cards left.
+    // TODO - Provide support in makeMove() and moveBack() for auto Undo of
+    //        Move Types stockToTableaus, replaceExcluded, normal replenish of
+    //        Tableau from Stock and normal removeExcluded, back to and
+    //        including stockToTableaus or back to and excluding normal moves.
 
   bool _dealToTableausFromStockPile(Pile fromPile) {
     // Deal a card from the Stock Pile to each Tableau Pile.
@@ -559,89 +610,17 @@ class CardMoves {
 
     // TODO - Change this concept to replenishTableaus()... Dependent on
     //        removing excluded cards AND/OR GameSpec.redealEmptyTableau.
-    //        
+
     print('foundExcludedCard: $foundExcludedCard');
     if (foundExcludedCard) {
-      _removeExcludedCards(fromPile);
+      for (Pile pile in _tableaus) {
+        if (pile.hasNoCards ||
+            (_cards[pile.topCardIndex].rank == _excludedRank)) {
+          _replenishTableauFromStock(pile, playerMove: true);
+        }
+      }
     }
     return (nPiles > 0);
-  }
-
-  void _removeExcludedCards(Pile fromPile) {
-    assert(fromPile.pileType == PileType.stock);
-    print('ENTERED _removeExcludedCards()');
-
-    for (final pile in _tableaus) {
-      print('_removeExcludedCards: pile ${pile.pileIndex} ${pile.pileType} nCards ${pile.nCards}');
-      pile.dump();
-      if (pile.hasNoCards) {
-        print('EMPTY PILE');
-        continue;
-      }
-      CardView itemCard = _cards[pile.topCardIndex];
-      print('Item card: ${itemCard.name}');
-      bool replaceItem = false;
-      if (itemCard.rank == _excludedRank) {
-        replaceItem = (pile.nCards == 1);
-        List<CardView> wasDealt = pile.grabCards(1);
-        if (!replaceItem || wasDealt.isEmpty) { // Just move excluded card out.
-          print('Remove ${itemCard.name} to pile $_excludedCardsPileIndex');
-          print('NO REPLACEMENT CARD...');
-          _piles[_excludedCardsPileIndex].put(itemCard);
-          storeMove(
-            from: pile,
-            to: _piles[_excludedCardsPileIndex],
-            nCards: 1,
-            extra: Extra.none,
-            leadCard: itemCard.indexOfCard,
-            strength: 0,
-          );
-          continue; // Next Tableau.
-        }
-      }
-      print('_redealEmptyTableau $_redealEmptyTableau replace_item $replaceItem');
-      if (!_redealEmptyTableau) continue;
-
-      assert(fromPile.nCards > 0);
-      while (replaceItem) {
-        // TODO - NOT ANIMATED...
-        print('Put Tableau top-card ${itemCard.name} onto Excluded Pile');
-        _piles[_excludedCardsPileIndex].put(itemCard);
-        CardView replacementCard = fromPile.grabCards(1).first;
-        print('Put ${replacementCard.name} from Stock onto Tableau Pile');
-        pile.put(replacementCard);
-        pile.setTopFaceUp(true);
-        print('Exclude++ ${itemCard.name} to pile $_excludedCardsPileIndex');
-        storeMove(
-          from: pile,
-          to: _piles[_excludedCardsPileIndex],
-          nCards: 1,
-          extra: Extra.replaceExcluded,
-          leadCard: replacementCard.indexOfCard,
-          strength: 0,
-        );
-        if (replacementCard.rank == _excludedRank) {
-          itemCard = replacementCard;
-          if (fromPile.hasNoCards) {
-            print('NO MORE STOCK CARDS');
-            print('Remove ${itemCard.name} to pile $_excludedCardsPileIndex');
-            print('NO REPLACEMENT CARD...');
-            _piles[_excludedCardsPileIndex].put(itemCard);
-            storeMove(
-              from: pile,
-              to: _piles[_excludedCardsPileIndex],
-              nCards: 1,
-              extra: Extra.none,
-              leadCard: itemCard.indexOfCard,
-              strength: 0,
-            );
-            break; // No more Stock cards.
-          }
-        } else {
-          replaceItem = false;
-        }
-      } // End while(replaceItem).
-    } // End Tableaus loop.
   }
 
   bool _notEnoughSpaceToMove(int nCards, Pile target) {
