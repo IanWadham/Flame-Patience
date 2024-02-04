@@ -100,8 +100,6 @@ class PatWorld extends World with HasGameReference<PatGame> {
     if (nExceptions > 0)
         throw FormatException('FOUND $nExceptions FormatExceptions');
 
-    // ??????? lastWastePile = false; // Reset this PatWorld static var.
-
     // Set up a CardMoves Model class that records valid Moves and can undo
     // or redo them. The basic Move is to take one or more cards from the
     // end of one pile and add it/them to the end of another pile, working
@@ -143,7 +141,6 @@ class PatWorld extends World with HasGameReference<PatGame> {
     camera.viewfinder.position = Vector2(playAreaSize.x / 2.0, 0.0);
     camera.viewfinder.anchor = Anchor.topCenter;
 
-    // ??????? deal(gameSpec.dealSequence);
     deal(gameSpec);
   }
 
@@ -170,7 +167,6 @@ class PatWorld extends World with HasGameReference<PatGame> {
     add(button);
   }
 
-  // ??????? void deal(DealSequence dealSequence) {
   void deal(GameSpec gameSpec) {
     final dealSequence = gameSpec.dealSequence;
     final List<CardView> cardsToDeal = [];
@@ -240,9 +236,9 @@ class PatWorld extends World with HasGameReference<PatGame> {
 
     // TODO - Could do cardMoves.init() here... making a clean break between
     //        PatWorld setup and gameplay. Could do deal and letsCelebrate???
-    if (gameSpec.excludedRank > 0) {
+    if (gameSpec.excludedRank > 0 || gameSpec.redealEmptyTableau) {
       // Get CardMoves to finish the deal (e.g. remove Aces in Mod 3).
-      cardMoves.moveExcludedCardsOut(gameSpec, _excludedCardsPileIndex);
+      cardMoves.completeTheDeal(gameSpec, _excludedCardsPileIndex);
     }
   }
 

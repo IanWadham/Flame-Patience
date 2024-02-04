@@ -50,11 +50,6 @@ class CardView extends PositionComponent
 
   void flipView() => _viewFaceUp = !_viewFaceUp;
 
-  static final Paint cardBorderPaint = Paint()
-    ..color = const Color(0xffbbbbbb) // Grey.
-    ..style = PaintingStyle.stroke
-    ..strokeWidth = 10;
-
   static final Paint baseBorderPaint = Paint()
     ..color = const Color(0xffdd2200) // Darkish red-orange.
     ..style = PaintingStyle.stroke
