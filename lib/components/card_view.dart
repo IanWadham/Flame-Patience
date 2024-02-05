@@ -10,8 +10,6 @@ import '../models/card_moves.dart';
 import '../specs/pat_enums.dart';
 import 'pile.dart';
 
-// TODO - Separate the card-views and card-models.
-
 class CardView extends PositionComponent
     with DragCallbacks, TapCallbacks, HasWorldReference<PatWorld> {
   CardView(this.indexOfCard, this.face, this.back, {this.isBaseCard = false})
@@ -33,7 +31,6 @@ class CardView extends PositionComponent
 
   bool _viewFaceUp = false;
   bool _isDragging = false;
-  Vector2 _whereCardStarted = Vector2(0.0, 0.0);
 
   // Packs are numbered 0-1, suits 0-3, ranks 1-13.
   int get pack => (indexOfCard - 1) ~/ 52;
@@ -69,8 +66,7 @@ class CardView extends PositionComponent
       );
     } else {
       // Draw the Base Card in outline only.
-      RRect cardRect = PatWorld.cardRect.deflate(PatWorld.shrinkage);
-      canvas.drawRRect(cardRect, baseBorderPaint);
+      canvas.drawRRect(PatWorld.baseCardRect, baseBorderPaint);
     }
     return;
   }
@@ -79,22 +75,23 @@ class CardView extends PositionComponent
   // String toString() => PatWorld.ranks[rank] + PatWorld.suits[suit];
   String toString() => name;
 
-  // CARD MOVES:
+  // THE ERGONOMICS OF CARD MOVES:
   //
   // A card-move can be started either by tapping a card or by dragging and
   // dropping it.
   //
-  // Both methods begin with a TapDownEvent (which is not processed). If the
-  // pointer stays still and the finger or mouse-button is raised, a TapUp
-  // event occurs and that event is received as a card-tap in the onTapUp
-  // callback. But, if the pointer moves slightly before the finger or mouse
-  // button is raised, a TapCancel event occurs followed by a DragStart event.
+  // In Flutter and Flame, Both methods begin with a TapDownEvent (which is not
+  // processed in this app). If the pointer stays still and the finger or mouse
+  // button is raised, a TapUp event occurs and that event is received as a
+  // card-tap in the onTapUp callback. But, if the pointer moves slightly
+  // before the finger or mouse button is raised, a TapCancel event occurs
+  // followed by a DragStart event.
   //
   // The Stock Pile does not allow drags-and-drops, so a TapCancel on the Stock
   // Pile is treated as equivalent to a TapUp on the Stock Pile and the drag is
   // ignored. Drags on other piles are followed, if the rules of the game allow
-  // such a move, but if the drag finishes within a short distance, it is also
-  // treated as a TapUp.
+  // such a move, but if the drag finishes within a very short distance, it is
+  // treated as a TapUp, as it is in the StockPile case..
   //
   // This is all so that a small movement or hand-tremor during a tap will not
   // cause the tap action to fail silently and be lost, which would annoy the
@@ -152,10 +149,7 @@ class CardView extends PositionComponent
     // Alternatively, dragging a Stock card or Base Card is treated as a tap.
 
     if (world.cardMoves.dragStart(this, pile, movingCards)) {
-    // if (pile.dragMove(this, movingCards) == MoveResult.valid) {
       _isDragging = true;
-      // Clone position, otherwise _whereCardStarted changes as the card moves.
-      // _whereCardStarted = position.clone();
       var cardPriority = movingPriority;
       String moving = 'Moving: ';
       for (final movingCard in movingCards) {
@@ -176,10 +170,6 @@ class CardView extends PositionComponent
     movingCards.forEach((card) => card.position.add(delta));
   }
 
-  // TODO - Move SOME of this code into CardMoves.dragAndDropMove().
-    // bool success = world.cardMoves.dragAndDropMove(movingCards, target);
-    // TODO - Beep, flash or other view-type things if not successful.
-
   @override
   void onDragEnd(DragEndEvent event) {
     super.onDragEnd(event);
@@ -195,6 +185,8 @@ class CardView extends PositionComponent
     // Drop the cards, if valid, or try a tap move if drag was too short,
     // or, if all else fails, return the card(s) to where they started.
     world.cardMoves.dragEnd(targets, PatWorld.dragTolerance);
+
+    // TODO - Beep, flash or other view-type things if not successful.
   }
 
   //#region Effects

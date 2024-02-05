@@ -46,7 +46,7 @@ class Pile extends PositionComponent with HasWorldReference<PatWorld> {
 
   static const faceDownFanOutFactor = 0.3;
 
-  final bool debugMode = true;
+  // final bool debugMode = true;
   final PileSpec pileSpec;
   final PileType pileType;
 
@@ -65,12 +65,6 @@ class Pile extends PositionComponent with HasWorldReference<PatWorld> {
 
   bool get hasNoCards => pileType == PileType.stock ?
       _cards.length == 1 : _cards.isEmpty;
-
-  // bool get isEmpty => pileType == PileType.stock ?
-      // _cards.length == 1 : _cards.isEmpty;
-  // int get length => pileType == PileType.stock ?
-      // _cards.length - 1: _cards.length;
-  // ??????? Card get topCard => _cards.isEmpty ? baseCard : _cards.last;
 
   // These properties are calculated from the Pile Spec in the constructor body.
   var _hasFanOut = false;
@@ -100,7 +94,7 @@ class Pile extends PositionComponent with HasWorldReference<PatWorld> {
   MoveResult dragMove(CardView card, List<CardView> dragList) {
     DragRule dragRule = pileSpec.dragRule;
     dragList.clear();
-    // TODO - Turn over Stock NOW, if needed, and return notValid.
+
     // String message = 'Drag $pileType row $gridRow col $gridCol:';
     if (_cards.isEmpty) {
       // print('$message _cards is Empty');
@@ -135,9 +129,6 @@ class Pile extends PositionComponent with HasWorldReference<PatWorld> {
     // print('Pile $_cards, moving $dragList');
     setPileHitArea();
     return MoveResult.valid;
-    // TODO - Multi-card move rules for various games.
-    // Depends on Game Type. In 48, need empty Tableaus for moving >1 card.
-    // In Klondike, can drag many cards but must satisfy checkPut on drop.
   }
 
   bool isCardInPile(CardView card, {required bool mustBeOnTop}) {
@@ -160,12 +151,15 @@ class Pile extends PositionComponent with HasWorldReference<PatWorld> {
       print('$message tap not allowed');
       return MoveResult.notValid; // e.g. Foundation Piles do not accept taps.
     }
+    if (!isTopCard(card)) {
+      print('$message tap is not on top card');
+      return MoveResult.notValid;
+    }
+    // Stock needs top card face-down, other piles need top card face-up.
     final needFaceUp = (pileType != PileType.stock);
-    // ??????? if (!isTopCard(card) || (needFaceUp != card.isFaceUpView)) {
-    // ???? print('$message tap not on top card or face-up is not $needFaceUp');
     if (needFaceUp != card.isFaceUpView) {
       print('$message card ${card.name} face-up is not $needFaceUp');
-      return MoveResult.notValid; // Stock needs face-down, other piles face-up.
+      return MoveResult.notValid;
     }
     if (_cards.isEmpty && (pileType != PileType.stock)) {
       print('$message _cards is Empty');
@@ -174,8 +168,6 @@ class Pile extends PositionComponent with HasWorldReference<PatWorld> {
     switch (pileType) {
       case PileType.stock:
         if (card.isBaseCard) {
-          // TODO - Can check World for Waste Pile and do the flipover NOW.
-          //        Does this make it easier to undo and redo?
           print('$message empty Stock Pile');
           return MoveResult.pileEmpty;
         } else {
@@ -270,7 +262,7 @@ class Pile extends PositionComponent with HasWorldReference<PatWorld> {
   bool checkPut(CardView card) {
     // Player can put or drop cards onto Foundation or Tableau Piles only.
     String message = 'Check Put: ${card.toString()} $pileType'
-    ' row $gridRow col $gridCol:';
+        ' row $gridRow col $gridCol:';
     // TODO - Why wasn't this (pileType == PileType.foundatiom) ||
     //            (pileType == PileType.tableau)? And how did we get to
     //        print 'first card OK' in any case?
@@ -300,7 +292,8 @@ class Pile extends PositionComponent with HasWorldReference<PatWorld> {
             // print('$message ${isCardOK ? "card OK" : "card FAILED"}');
             return isCardOK;
           case PutRule.sameRank:
-            print('$message sameRank? card ${card.rank} pile ${_cards.last.rank}');
+            print('$message sameRank? card ${card.rank} '
+                'pile ${_cards.last.rank}');
             return card.rank == _cards.last.rank;
           case PutRule.putNotAllowed:
             return false; // Cannot put card on this Foundation Pile.
@@ -329,11 +322,6 @@ class Pile extends PositionComponent with HasWorldReference<PatWorld> {
     // Turn over Waste->Stock, undo it or redo it.
     // Normal or redo move is Waste->Stock, undo is Stock->Waste.
     print('Flip Pile: $pileType last Waste ${world.lastWastePile} $_cards');
-    // ???????? this.dump();
-    // ???????? to.dump();
-    // TODO - If we cannot turn over the Waste Pile, DON'T record a Move!!!
-    //        DONE - but not fully tested...
-
     int cardCount = 0;
     if (pileType == PileType.waste) {
       if (world.lastWastePile || _cards.isEmpty) {
@@ -506,9 +494,7 @@ class Pile extends PositionComponent with HasWorldReference<PatWorld> {
   @override
   void render(Canvas canvas) {
     // Outline and fill the image of the Pile (a little smaller than a card).
-    RRect pileRect = PatWorld.cardRect.deflate(PatWorld.shrinkage);
-    Offset rectShift = const Offset(PatWorld.cardMargin / 2.0, 0);
-    canvas.drawRRect(pileRect.shift(rectShift), pileBackgroundPaint);
-    canvas.drawRRect(pileRect.shift(rectShift), pileOutlinePaint);
+    canvas.drawRRect(PatWorld.pileRect, pileBackgroundPaint);
+    canvas.drawRRect(PatWorld.pileRect, pileOutlinePaint);
   }
 }

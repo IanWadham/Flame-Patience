@@ -22,11 +22,17 @@ class PatWorld extends World with HasGameReference<PatGame> {
   static const cardHeight = 1200.0;
   static const cardMargin = 100.0;
   static const topMargin = 500.0;
-  static const shrinkage = 40.0; // Used in Pile and Base Card rendering.
+  static const shrinkage = 40.0;
+
+  // Predefine some rectangles, for efficiency of CardView and Pile rendering.
   static final cardRect = RRect.fromRectAndRadius(
     const Rect.fromLTWH(0, 0, cardWidth, cardHeight),
     const Radius.circular(75.0),
   );
+  static final pileRect = cardRect.deflate(shrinkage)
+     .shift(Offset(cardMargin / 2.0, 0.0));
+  static final baseCardRect = cardRect.deflate(shrinkage);
+
   static final Vector2 cardSize = Vector2(cardWidth, cardHeight);
   static final topLeft = Vector2(0.0, topMargin);
 

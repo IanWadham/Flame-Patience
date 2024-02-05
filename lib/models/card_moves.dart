@@ -555,10 +555,6 @@ class CardMoves {
 
     // TODO - DON'T ANIMATE THIS! Too tricky. Might need a queue. REVIEW...
 
-    // TODO - Deal a new card to Tableau from Stock EVERY TIME it becomes empty.
-
-    // TODO - Must NOT allow Tap or Drag on INNER card of a Tableau - ONLY Top.
-
     // TODO - Provide support in makeMove() and moveBack() for auto Undo of
     //        Move Types stockToTableaus, replaceExcluded, normal replenish of
     //        Tableau from Stock and normal removeExcluded, back to and
