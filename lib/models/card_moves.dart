@@ -1,3 +1,4 @@
+import 'dart:core';
 import 'dart:typed_data';
 
 import 'package:flame/components.dart' show Vector2;
@@ -145,7 +146,7 @@ class CardMoves {
         );
         if (_redealEmptyTableau && start.hasNoCards &&
             (start.pileType == PileType.tableau)) {
-          _replenishTableauFromStock(start, playerMove: true);
+          _replenishTableauFromStock(start);
         }
         return;
       }
@@ -169,49 +170,28 @@ class CardMoves {
 
     List<CardView> excludedCards = [];
     for (Pile pile in _piles) {
-      if ((pile.pileType == PileType.tableau) ||
-          (pile.pileType == PileType.foundation)) {
-         print('completeTheDeal ${pile.pileIndex} ${pile.pileType}');
-         pile.removeExcludedCards(_excludedRank, excludedCards);
-      }
-    }
-
-    if (excludedCards.isNotEmpty) {
-      if (_excludedCardsPileIndex >= 0) {
-        _piles[_excludedCardsPileIndex].dropCards(excludedCards);
-        excludedCards.clear();
-      }
-      else {
-        // TODO - Make them vanish (i.e. go to (cardWidth / 2.0, -cardHeight)).
-        assert(_excludedCardsPileIndex < 0, "NOT IMPLEMENTED YET");
-      }
-    }
-
-    if (!gameSpec.redealEmptyTableau) return;
-
-    // Fill any holes in the Tableaus with non-excluded Cards.
-    for (Pile pile in _tableaus) {
-      while (pile.nCards < pile.nCardsToDeal) {
-        print('completeTheDeal refill ${pile.pileIndex} ${pile.pileType}');
-        pile.dropCards(_piles[_stockPileIndex].grabCards(1));
-        pile.setTopFaceUp(true);
-        pile.dump();
+      if (pile.pileType == PileType.foundation) {
         pile.removeExcludedCards(_excludedRank, excludedCards);
+        if (excludedCards.isNotEmpty) {
+          if (_excludedCardsPileIndex >= 0) {
+            _piles[_excludedCardsPileIndex].dropCards(excludedCards);
+          } else { // NOT IMPLEMENTED YET.
+            throw UnimplementedError(
+                'Excluded Rank $_excludedRank has no Excluded Card Pile');
+          }
+          excludedCards.clear();
+        }
+      } else if (pile.pileType == PileType.tableau) {
+        if (pile.hasNoCards ||
+            (_cards[pile.topCardIndex].rank == _excludedRank)) {
+          _replenishTableauFromStock(pile);
+        }
       }
     }
-
-    // TODO - Repeated code: polish this up when replenish Tableau is working.
-
-    if (excludedCards.isNotEmpty) {
-      if (_excludedCardsPileIndex >= 0) {
-        _piles[_excludedCardsPileIndex].dropCards(excludedCards);
-        excludedCards.clear();
-      }
-      else {
-        // TODO - Make them vanish (i.e. go to (cardWidth / 2.0, -cardHeight)).
-        assert(_excludedCardsPileIndex < 0, "NOT IMPLEMENTED YET");
-      }
-    }
+    // Discard Moves recorded so far: they are not part of the gameplay.
+    _playerMoves.clear();
+    _redoIndex = 0;
+    print('Player Moves: $_playerMoves redo index $_redoIndex');
   }
 
   void storeMove({
@@ -366,11 +346,25 @@ class CardMoves {
     return possibleMoves;
   }
 
-  void _replenishTableauFromStock(Pile pile, {required playerMove}) {
-    print('_replenishTableauFromStock: ${pile.pileIndex} ${pile.pileType} '
-        'playerMove $playerMove');
-    assert(pile.pileType == PileType.tableau);
-    assert(_stockPileIndex >= 0);
+  void _replenishTableauFromStock(Pile pile) {
+    // Auto-refill an empty Tableau Pile, auto-remove excluded cards or both.
+
+    print('_replenishTableauFromStock: ${pile.pileIndex} ${pile.pileType}');
+    if (pile.pileType != PileType.tableau) {
+      throw StateError('_replenishTableauFromStock() requires a Tableau Pile');
+    }
+    if ((_excludedRank == 0) && !_redealEmptyTableau) {
+      throw StateError('_replenishTableauFromStock() requires the Game to '
+          'have excluded cards or auto-refill of empty Tableau Piles or both');
+    }
+    if (_redealEmptyTableau && (_stockPileIndex < 0)) {
+      throw StateError('Auto-refill of empty Tableau Piles requires the '
+          'Game to have a Stock Pile from which to deal Cards');
+    }
+    if ((_excludedRank > 0) && (_excludedCardsPileIndex < 0)) {
+      throw UnimplementedError(
+          'Game has excluded cards but no Excluded Card Pile to put them on');
+    }
 
     Pile stock = _piles[_stockPileIndex];
     bool excludedCardOnTop = false;
@@ -496,7 +490,7 @@ class CardMoves {
 
         if (_redealEmptyTableau && fromPile.hasNoCards &&
             (fromPile.pileType == PileType.tableau)) {
-          _replenishTableauFromStock(fromPile, playerMove: true);
+          _replenishTableauFromStock(fromPile);
         }
         return true;
       }
@@ -612,7 +606,7 @@ class CardMoves {
       for (Pile pile in _tableaus) {
         if (pile.hasNoCards ||
             (_cards[pile.topCardIndex].rank == _excludedRank)) {
-          _replenishTableauFromStock(pile, playerMove: true);
+          _replenishTableauFromStock(pile);
         }
       }
     }

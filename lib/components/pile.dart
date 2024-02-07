@@ -225,14 +225,14 @@ class Pile extends PositionComponent with HasWorldReference<PatWorld> {
   }
 
   void removeExcludedCards(int excludedRank, List<CardView> excludedCards) {
-    print('Before remove Aces $pileIndex $pileType: $_cards $excludedCards');
+    // print('Before remove Aces $pileIndex $pileType: $_cards $excludedCards');
     for (CardView card in _cards) {
       if (card.rank == excludedRank) {
         excludedCards.add(card);
       }
     }
     _cards.removeWhere((card) => card.rank == excludedRank);
-    print(' After remove Aces $pileIndex $pileType: $_cards $excludedCards');
+    // print(' After remove Aces $pileIndex $pileType: $_cards $excludedCards');
   }
 
   void setTopFaceUp(bool goFaceUp) {
