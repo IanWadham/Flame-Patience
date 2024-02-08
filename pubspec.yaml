@@ -1,5 +1,5 @@
 name: pat
-description: Patience Card Games (Solitaire)
+description: Patience Card Games (Solitaire Games)
 version: 1.0.0
 publish_to: none
 
@@ -7,7 +7,7 @@ environment:
   sdk: ">=3.0.0 <4.0.0"
 
 dependencies:
-  flame: ^1.12.0
+  flame: ^1.15.0
   flutter:
     sdk: flutter
 
