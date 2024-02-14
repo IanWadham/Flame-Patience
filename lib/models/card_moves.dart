@@ -94,7 +94,7 @@ class CardMoves {
   final List<CardView> _movingCards = [];
 
   bool dragStart(CardView card, Pile fromPile, List<CardView> movingCards) {
-    if (fromPile.dragMove(card, _movingCards) == MoveResult.valid) {
+    if (fromPile.isDragMoveValid(card, _movingCards) == MoveResult.valid) {
       print('_movingCards $_movingCards');
       _startedAt = card.position.clone();
       movingCards.clear();
@@ -130,11 +130,23 @@ class CardMoves {
           if (_notEnoughSpaceToMove(nCards, target)) {
             print('Return _movingCards to start: need more space to move.');
             // TODO - Should not happen instantaneously...
-            start.dropCards(_movingCards); // Return cards to start.
+            // ??????? start.dropCards(_movingCards); // Return cards to start.
+            start.receiveMovingCards( // Return cards to starting Pile.
+              _movingCards,
+              speed: 15.0,
+              flipTime: 0.0, // No flip.
+              // transitPriority: CardView.movingPriority,
+            );
             return;
           }
         }
-        target.dropCards(_movingCards);
+        // ??????? target.dropCards(_movingCards);
+        target.receiveMovingCards(
+          _movingCards,
+          speed: 15.0,
+          flipTime: 0.0, // No flip.
+          // transitPriority: CardView.movingPriority,
+        );
         Extra flip = start.needFlipTopCard() ? Extra.fromCardUp : Extra.none;
         storeMove(
           from: start,
@@ -153,7 +165,13 @@ class CardMoves {
     }
     print('Return _movingCards to start');
     // TODO - Should not happen instantaneously...
-    start.dropCards(_movingCards); // Return cards to start.
+    // ??????? start.dropCards(_movingCards); // Return cards to start.
+    start.receiveMovingCards( // Return cards to starting Pile.
+      _movingCards,
+      speed: 15.0,
+      flipTime: 0.0, // No flip.
+      // transitPriority: CardView.movingPriority,
+    );
   }
 
   void completeTheDeal(GameSpec gameSpec, int excludedCardsIndex) {
@@ -202,11 +220,11 @@ class CardMoves {
     int leadCard = 0,
     int strength = 0,
   }) {
-    print('MOVE LIST before storeMove() index $_redoIndex:'); printMoves();
+    // print('MOVE LIST before storeMove() index $_redoIndex:'); printMoves();
     if (_redoIndex < _playerMoves.length) {
       // Remove range from redoIndex to end.
       _playerMoves.removeRange(_redoIndex, _playerMoves.length);
-      print('MOVE LIST after PRUNING, index $_redoIndex:'); printMoves();
+      // print('MOVE LIST after PRUNING, index $_redoIndex:'); printMoves();
     }
     CardMove move = (
       fromPile: from.pileIndex,
@@ -218,9 +236,9 @@ class CardMoves {
     );
     _playerMoves.add(move);
     _redoIndex = _playerMoves.length;
-    print('MOVE LIST after storeMove() index $_redoIndex:'); printMoves();
-    print('Move: ${from.pileIndex} ${from.pileType} to ${to.pileIndex} '
-        '${to.pileType} $nCards cards ${_cards[leadCard]} $extra');
+    // print('MOVE LIST after storeMove() index $_redoIndex:'); printMoves();
+    // print('Move: ${from.pileIndex} ${from.pileType} to ${to.pileIndex} '
+        // '${to.pileType} $nCards cards ${_cards[leadCard]} $extra');
   }
 
   void undoMove() {
@@ -428,8 +446,8 @@ class CardMoves {
 
   bool _tapOnStockPile(CardView card, Pile fromPile, MoveResult tapResult) {
     // Check and perform three different kinds of Stock Pile move.
-    fromPile.dump();
-    print('Tap Stock Pile: $tapResult Waste Pile present $hasWastePile');
+    // fromPile.dump();
+    print('Tap Stock Pile: $tapResult Waste Pile present $hasWastePile\n');
 
     if (tapResult == MoveResult.pileEmpty) {
       if (fromPile.pileSpec.tapEmptyRule == TapEmptyRule.tapNotAllowed) {
@@ -468,15 +486,22 @@ class CardMoves {
       print('Try ${target.pileType} at '
           'row ${target.gridRow} col ${target.gridCol} putOK $putOK');
       if (putOK) { // The card goes out.
+        List<CardView> movingCards = fromPile.grabCards(1);
+        target.receiveMovingCards(
+          movingCards,
+          flipTime: 0.0, // No flip.
+          // transitPriority: CardView.movingPriority,
+        );
+/*
         card.doMove(
           target.position,
           onComplete: () {
             target.put(card);
           },
         );
-
+*/
         // Remove this card from source pile and flip next card, if required.
-        List<CardView> unused = fromPile.grabCards(1);
+        // List<CardView> unused = fromPile.grabCards(1);
         Extra flip = fromPile.needFlipTopCard() ?
             Extra.fromCardUp : Extra.none;
         storeMove(
@@ -530,11 +555,19 @@ class CardMoves {
     // Deal one or more cards from the Stock Pile to the Waste Pile.
     final waste = _piles[_wastePileIndex];
     List<CardView> dealtCards = fromPile.grabCards(1); // TODO - May be 3 or 2.
+/*
     dealtCards.first.doMoveAndFlip(
-      waste.position,
+      waste.position, // ???????? + Vector2(-waste.nCards * 180.0, 0.0),
       whenDone: () {
         waste.put(dealtCards.first);
       },
+    );
+*/
+    waste.receiveMovingCards(
+      dealtCards,
+      speed: 15.0,
+      flipTime: 0.3, // Flip the card as it moves.
+      // transitPriority: CardView.movingPriority,
     );
     storeMove(
       from: fromPile,

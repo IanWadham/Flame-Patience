@@ -26,11 +26,17 @@ class CardView extends PositionComponent
 
   late Pile pile;
 
-  final movingPriority = 200; // Enough to fly above two packs of cards.
+  static const movingPriority = 200; // To fly above 2 or 3 packs of 52 cards.
+
   List<CardView> movingCards = [];
 
   bool _viewFaceUp = false;
   bool _isDragging = false;
+
+  bool _isMoving = false;
+  bool newFaceUp = false;
+  Vector2 newPosition = Vector2(0.0, 0.0);
+  int newPriority = 0;
 
   // Packs are numbered 0-1, suits 0-3, ranks 1-13.
   int get pack => (indexOfCard - 1) ~/ 52;
@@ -38,9 +44,11 @@ class CardView extends PositionComponent
   int get rank => (indexOfCard - 1) ~/ 4 % 13 + 1;
   bool get isRed => suit < 2;
   bool get isBlack => suit >= 2;
-  String get name => (indexOfCard == 0) ? 'BC' : PatWorld.ranks[rank] + PatWorld.suits[suit]; // toString()
+  String get name => (indexOfCard == 0) ? 'BC' : toString();
 
   // bool get isBaseCard => (indexOfCard == 0);
+
+  bool get isMoving => _isMoving;
 
   bool get isFaceUpView => _viewFaceUp;
   bool get isFaceDownView => !_viewFaceUp;
@@ -72,8 +80,7 @@ class CardView extends PositionComponent
   }
 
   @override
-  // String toString() => PatWorld.ranks[rank] + PatWorld.suits[suit];
-  String toString() => name;
+  String toString() => PatWorld.ranks[rank] + PatWorld.suits[suit];
 
   // THE ERGONOMICS OF CARD MOVES:
   //
@@ -123,9 +130,12 @@ class CardView extends PositionComponent
     // Can be called by onTapUp or after a very short (failed) drag-and-drop.
     // For ease of gameplay the game accepts taps that include a short drag.
 
+    if (_isMoving) {
+      return; // Ignore taps while moving, otherwise it's a sure way to crash...
+    }
     bool success = world.cardMoves.tapMove(this);
     // TODO - Beep, flash or other view-type things if not successful.
-    print('CardView: Returned from tap on $name, pile ${pile.pileIndex} ${pile.pileType} success $success');
+    // print('CardView: Returned from tap on $name, pile ${pile.pileIndex} ${pile.pileType} success $success');
     return;
   }
 
@@ -148,8 +158,10 @@ class CardView extends PositionComponent
     // cards to be moved, including one or none, are returned in movingCards.
     // Alternatively, dragging a Stock card or Base Card is treated as a tap.
 
+    // TODO - Need to mark ALL dragged cards as isMoving. Will need a setter.
     if (world.cardMoves.dragStart(this, pile, movingCards)) {
       _isDragging = true;
+      _isMoving = true;
       var cardPriority = movingPriority;
       String moving = 'Moving: ';
       for (final movingCard in movingCards) {
@@ -176,6 +188,7 @@ class CardView extends PositionComponent
     if (!_isDragging) {
       return;
     }
+    _isMoving = false;
     _isDragging = false;
     // Find out what is under the center-point of this card when dropped.
     final targets = parent!
@@ -193,29 +206,28 @@ class CardView extends PositionComponent
 
   void doMove(
     Vector2 to, {
-    double speed = 10.0,
+    double speed = 15.0,
     double start = 0.0,
     Curve curve = Curves.easeOutQuad,
     VoidCallback? onComplete,
-    bool bumpPriority = true,
   }) {
     assert(speed > 0.0, 'Speed must be > 0 widths per second');
     final dt = (to - position).length / (speed * size.x);
     assert(dt > 0, 'Distance to move must be > 0');
-    if (bumpPriority) {
-      priority = movingPriority;
-    }
+    _isMoving = true;
+    priority = movingPriority;
     add(
       MoveToEffect(
         to,
         EffectController(duration: dt, startDelay: start, curve: curve),
         onComplete: () {
+          _isMoving = false;
           onComplete?.call();
         },
       ),
     );
   }
-
+/*
   void doMoveAndFlip(
     Vector2 to, {
     double speed = 10.0,
@@ -238,6 +250,63 @@ class CardView extends PositionComponent
         },
       ),
     );
+  }
+*/
+
+  void doMoveAndFlip(
+    Vector2 to, {
+    double speed = 15.0,
+    double flipTime = 0.3,
+    double start = 0.0,
+    int startPriority = movingPriority,
+    Curve curve = Curves.easeOutQuad,
+    VoidCallback? whenDone,
+  }) {
+    final dt = speed > 0.0 ? (to - position).length / (speed * size.x) : 0.0;
+    assert((((speed > 0.0) && (dt > 0.0)) || (flipTime > 0.0)),
+        'Speed and distance must be > 0.0 OR flipTime must be > 0.0');
+    final moveTime = dt > flipTime ? dt : flipTime; // Use the larger time.
+    print('Doing new move-and-flip... $to speed $speed pri $startPriority');
+    if (dt > 0.0) { // The card will change position.
+      _isMoving = true;
+      add(
+        CardMoveEffect(
+          to,
+          // TODO - Could use onMax: here to release locks just before whenDone.
+          EffectController(
+            duration: moveTime,
+            startDelay: start,
+            curve: curve,
+            onMax: () {_isMoving = false;},
+          ),
+          transitPriority: startPriority,
+          onComplete: whenDone,
+        ),
+      );
+    }
+    if (flipTime > 0.0) {
+      add(
+        ScaleEffect.to(
+          Vector2(scale.x / 100, scale.y),
+          EffectController(
+            startDelay: start,
+            curve: Curves.easeOutSine,
+            duration: moveTime / 2,
+            onMax: () {
+              _viewFaceUp = true;
+            },
+            reverseDuration: moveTime / 2,
+            onMin: () {
+              _viewFaceUp = true;
+            },
+          ),
+          // TODO - Do we need an onComplete()? What if the move is flip-only?
+          // onComplete: () {
+            // onComplete?.call();
+          // },
+        ),
+      );
+    }
   }
 
   void turnFaceUp({
@@ -269,5 +338,22 @@ class CardView extends PositionComponent
         },
       ),
     );
+  }
+}
+
+class CardMoveEffect extends MoveToEffect {
+  CardMoveEffect(
+    super.destination,
+    super.controller, {
+    super.onComplete,
+    this.transitPriority = 100,
+  });
+
+  final int transitPriority;
+
+  @override
+  void onStart() {
+    super.onStart(); // Flame connects MoveToEffect to EffectController.
+    parent?.priority = transitPriority;
   }
 }
