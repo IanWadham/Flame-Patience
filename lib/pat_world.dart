@@ -1,5 +1,5 @@
 import 'dart:core';
-import 'dart:async';
+// ??????? import 'dart:async';
 import 'dart:ui';
 
 import 'package:flame/components.dart';
@@ -30,7 +30,7 @@ class PatWorld extends World with HasGameReference<PatGame> {
     const Radius.circular(75.0),
   );
   static final pileRect = cardRect.deflate(shrinkage)
-     .shift(Offset(cardMargin / 2.0, 0.0));
+     .shift(const Offset(cardMargin / 2.0, 0.0));
   static final baseCardRect = cardRect.deflate(shrinkage);
 
   static final Vector2 cardSize = Vector2(cardWidth, cardHeight);
@@ -103,8 +103,9 @@ class PatWorld extends World with HasGameReference<PatGame> {
     // because all cards are dealt face-up at the start of play, e.g. Freecell.
 
     int nExceptions = generatePiles(gameSpec, cellSize);
-    if (nExceptions > 0)
-        throw FormatException('FOUND $nExceptions FormatExceptions');
+    if (nExceptions > 0) {
+      throw FormatException('FOUND $nExceptions FormatExceptions');
+    }
 
     // Set up a CardMoves Model class that records valid Moves and can undo
     // or redo them. The basic Move is to take one or more cards from the

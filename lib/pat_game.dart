@@ -34,8 +34,8 @@ class PatGame extends FlameGame<PatWorld> {
   static final Color screenBackground = Colors.amber.shade100;
   static final Color pileBackground = Colors.amberAccent.shade100;
   static final Color pileOutline = Colors.brown.shade600;
-  static final Color buttonHighlight = Colors.red;
-  static final Color stockPileHighlight = Colors.red;
+  static const Color buttonHighlight = Colors.red;
+  static const Color stockPileHighlight = Colors.red;
 
   @override
   Color backgroundColor() => screenBackground;
