@@ -262,7 +262,8 @@ class Pile extends PositionComponent with HasWorldReference<PatWorld> {
     double speed = 15.0,
     double startTime = 0.0,
     double flipTime = 0.3,
-    bool isRelativeStartTime = false,
+    double intervalTime = 0.0,
+    VoidCallback? onComplete,
   }) {
     // Receive animated cards onto this pile.
     // The idea is that only the receiving Pile can calculate exactly where the
@@ -319,7 +320,7 @@ class Pile extends PositionComponent with HasWorldReference<PatWorld> {
       print('DECREASED FAN OUT');
       for (int n = 1; n < _cards.length; n++) {
         // Note: Some cards are at rest and some are scheduled to move.
-        // TODO - None of the cards are moving yet, unless we are in a drag and 
+        // TODO - None of the cards are moving yet, unless we are in a drag and
         //        drop. So will the isMoving flag be set now???? Sync problem?
         prev = _cards[n - 1];
         bool prevMoving = prev.isMoving;
@@ -339,10 +340,9 @@ class Pile extends PositionComponent with HasWorldReference<PatWorld> {
 */
 
     // Make the required cards start moving. Later cards fly higher.
-    double relativeStartTime = 0.0;
+    double startAt = startTime;
     int movePriority = CardView.movingPriority + _transitCount;
     for (final card in movingCards) {
-      double startAt = isRelativeStartTime ? relativeStartTime : startTime;
       card.doMoveAndFlip(
         card.newPosition,
         speed: speed,
@@ -359,7 +359,7 @@ class Pile extends PositionComponent with HasWorldReference<PatWorld> {
             //        and then suddenly shrinks. OTOH trying to adjust fan-out
             //        WHILE cards are flying led to many difficulties and bugs.
             //        Perhaps, fan-out can be adjusted each time a card arrives,
-            //        provided no cards earlier in the Pile are still moving, 
+            //        provided no cards earlier in the Pile are still moving,
             //        but that would be a lot of overhead. Or maybe the whole
             //        Pile could shrink instantaneously before cards take off.
           if (_transitCount == 0) {
@@ -373,9 +373,10 @@ class Pile extends PositionComponent with HasWorldReference<PatWorld> {
             }
             _setPileHitArea();
           }
+          onComplete?.call(); // Optional callback for receiveMovingCards().
         }
       );
-      relativeStartTime += startTime;
+      startAt += intervalTime;
       movePriority++;
       _transitCount++;
     }

@@ -74,8 +74,8 @@ class PatData {
       cardPadY: 100,
       hasStockPile: true,
       hasWastePile: true,
-      dealerRow: 3,
-      dealerCol: 0,
+      dealerRow: 4,
+      dealerCol: 3,
       dealSequence: DealSequence.wholePileAtOnce,
       excludedRank: 0, // Deal ALL cards.
       redealEmptyTableau: false,
@@ -129,7 +129,7 @@ class PatData {
       cardPadY: 100,
       hasStockPile: true,
       hasWastePile: true,
-      dealerRow: 3,
+      dealerRow: 5,
       dealerCol: 0,
       dealSequence: DealSequence.wholePileAtOnce,
       excludedRank: 0, // Deal ALL cards.
@@ -190,8 +190,8 @@ class PatData {
       cardPadY: 500,
       hasStockPile: true,
       hasWastePile: false,
-      dealerRow: 2,
-      dealerCol: 9,
+      dealerRow: 8,
+      dealerCol: 1,
       dealSequence: DealSequence.wholePileAtOnce,
       excludedRank: 1, // Exclude Aces.
       redealEmptyTableau: true,

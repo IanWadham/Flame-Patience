@@ -1,5 +1,4 @@
 import 'dart:core';
-// ??????? import 'dart:async';
 import 'dart:ui';
 
 import 'package:flame/components.dart';
@@ -206,30 +205,81 @@ class PatWorld extends World with HasGameReference<PatGame> {
     }
 
     // print('CARDS READY TO DEAL');
+    List<CardView> movingCards = [];
+    var nDealtCards = 0;
+    var nCardsArrived = 0;
+    double cardDealTime = 0.1;
     for (DealTarget target in dealTargets) {
       // print('Deal Sequence: $dealSequence\n');
       if (dealSequence == DealSequence.wholePileAtOnce) {
+        bool pileFaceUp = false;
+        bool lastFaceUp = false;
         while (target.nCardsLeftToDeal > 0 && cardsToDeal.isNotEmpty) {
           CardView card = cardsToDeal.removeLast();
+          movingCards.add(card);
           // print('Deal ${card.toString()} target ${target.pile.pileType}'
           // ' row ${target.pile.gridRow} col ${target.pile.gridCol}'
           // ' nCards left ${target.nCardsLeftToDeal})');
           switch (target.dealFaceRule) {
             case DealFaceRule.faceUp:
-              card.flipView();
+              pileFaceUp = true;
             case DealFaceRule.lastFaceUp:
               if (target.nCardsLeftToDeal == 1) {
-                card.flipView();
+                lastFaceUp = true;
               }
             case DealFaceRule.faceDown:
             case DealFaceRule.notUsed:
               break;
           }
-          target.pile.put(card);
           target.nCardsLeftToDeal--;
         }
+        List<CardView> lastCard = [];
+        if (lastFaceUp) {
+          lastCard.add(movingCards.removeLast());
+        }
+        if (movingCards.isNotEmpty) {
+          target.pile.receiveMovingCards(
+            movingCards,
+            speed: 15.0,
+            startTime: nDealtCards * cardDealTime,
+            flipTime: pileFaceUp ? 0.3 : 0.0,
+            intervalTime: cardDealTime,
+            // isRelativeStartTime: true,
+            onComplete: () {
+              nCardsArrived++;
+              print('Arrived $nCardsArrived Dealt $nDealtCards');
+              if (nCardsArrived == nDealtCards) {
+                print('DEAL COMPLETE...');
+                finishTheDeal(gameSpec);
+              }
+            }
+          );
+          nDealtCards += movingCards.length;
+        }
+        if (lastFaceUp) {
+          target.pile.receiveMovingCards(
+            lastCard,
+            speed: 15.0,
+            startTime: nDealtCards * cardDealTime,
+            flipTime: 0.3,
+            // isRelativeStartTime: true,
+            onComplete: () {
+              nCardsArrived++;
+              print('Arrived $nCardsArrived Dealt $nDealtCards');
+              if (nCardsArrived == nDealtCards) {
+                print('DEAL COMPLETE...');
+                finishTheDeal(gameSpec);
+              }
+            }
+          );
+          nDealtCards++;
+        }
+        movingCards.clear();
+        lastCard.clear();
       } else if (dealSequence == DealSequence.pilesInTurn) {
         // TODO - NOT IMPLEMENTED YET.
+        throw UnimplementedError(
+            'Dealing from L to R across the Piles is not implemented yet.');
       }
     }
     if (hasStockPile && cardsToDeal.isNotEmpty) {
@@ -240,6 +290,9 @@ class PatWorld extends World with HasGameReference<PatGame> {
       piles[_stockPileIndex].dump();
       cardsToDeal.clear();
     }
+  }
+
+  void finishTheDeal(GameSpec gameSpec) {
 
     // TODO - Could do cardMoves.init() here... making a clean break between
     //        PatWorld setup and gameplay. Could do deal and letsCelebrate???
