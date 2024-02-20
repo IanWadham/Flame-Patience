@@ -44,7 +44,7 @@ class CardView extends PositionComponent
   int get rank => (indexOfCard - 1) ~/ 4 % 13 + 1;
   bool get isRed => suit < 2;
   bool get isBlack => suit >= 2;
-  String get name => (indexOfCard == 0) ? 'BC' : toString();
+  String get name => toString();
 
   // bool get isBaseCard => (indexOfCard == 0);
 
@@ -80,7 +80,7 @@ class CardView extends PositionComponent
   }
 
   @override
-  String toString() => PatWorld.ranks[rank] + PatWorld.suits[suit];
+  String toString() => isBaseCard ? 'BC' : PatWorld.ranks[rank] + PatWorld.suits[suit];
 
   // THE ERGONOMICS OF CARD MOVES:
   //
@@ -266,7 +266,8 @@ class CardView extends PositionComponent
     assert((((speed > 0.0) && (dt > 0.0)) || (flipTime > 0.0)),
         'Speed and distance must be > 0.0 OR flipTime must be > 0.0');
     final moveTime = dt > flipTime ? dt : flipTime; // Use the larger time.
-    print('Doing new move-and-flip... $to speed $speed pri $startPriority');
+    print('Doing new move-and-flip... $to $this speed $speed pri $startPriority');
+    assert(_isMoving == false);
     if (dt > 0.0) { // The card will change position.
       _isMoving = true;
       add(
