@@ -350,7 +350,8 @@ class Pile extends PositionComponent with HasWorldReference<PatWorld> {
         start: startAt,
         startPriority: movePriority,
         whenDone: () {
-          print('Arriving: card ${card.name} pri ${card.priority} '
+          print('Arriving: pile $pileIndex $pileType card ${card.name} '
+              'pri ${card.priority} '
               'new pri ${card.newPriority} count $_transitCount');
           card.priority = card.newPriority;
           _transitCount--;
@@ -383,14 +384,56 @@ class Pile extends PositionComponent with HasWorldReference<PatWorld> {
   }
 
   void removeExcludedCards(int excludedRank, List<CardView> excludedCards) {
-    // print('Before remove Aces $pileIndex $pileType: $_cards $excludedCards');
+    print('Before remove Aces $pileIndex $pileType: $_cards $excludedCards');
     for (CardView card in _cards) {
       if (card.rank == excludedRank) {
         excludedCards.add(card);
       }
     }
     _cards.removeWhere((card) => card.rank == excludedRank);
-    // print(' After remove Aces $pileIndex $pileType: $_cards $excludedCards');
+    print(' After remove Aces $pileIndex $pileType: $_cards $excludedCards');
+  }
+
+  List<CardView> stockLookahead(int excludedRank,
+      {bool addPlayableCard = true, int rig = 0}) {
+    List<CardView> result = [];
+    if ((_cards.length == 1) || (pileType != PileType.stock)) {
+      return result;
+    }
+    if (rig > 0) {
+      List<CardView> aces = [];
+      List<CardView> doctored = [];
+      print('RIGGED STOCK: $rig LEADING ACES');
+      dump();
+      for (final card in _cards) {
+        if (card.isBaseCard) {
+          doctored.add(card);
+        } else if ((card.rank == excludedRank) && (rig > 0)) {
+          rig--;
+          aces.add(card);
+        } else {
+          doctored.add(card);
+        }
+      }
+      for (final card in aces) {
+        doctored.add(card);
+      }
+      _cards.clear();
+      _cards.addAll(doctored);
+      dump();
+    }
+
+    for (final card in _cards.reversed.toList()) {
+      if (card.rank == excludedRank) {
+        result.add(card);
+      } else {
+        if (addPlayableCard) {
+          result.add(card);
+        }
+        break;
+      }
+    }
+    return result;
   }
 
   void setTopFaceUp(bool goFaceUp) {
