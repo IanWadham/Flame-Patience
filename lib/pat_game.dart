@@ -17,8 +17,9 @@ class PatGame extends FlameGame<PatWorld> {
   // same cards as before. The actual seed is computed in PatWorld, but is held
   // here in case the player chooses Action.sameDeal.
 
-  int gameIndex = 0;
-  int seed = 1;
+  int gameIndex = 2; // ??????? 0;
+  // int seed = 95985215;
+  int seed = 95885673;
   Action action = Action.newDeal;
 
   // The gameIndex is used to select a GameSpec from PatData.gameList in file

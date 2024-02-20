@@ -1,4 +1,5 @@
 import 'dart:core';
+import 'dart:math';
 import 'dart:ui';
 
 import 'package:flame/components.dart';
@@ -146,6 +147,7 @@ class PatWorld extends World with HasGameReference<PatGame> {
     camera.viewfinder.visibleGameSize = playAreaSize;
     camera.viewfinder.position = Vector2(playAreaSize.x / 2.0, 0.0);
     camera.viewfinder.anchor = Anchor.topCenter;
+    print('WORLD SIZE ${game.size} play area size $playAreaSize');
 
     deal(gameSpec);
   }
@@ -185,7 +187,7 @@ class PatWorld extends World with HasGameReference<PatGame> {
         cardsToDeal.add(card);
       }
     }
-    cardsToDeal.shuffle();
+    cardsToDeal.shuffle(Random(game.seed));
 
     // print('Cards in Deal: $cardsToDeal');
 
@@ -282,6 +284,9 @@ class PatWorld extends World with HasGameReference<PatGame> {
             'Dealing from L to R across the Piles is not implemented yet.');
       }
     }
+
+    piles[_stockPileIndex].dump();
+    print('DEAL: TRANSFER REMAINING CARDS TO STOCK PILE...');
     if (hasStockPile && cardsToDeal.isNotEmpty) {
       // print('${cardsToDeal.length} CARDS LEFT TO DEAL: $cardsToDeal');
       for (CardView card in cardsToDeal) {
