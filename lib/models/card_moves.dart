@@ -127,25 +127,20 @@ class CardMoves {
           // require empty Tableaus or free cells to do a multi-card move,
           // notably Free Cell and Forty & Eight. Others (e.g. Klondike) allow
           // any number of cards to be moved provided there is a valid target.
-          if (_notEnoughSpaceToMove(nCards, target)) {
+          if (_notEnoughSpaceToMove(nCards, start, target)) {
             print('Return _movingCards to start: need more space to move.');
-            // TODO - Should not happen instantaneously...
-            // ??????? start.dropCards(_movingCards); // Return cards to start.
             start.receiveMovingCards( // Return cards to starting Pile.
               _movingCards,
               speed: 15.0,
               flipTime: 0.0, // No flip.
-              // transitPriority: CardView.movingPriority,
             );
             return;
           }
         }
-        // ??????? target.dropCards(_movingCards);
         target.receiveMovingCards(
           _movingCards,
           speed: 15.0,
           flipTime: 0.0, // No flip.
-          // transitPriority: CardView.movingPriority,
         );
         Extra flip = start.needFlipTopCard() ? Extra.fromCardUp : Extra.none;
         storeMove(
@@ -164,13 +159,10 @@ class CardMoves {
       }
     }
     print('Return _movingCards to start');
-    // TODO - Should not happen instantaneously...
-    // ??????? start.dropCards(_movingCards); // Return cards to start.
     start.receiveMovingCards( // Return cards to starting Pile.
       _movingCards,
       speed: 15.0,
       flipTime: 0.0, // No flip.
-      // transitPriority: CardView.movingPriority,
     );
   }
 
@@ -191,8 +183,14 @@ class CardMoves {
       if (pile.pileType == PileType.foundation) {
         pile.removeExcludedCards(_excludedRank, excludedCards);
         if (excludedCards.isNotEmpty) {
+          print('Pile ${pile.toString()} excludedCards $excludedCards');
           if (_excludedCardsPileIndex >= 0) {
-            _piles[_excludedCardsPileIndex].dropCards(excludedCards);
+            // ??????? _piles[_excludedCardsPileIndex].dropCards(excludedCards);
+            _piles[_excludedCardsPileIndex].receiveMovingCards(
+              excludedCards,
+              speed: 3.0, // 10.0,
+              flipTime: 0.0, // No flip.
+            );
           } else { // NOT IMPLEMENTED YET.
             throw UnimplementedError(
                 'Excluded Rank $_excludedRank has no Excluded Card Pile');
@@ -202,11 +200,14 @@ class CardMoves {
       } else if (pile.pileType == PileType.tableau) {
         if (pile.hasNoCards ||
             (_cards[pile.topCardIndex].rank == _excludedRank)) {
+          Pile stock = _piles[_stockPileIndex];
+          final List<CardView> look = stock.stockLookahead(1, rig: 3);
+          print('Lookahead: $look $pile ${pile.pileType}');
           _replenishTableauFromStock(pile);
         }
       }
     }
-    // Discard Moves recorded so far: they are not part of the gameplay.
+    // Discard the Moves recorded so far: they are not part of the gameplay.
     _playerMoves.clear();
     _redoIndex = 0;
     print('Player Moves: $_playerMoves redo index $_redoIndex');
@@ -220,11 +221,11 @@ class CardMoves {
     int leadCard = 0,
     int strength = 0,
   }) {
-    // print('MOVE LIST before storeMove() index $_redoIndex:'); printMoves();
+    print('MOVE LIST before storeMove() index $_redoIndex:'); printMoves();
     if (_redoIndex < _playerMoves.length) {
       // Remove range from redoIndex to end.
       _playerMoves.removeRange(_redoIndex, _playerMoves.length);
-      // print('MOVE LIST after PRUNING, index $_redoIndex:'); printMoves();
+      print('MOVE LIST after PRUNING, index $_redoIndex:'); printMoves();
     }
     CardMove move = (
       fromPile: from.pileIndex,
@@ -236,7 +237,7 @@ class CardMoves {
     );
     _playerMoves.add(move);
     _redoIndex = _playerMoves.length;
-    // print('MOVE LIST after storeMove() index $_redoIndex:'); printMoves();
+    print('MOVE LIST after storeMove() index $_redoIndex:'); printMoves();
     // print('Move: ${from.pileIndex} ${from.pileType} to ${to.pileIndex} '
         // '${to.pileType} $nCards cards ${_cards[leadCard]} $extra');
   }
@@ -364,6 +365,7 @@ class CardMoves {
     return possibleMoves;
   }
 
+  // TODO - This procedure needs to put incoming cards on a queue...
   void _replenishTableauFromStock(Pile pile) {
     // Auto-refill an empty Tableau Pile, auto-remove excluded cards or both.
 
@@ -385,48 +387,97 @@ class CardMoves {
     }
 
     Pile stock = _piles[_stockPileIndex];
+    Pile rejects = _piles[_excludedCardsPileIndex];
     bool excludedCardOnTop = false;
     if (pile.nCards > 0) {
       excludedCardOnTop = (_cards[pile.topCardIndex].rank == _excludedRank);
     }
+    print('\n\n\n>>>>>>>> Entered _replenishTableauFromStock $pile '
+        'Ace on top $excludedCardOnTop');
 
-    while (pile.hasNoCards || excludedCardOnTop) {
+    // WWWWWWW while (pile.hasNoCards || excludedCardOnTop) {
       if (excludedCardOnTop && (stock.hasNoCards || (pile.nCards > 1))) {
         // Normal move of excluded card out of Pile.
         print('replenishTableau normal move: excluded card out of Pile.');
         List<CardView> excludedCards = pile.grabCards(1);
-        _piles[_excludedCardsPileIndex].dropCards(excludedCards);
+        print('Pile ${pile.toString()} excludedCards $excludedCards Extra.none');
+        // ??????? rejects.dropCards(excludedCards);
+        rejects.receiveMovingCards(
+          excludedCards,
+          speed: 3.0, // 10.0,
+          flipTime: 0.0, // No flip.
+        );
         storeMove(
           from: pile,
-          to: _piles[_excludedCardsPileIndex],
+          to: rejects,
           nCards: 1,
           extra: Extra.none,
-          leadCard: _piles[_excludedCardsPileIndex].topCardIndex,
+          leadCard: rejects.topCardIndex,
           strength: 0,
         );
       } else if (stock.hasNoCards) {
-        break;
+        // break;
+        print('STOCK HAS RUN OUT OF CARDS IN _replenishTableau...()');
       } else if (excludedCardOnTop) {
         // Compound move of excluded card out and Stock card in.
         print('replenishTableau compound move: excluded out, Stock card in.');
+        _tableauIndex = pile.pileIndex;
+/* /////////////
         List<CardView> excludedCards = pile.grabCards(1);
-        _piles[_excludedCardsPileIndex].dropCards(excludedCards);
-        pile.dropCards(stock.grabCards(1));
-        pile.setTopFaceUp(true);
+        print('Pile ${rejects.toString()} excludedCards $excludedCards Extra.replaceExcluded');
+        // ??????? rejects.dropCards(excludedCards);
+        rejects.receiveMovingCards( // CRASH xxxxxxxx
+          excludedCards,
+          speed: 3.0, // 10.0,
+          flipTime: 0.0, // No flip.
+        );
+        // ??????? pile.dropCards(stock.grabCards(1));
+        // ??????? pile.setTopFaceUp(true);
+        List<CardView> stockCards = stock.grabCards(1);
+        pile.receiveMovingCards(
+          stockCards,
+          speed: 3.0, // 10.0,
+          flipTime: 0.3, // Flip card.
+          // TODO - Need to wait here, in case the incoming card is an Ace.
+          onComplete: () {
+            print('Replacement card arrived');
+            if (_cards[pile.topCardIndex].rank == _excludedRank) {
+              print('Send replacement to Rejects pile.');
+              rejects.receiveMovingCards(
+                excludedCards,
+                speed: 3.0, // 10.0,
+                flipTime: 0.0, // No flip.
+              );
+            }
+          }, 
+        );
         storeMove(
           from: pile,
-          to: _piles[_excludedCardsPileIndex],
+          to: rejects,
           nCards: 1,
           extra: Extra.replaceExcluded,
-          leadCard: _piles[_excludedCardsPileIndex].topCardIndex,
+          leadCard: rejects.topCardIndex,
           strength: 0,
         );
+///////////// */
+        _replaceTableauCard();
       }
       else {
         // Normal move of Stock card to pile face-up.
+        // TODO - Need to animate this. Might also need to wait, if it's an Ace.
         print('replenishTableau normal move: Stock card in.');
-        pile.dropCards(stock.grabCards(1));
-        pile.setTopFaceUp(true);
+        // ??????? pile.dropCards(stock.grabCards(1));
+        // ??????? pile.setTopFaceUp(true);
+        List<CardView> stockCards = stock.grabCards(1);
+        pile.receiveMovingCards(
+          stockCards,
+          speed: 3.0, // 10.0,
+          flipTime: 0.3, // Flip card.
+          // TODO - Need to wait here, in case the incoming card is an Ace.
+          onComplete: () {
+            // ??????? xxxx
+          }, 
+        );
         storeMove(
           from: stock,
           to: pile,
@@ -441,7 +492,48 @@ class CardMoves {
       }
       print('replenishTableau end while: noCards ${pile.hasNoCards} '
           'excludedCardOnTop $excludedCardOnTop.');
-    } // End while (pile.hasNoCards || excludedCardOnTop).
+    // EEEEEEE } // End while (pile.hasNoCards || excludedCardOnTop).
+  }
+
+  var _tableauIndex = -1;
+
+  void _replaceTableauCard() {
+    final pileToReplenish = _piles[_tableauIndex];
+    final rejects = _piles[_excludedCardsPileIndex];
+    final stock = _piles[_stockPileIndex];
+
+    print('replenishTableau compound move: excluded out, Stock card in.');
+    List<CardView> excludedCards = pileToReplenish.grabCards(1);
+    print('Pile ${rejects.toString()} excludedCards $excludedCards Extra.replaceExcluded');
+    rejects.receiveMovingCards(
+      excludedCards,
+      speed: 10.0,
+      flipTime: 0.0, // No flip.
+    );
+    List<CardView> stockCards = stock.grabCards(1);
+    pileToReplenish.receiveMovingCards(
+      stockCards,
+      speed: 10.0,
+      flipTime: 0.3, // Flip card.
+      // TODO - Need to wait here, in case the incoming card is an Ace.
+      onComplete: () {
+        print('Replacement card arrived');
+        print('Pile $pileToReplenish: indexOfCard ${pileToReplenish.topCardIndex} card ${_cards[pileToReplenish.topCardIndex]} arrived...');
+        pileToReplenish.dump();
+        stock.dump();
+        if (_cards[pileToReplenish.topCardIndex].rank == _excludedRank) {
+          _replaceTableauCard();
+        }
+      }, 
+    );
+    storeMove(
+      from: pileToReplenish,
+      to: rejects,
+      nCards: 1,
+      extra: Extra.replaceExcluded,
+      leadCard: rejects.topCardIndex,
+      strength: 0,
+    );
   }
 
   bool _tapOnStockPile(CardView card, Pile fromPile, MoveResult tapResult) {
@@ -490,16 +582,7 @@ class CardMoves {
         target.receiveMovingCards(
           movingCards,
           flipTime: 0.0, // No flip.
-          // transitPriority: CardView.movingPriority,
         );
-/*
-        card.doMove(
-          target.position,
-          onComplete: () {
-            target.put(card);
-          },
-        );
-*/
         // Remove this card from source pile and flip next card, if required.
         // List<CardView> unused = fromPile.grabCards(1);
         Extra flip = fromPile.needFlipTopCard() ?
@@ -515,6 +598,7 @@ class CardMoves {
 
         if (_redealEmptyTableau && fromPile.hasNoCards &&
             (fromPile.pileType == PileType.tableau)) {
+          print('CARD $card GOES OUT: replenish ${fromPile.toString()}');
           _replenishTableauFromStock(fromPile);
         }
         return true;
@@ -555,19 +639,10 @@ class CardMoves {
     // Deal one or more cards from the Stock Pile to the Waste Pile.
     final waste = _piles[_wastePileIndex];
     List<CardView> dealtCards = fromPile.grabCards(1); // TODO - May be 3 or 2.
-/*
-    dealtCards.first.doMoveAndFlip(
-      waste.position, // ???????? + Vector2(-waste.nCards * 180.0, 0.0),
-      whenDone: () {
-        waste.put(dealtCards.first);
-      },
-    );
-*/
     waste.receiveMovingCards(
       dealtCards,
       speed: 15.0,
       flipTime: 0.3, // Flip the card as it moves.
-      // transitPriority: CardView.movingPriority,
     );
     storeMove(
       from: fromPile,
@@ -595,8 +670,10 @@ class CardMoves {
       return false;
     }
 
-    int nPiles = 0;
+    var nDealtCards = 0;
+    var nCardsArrived = 0;
     bool foundExcludedCard = false;
+
     for (Pile pile in _tableaus) {
       if (fromPile.hasNoCards) {
         print('NO MORE STOCK CARDS - _dealToTableausFromStockPile '
@@ -608,34 +685,50 @@ class CardMoves {
         print('EXCLUDED CARD: ${dealtCards.first} going to $pile');
         foundExcludedCard = true;
       }
-      // dealtCards.first.doMoveAndFlip(
-        // pile.position,
-        // whenDone: () {
-          // pile.put(dealtCards.first);
-        // },
-      // );
-      // TODO - NOT ANIMATED...
-      pile.put(dealtCards.first);
-      pile.setTopFaceUp(true);
-      nPiles++;
+
+      // TODO - Need to wait for ALL cards to arrive, THEN examine the
+      //        Tableaus in left-to-right order. Might still need a queue
+      //        in _replenish...() for the case when two or more Aces are
+      //        dealt to the same pile during the replenishment operation. 
+      pile.receiveMovingCards(
+        dealtCards,
+        speed: 15.0,
+        flipTime: 0.3, // Flip the card as it moves.
+        onComplete: () {
+          print('Pile $pile: card $dealtCards index ${dealtCards.first.indexOfCard} arrived...');
+          nCardsArrived++;
+          if ((nCardsArrived == nDealtCards) && foundExcludedCard) {
+            _adjustDealToTableaus();
+          }
+        },
+      );
+      nDealtCards++;
     }
 
-    if (nPiles > 0) {
+    if (nDealtCards > 0) {
       storeMove(
         from: fromPile,
         to: fromPile, // Not used in Undo/Redo.
-        nCards: nPiles,
+        nCards: nDealtCards,
         extra: Extra.stockToTableaus,
         leadCard: 0, // No particular card.
         strength: 0,
       );
     }
+    return (nDealtCards > 0);
+  }
 
     // TODO - Change this concept to replenishTableaus()... Dependent on
     //        removing excluded cards AND/OR GameSpec.redealEmptyTableau.
 
-    print('foundExcludedCard: $foundExcludedCard');
-    if (foundExcludedCard) {
+    // TODO - AGAIN: Need to wait till all cards have arrived, THEN remove Aces.
+    // TODO - Maybe we could form a queue of Piles that will need to be looked
+    //        at again, either because there will be an Ace on top OR if there
+    //        is anything else that requires _replenishTableau...()(???).
+
+  void _adjustDealToTableaus() {
+    if (_redealEmptyTableau || (_excludedRank > 0)) {
+      // Most games do not need this extra action: Mod 3 is an exception.
       for (Pile pile in _tableaus) {
         if (pile.hasNoCards ||
             (_cards[pile.topCardIndex].rank == _excludedRank)) {
@@ -643,13 +736,16 @@ class CardMoves {
         }
       }
     }
-    return (nPiles > 0);
   }
 
-  bool _notEnoughSpaceToMove(int nCards, Pile target) {
+  // TODO - This sometimes allows more cards to move than it should. Maybe a
+  //        column being vacated is counted as an extra column too early.
+  // TODO - Probably corrected now: needs more testing and comparison with KPat.
+  bool _notEnoughSpaceToMove(int nCards, Pile start, Pile target) {
     var emptyPiles = 0;
     for (Pile pile in _piles) {
-      if ((pile.pileType == PileType.tableau) && pile.hasNoCards) {
+      if ((pile.pileType == PileType.tableau) && (pile != start) &&
+          pile.hasNoCards) {
         emptyPiles++;
       }
     }
