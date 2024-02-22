@@ -201,8 +201,8 @@ class CardMoves {
         if (pile.hasNoCards ||
             (_cards[pile.topCardIndex].rank == _excludedRank)) {
           Pile stock = _piles[_stockPileIndex];
-          final List<CardView> look = stock.stockLookahead(1, rig: 3);
-          print('Lookahead: $look $pile ${pile.pileType}');
+          // final List<CardView> look = stock.stockLookahead(1, rig: 3);
+          // print('Lookahead: $look $pile ${pile.pileType}');
           _replenishTableauFromStock(pile);
         }
       }
@@ -365,7 +365,6 @@ class CardMoves {
     return possibleMoves;
   }
 
-  // TODO - This procedure needs to put incoming cards on a queue...
   void _replenishTableauFromStock(Pile pile) {
     // Auto-refill an empty Tableau Pile, auto-remove excluded cards or both.
 
@@ -395,13 +394,11 @@ class CardMoves {
     print('\n\n\n>>>>>>>> Entered _replenishTableauFromStock $pile '
         'Ace on top $excludedCardOnTop');
 
-    // WWWWWWW while (pile.hasNoCards || excludedCardOnTop) {
       if (excludedCardOnTop && (stock.hasNoCards || (pile.nCards > 1))) {
         // Normal move of excluded card out of Pile.
         print('replenishTableau normal move: excluded card out of Pile.');
         List<CardView> excludedCards = pile.grabCards(1);
         print('Pile ${pile.toString()} excludedCards $excludedCards Extra.none');
-        // ??????? rejects.dropCards(excludedCards);
         rejects.receiveMovingCards(
           excludedCards,
           speed: 3.0, // 10.0,
@@ -422,61 +419,29 @@ class CardMoves {
         // Compound move of excluded card out and Stock card in.
         print('replenishTableau compound move: excluded out, Stock card in.');
         _tableauIndex = pile.pileIndex;
-/* /////////////
-        List<CardView> excludedCards = pile.grabCards(1);
-        print('Pile ${rejects.toString()} excludedCards $excludedCards Extra.replaceExcluded');
-        // ??????? rejects.dropCards(excludedCards);
-        rejects.receiveMovingCards( // CRASH xxxxxxxx
-          excludedCards,
-          speed: 3.0, // 10.0,
-          flipTime: 0.0, // No flip.
-        );
-        // ??????? pile.dropCards(stock.grabCards(1));
-        // ??????? pile.setTopFaceUp(true);
-        List<CardView> stockCards = stock.grabCards(1);
-        pile.receiveMovingCards(
-          stockCards,
-          speed: 3.0, // 10.0,
-          flipTime: 0.3, // Flip card.
-          // TODO - Need to wait here, in case the incoming card is an Ace.
-          onComplete: () {
-            print('Replacement card arrived');
-            if (_cards[pile.topCardIndex].rank == _excludedRank) {
-              print('Send replacement to Rejects pile.');
-              rejects.receiveMovingCards(
-                excludedCards,
-                speed: 3.0, // 10.0,
-                flipTime: 0.0, // No flip.
-              );
-            }
-          }, 
-        );
-        storeMove(
-          from: pile,
-          to: rejects,
-          nCards: 1,
-          extra: Extra.replaceExcluded,
-          leadCard: rejects.topCardIndex,
-          strength: 0,
-        );
-///////////// */
         _replaceTableauCard();
       }
       else {
         // Normal move of Stock card to pile face-up.
         // TODO - Need to animate this. Might also need to wait, if it's an Ace.
+        assert((pile.pileType == PileType.tableau) && pile.hasNoCards,
+            'Tableau Pile $pile is expected to be empty at this point');
         print('replenishTableau normal move: Stock card in.');
-        // ??????? pile.dropCards(stock.grabCards(1));
-        // ??????? pile.setTopFaceUp(true);
+        _tableauIndex = pile.pileIndex;
         List<CardView> stockCards = stock.grabCards(1);
         pile.receiveMovingCards(
           stockCards,
-          speed: 3.0, // 10.0,
+          speed: 10.0,
           flipTime: 0.3, // Flip card.
           // TODO - Need to wait here, in case the incoming card is an Ace.
           onComplete: () {
-            // ??????? xxxx
+            // TODO - "pile" might have changed before callback... Maybe we
+            //        should move all replenish Card logic to the Pile class.
+            if (_cards[pile.topCardIndex].rank == _excludedRank) {
+              _replaceTableauCard();
+            }
           }, 
+          // TODO - How to test the above...
         );
         storeMove(
           from: stock,
@@ -490,9 +455,6 @@ class CardMoves {
       if (pile.nCards > 0) {
         excludedCardOnTop = (_cards[pile.topCardIndex].rank == _excludedRank);
       }
-      print('replenishTableau end while: noCards ${pile.hasNoCards} '
-          'excludedCardOnTop $excludedCardOnTop.');
-    // EEEEEEE } // End while (pile.hasNoCards || excludedCardOnTop).
   }
 
   var _tableauIndex = -1;
@@ -502,7 +464,7 @@ class CardMoves {
     final rejects = _piles[_excludedCardsPileIndex];
     final stock = _piles[_stockPileIndex];
 
-    print('replenishTableau compound move: excluded out, Stock card in.');
+    print('_replaceTableauCard() compound move: excluded out, Stock card in.');
     List<CardView> excludedCards = pileToReplenish.grabCards(1);
     print('Pile ${rejects.toString()} excludedCards $excludedCards Extra.replaceExcluded');
     rejects.receiveMovingCards(
