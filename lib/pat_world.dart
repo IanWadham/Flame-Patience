@@ -8,6 +8,7 @@ import 'package:flame/flame.dart';
 import 'components/pile.dart';
 import 'components/card_view.dart';
 import 'components/flat_button.dart';
+// import 'components/waste_pile.dart'; // TODO - How to access _cards ????
 
 import 'models/card_moves.dart';
 
@@ -16,8 +17,10 @@ import 'specs/pat_enums.dart';
 import 'specs/pat_specs.dart';
 import 'specs/card_image_specs.dart';
 
+import 'views/game_play.dart';
+
 class PatWorld extends World with HasGameReference<PatGame> {
-  static const cardDeckName = 'Ancient_Egyptians'; // A Setting is needed.
+  static const cardDeckName = 'Ancient_Egyptians'; // TODO - Setting needed.
   static const cardWidth = 900.0;
   static const cardHeight = 1200.0;
   static const cardMargin = 100.0;
@@ -51,6 +54,7 @@ class PatWorld extends World with HasGameReference<PatGame> {
   final List<Pile> tableaus = [];
 
   final cardMoves = CardMoves();
+  final gameplay = Gameplay();
 
   Pile get stock => piles[_stockPileIndex];
   Pile get waste => piles[_wastePileIndex];
@@ -84,7 +88,6 @@ class PatWorld extends World with HasGameReference<PatGame> {
     // cards. Each has a front and a back Sprite, to be rendered as required.
     // The cardSpecs Spritesheet has 53 images on it: 52 for the card faces
     // and one for the card backs. The latter is copied 52 or 104 times.
-    // cards = loadCardImages(cardDeckName);
 
     String cardDeckImagesData = '$cardDeckName.png';
     String cardDeckSpriteData = 'assets/images/$cardDeckName.txt';
@@ -117,10 +120,11 @@ class PatWorld extends World with HasGameReference<PatGame> {
     // The cardMoves object is not a Component, so is not added to the World.
 
     cardMoves.init(cards, piles,
-        stockPileIndex, wastePileIndex, foundations, tableaus);
+        stockPileIndex, wastePileIndex);
 
     // Move all cards to a place in this game-layout from which they are dealt.
 
+    // TODO - THIS will have to be part of gameplay.start().
     final dealerX = (gameSpec.dealerCol + 0.5) * cellSize.x;
     final dealerY = gameSpec.dealerRow * cellSize.x;
     final dealerPosition = Vector2(dealerX, dealerY);
@@ -150,6 +154,9 @@ class PatWorld extends World with HasGameReference<PatGame> {
     print('WORLD SIZE ${game.size} play area size $playAreaSize');
 
     deal(gameSpec);
+
+    gameplay.begin(cardMoves, cards, piles,
+        stockPileIndex, wastePileIndex);
   }
 
   void addButton(String label, double buttonX, Action action) {
@@ -187,7 +194,8 @@ class PatWorld extends World with HasGameReference<PatGame> {
         cardsToDeal.add(card);
       }
     }
-    cardsToDeal.shuffle(Random(game.seed));
+    // cardsToDeal.shuffle(Random(game.seed));
+    cardsToDeal.shuffle();
 
     // print('Cards in Deal: $cardsToDeal');
 
@@ -252,7 +260,7 @@ class PatWorld extends World with HasGameReference<PatGame> {
               print('Arrived $nCardsArrived Dealt $nDealtCards');
               if (nCardsArrived == nDealtCards) {
                 print('DEAL COMPLETE...');
-                finishTheDeal(gameSpec);
+                // ??????? finishTheDeal(gameSpec);
               }
             }
           );
@@ -270,7 +278,7 @@ class PatWorld extends World with HasGameReference<PatGame> {
               print('Arrived $nCardsArrived Dealt $nDealtCards');
               if (nCardsArrived == nDealtCards) {
                 print('DEAL COMPLETE...');
-                finishTheDeal(gameSpec);
+                // ??????? finishTheDeal(gameSpec);
               }
             }
           );
@@ -296,7 +304,7 @@ class PatWorld extends World with HasGameReference<PatGame> {
       cardsToDeal.clear();
     }
   }
-
+/*
   void finishTheDeal(GameSpec gameSpec) {
 
     // TODO - Could do cardMoves.init() here... making a clean break between
@@ -306,7 +314,7 @@ class PatWorld extends World with HasGameReference<PatGame> {
       cardMoves.completeTheDeal(gameSpec, _excludedCardsPileIndex);
     }
   }
-
+*/
   // TODO - Maybe could do all this in a helper Class...
   int generatePiles(GameSpec gameSpec, Vector2 cellSize) {
     var pileSpecErrorCount = 0;
@@ -327,7 +335,12 @@ class PatWorld extends World with HasGameReference<PatGame> {
         double pileX = (col + 0.5) * cellSize.x;
         double pileY = row * cellSize.y;
         final position = topLeft + Vector2(pileX, pileY);
+        final size = Vector2(cellSize.x, cellSize.y);
+        PileParameters p = (pileSpec.pileType, pileIndex, /*cellSize.x, cellSize.y,*/
+            row: row, col: col, deal: deal, position: position, size: size);
         print('New Pile ${pileSpec.pileType} $pileIndex pos $position row $row col $col');
+        final pile = Pile(pileSpec, p);
+/*
         final pile = Pile(
           pileSpec,
           pileIndex,
@@ -338,7 +351,7 @@ class PatWorld extends World with HasGameReference<PatGame> {
           col: col,
           deal: deal,
         );
-
+*/
         piles.add(pile);
 
         // print('New pile: row $row col $col deal $deal '

@@ -6,8 +6,9 @@ import 'package:flame/events.dart';
 import 'package:flutter/animation.dart';
 
 import '../pat_world.dart';
-import '../models/card_moves.dart';
 import '../specs/pat_enums.dart';
+import '../views/game_play.dart';
+
 import 'pile.dart';
 
 class CardView extends PositionComponent
@@ -133,7 +134,7 @@ class CardView extends PositionComponent
     if (_isMoving) {
       return; // Ignore taps while moving, otherwise it's a sure way to crash...
     }
-    bool success = world.cardMoves.tapMove(this);
+    bool success = world.gameplay.tapMove(this);
     // TODO - Beep, flash or other view-type things if not successful.
     // print('CardView: Returned from tap on $name, pile ${pile.pileIndex} ${pile.pileType} success $success');
     return;
@@ -159,7 +160,7 @@ class CardView extends PositionComponent
     // Alternatively, dragging a Stock card or Base Card is treated as a tap.
 
     // TODO - Need to mark ALL dragged cards as isMoving. Will need a setter.
-    if (world.cardMoves.dragStart(this, pile, movingCards)) {
+    if (world.gameplay.dragStart(this, pile, movingCards)) {
       _isDragging = true;
       _isMoving = true;
       var cardPriority = movingPriority;
@@ -197,7 +198,7 @@ class CardView extends PositionComponent
         .toList();
     // Drop the cards, if valid, or try a tap move if drag was too short,
     // or, if all else fails, return the card(s) to where they started.
-    world.cardMoves.dragEnd(targets, PatWorld.dragTolerance);
+    world.gameplay.dragEnd(targets, PatWorld.dragTolerance);
 
     // TODO - Beep, flash or other view-type things if not successful.
   }

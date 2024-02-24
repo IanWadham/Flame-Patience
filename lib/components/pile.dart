@@ -8,16 +8,39 @@ import '../specs/pat_enums.dart';
 import '../specs/pat_specs.dart';
 import 'card_view.dart';
 
+typedef PileParameters = (
+  // PileSpec pileSpec,
+  PileType pileType,
+  int pileIndex, {
+  // double baseWidth,	// TODO: Can just bring this in as "size" and compute
+  // double baseHeight, //       limitX and limitY from size.x and size.y...
+  int row,
+  int col,
+  int deal,
+  Vector2 position,
+  Vector2 size,
+});
+
 class Pile extends PositionComponent with HasWorldReference<PatWorld> {
-  Pile(this.pileSpec, this.pileIndex, this.baseWidth, this.baseHeight,
-      {required int row, required int col, int deal = 0, super.position})
-      : pileType = pileSpec.pileType,
-        gridRow = row,
-        gridCol = col,
-        nCardsToDeal = deal,
+  // Pile(this.pileSpec, this.pileIndex, this.baseWidth, this.baseHeight,
+      // {required int row, required int col, int deal = 0, super.position})
+  Pile(this.pileSpec, this.p)
+      // TODO - Make $1 and $2 NAMED fields. Add PileSpec pileSpec BEFORE them.
+      //        Make Pile and WastePile have ONE parameter p. Modify World's
+      //        invocation of Pile constructor and WastePile()'s declaration.
+      : pileType = p.$1, // ?????? pileSpec.pileType,
+        pileIndex = p.$2, // ?????? p.pileIndex,
+        gridRow = p.row,
+        gridCol = p.col,
+        nCardsToDeal = p.deal,
+        // baseWidth = p.baseWidth,
+        baseWidth = p.size.x,
+        baseHeight = p.size.y,
         super(
+          position: p.position,
+          size: p.size,
           anchor: Anchor.topCenter,
-          size: Vector2(baseWidth, baseHeight),
+          // size: Vector2(baseWidth, p.baseHeight),
           priority: -1,
         ) {
 
@@ -45,6 +68,8 @@ class Pile extends PositionComponent with HasWorldReference<PatWorld> {
   }
 
   static const faceDownFanOutFactor = 0.3;
+
+  final PileParameters p;
 
   final bool debugMode = true;
   final PileSpec pileSpec;

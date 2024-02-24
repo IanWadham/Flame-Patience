@@ -6,19 +6,6 @@ import 'package:flame/components.dart' show Vector2;
 import '../components/card_view.dart';
 import '../components/pile.dart';
 import '../specs/pat_enums.dart';
-import '../specs/pat_specs.dart';
-
-enum Extra {
-  // Actions that might follow card moves from pile to pile. Having this
-  // enum allows multiple Moves to be treated as one in undo/redo and will
-  // also simplify the proposed Solver's task.
-
-  none, // The Move is a simple transfer of cards from one pile to another.
-  fromCardUp, // The last card of the "from" pile must be Face Up at the finish.
-  toCardUp, // The card(s) must go Face Up as they arrive (e.g. Stock-to-Waste).
-  stockToTableaus, // Cards are moved successively from Stock to Tableau Piles.
-  replaceExcluded, // An excluded card leaving a Tableau is replaced from Stock.
-}
 
 // TODO - Another idea would be to have "Forced" flags for multiple Moves that
 //        have to be redone as one.
@@ -59,113 +46,29 @@ class CardMoves {
   void printMoves() {
     List<String> moves = [];
     for (CardMove move in _playerMoves) {
-      moves.add('${move.fromPile} ${move.toPile} n${move.nCards} ${_cards[move.leadCard]} e${move.extra.index}');
+      moves.add('${move.fromPile} ${move.toPile} n${move.nCards} '
+          '${_cards[move.leadCard]} e${move.extra.index}');
     }
     print(moves);
   }
 
-  void init(List<CardView> cards, List<Pile> piles, int stockPileIndex,
-      int wastePileIndex, List<Pile> foundations, List<Pile> tableaus) {
+  void init(List<CardView> cards, List<Pile> piles,
+      int stockPileIndex, int wastePileIndex) {
     _cards.addAll(cards);
     _piles.addAll(piles);
     _stockPileIndex = stockPileIndex;
     _wastePileIndex = wastePileIndex;
-    _foundations.addAll(foundations);
-    _tableaus.addAll(tableaus);
-  }
-
-  bool tapMove(CardView card) {
-    Pile fromPile = card.pile;
-    MoveResult tapResult = fromPile.isTapMoveValid(card);
-    print('Tap seen ${fromPile.pileType} result: $tapResult');
-    if (tapResult == MoveResult.notValid) {
-      return false;
-    }
-
-    if (fromPile.pileType == PileType.stock) {
-      return _tapOnStockPile(card, fromPile, tapResult);
-    } else {
-      return _tapToGoOut(card, fromPile);
-    }
-  }
-
-  var _fromPileIndex = -1;
-  var _startedAt = Vector2(0.0, 0.0);
-  final List<CardView> _movingCards = [];
-
-  bool dragStart(CardView card, Pile fromPile, List<CardView> movingCards) {
-    if (fromPile.isDragMoveValid(card, _movingCards) == MoveResult.valid) {
-      print('_movingCards $_movingCards');
-      _startedAt = card.position.clone();
-      movingCards.clear();
-      movingCards.addAll(_movingCards);
-      _fromPileIndex = fromPile.pileIndex;
-      return true;
-    }
-    // If not OK to drag, might have started a tap move on a Stock Pile.
-    return false;
-  }
-
-  void dragEnd(List<Pile> targets, double tolerance) {
-    final start = _piles[_fromPileIndex];
-    final cardCount = _movingCards.length;
-    if ((_movingCards.first.position - _startedAt).length < tolerance) {
-      start.dropCards(_movingCards); // Short drop: return card(s) to start.
-      if (cardCount == 1) {
-        // Only one card has moved a short distance. Treat that as a tap move.
-        tapMove(_movingCards.first);
+    for (Pile pile in _piles) {
+      if (pile.pileType == PileType.foundation) {
+        _foundations.add(pile);
       }
-      return;
-    }
-    if (targets.isNotEmpty) {
-      final target = targets.first;
-      if (target.checkPut(_movingCards.first)) {
-        int nCards = _movingCards.length;
-        if (nCards > 1 &&
-            target.pileSpec.dragRule == DragRule.fromAnywhereViaEmptySpace) {
-          // The move is OK, but is there enough space to do it? Some games
-          // require empty Tableaus or free cells to do a multi-card move,
-          // notably Free Cell and Forty & Eight. Others (e.g. Klondike) allow
-          // any number of cards to be moved provided there is a valid target.
-          if (_notEnoughSpaceToMove(nCards, start, target)) {
-            print('Return _movingCards to start: need more space to move.');
-            start.receiveMovingCards( // Return cards to starting Pile.
-              _movingCards,
-              speed: 15.0,
-              flipTime: 0.0, // No flip.
-            );
-            return;
-          }
-        }
-        target.receiveMovingCards(
-          _movingCards,
-          speed: 15.0,
-          flipTime: 0.0, // No flip.
-        );
-        Extra flip = start.needFlipTopCard() ? Extra.fromCardUp : Extra.none;
-        storeMove(
-          from: start,
-          to: target,
-          nCards: cardCount,
-          extra: flip,
-          leadCard: _movingCards[0].indexOfCard,
-          strength: 0,
-        );
-        if (_redealEmptyTableau && start.hasNoCards &&
-            (start.pileType == PileType.tableau)) {
-          _replenishTableauFromStock(start);
-        }
-        return;
+      if (pile.pileType == PileType.tableau) {
+        _tableaus.add(pile);
       }
     }
-    print('Return _movingCards to start');
-    start.receiveMovingCards( // Return cards to starting Pile.
-      _movingCards,
-      speed: 15.0,
-      flipTime: 0.0, // No flip.
-    );
   }
 
+/* TODO - KEEP THIS: TO BE INCLUDED IN views/game_start.dart.
   void completeTheDeal(GameSpec gameSpec, int excludedCardsIndex) {
     // Last step of PatWorld.deal() - but only if the Game excludes some cards or
     // needs to deal a new Card to a Tableau that is empty or becomes empty.
@@ -212,6 +115,7 @@ class CardMoves {
     _redoIndex = 0;
     print('Player Moves: $_playerMoves redo index $_redoIndex');
   }
+*/
 
   void storeMove({
     required Pile from,
@@ -237,9 +141,9 @@ class CardMoves {
     );
     _playerMoves.add(move);
     _redoIndex = _playerMoves.length;
-    print('MOVE LIST after storeMove() index $_redoIndex:'); printMoves();
-    // print('Move: ${from.pileIndex} ${from.pileType} to ${to.pileIndex} '
-        // '${to.pileType} $nCards cards ${_cards[leadCard]} $extra');
+    // print('MOVE LIST after storeMove() index $_redoIndex:'); printMoves();
+    print('Move: ${from.pileIndex} ${from.pileType} to ${to.pileIndex} '
+        '${to.pileType} $nCards cards ${_cards[leadCard]} $extra');
   }
 
   void undoMove() {
@@ -363,358 +267,6 @@ class CardMoves {
     // TODO - IMPLEMENT THIS.
     List<CardMove> possibleMoves = [];
     return possibleMoves;
-  }
-
-  void _replenishTableauFromStock(Pile pile) {
-    // Auto-refill an empty Tableau Pile, auto-remove excluded cards or both.
-
-    print('_replenishTableauFromStock: ${pile.pileIndex} ${pile.pileType}');
-    if (pile.pileType != PileType.tableau) {
-      throw StateError('_replenishTableauFromStock() requires a Tableau Pile');
-    }
-    if ((_excludedRank == 0) && !_redealEmptyTableau) {
-      throw StateError('_replenishTableauFromStock() requires the Game to '
-          'have excluded cards or auto-refill of empty Tableau Piles or both');
-    }
-    if (_redealEmptyTableau && (_stockPileIndex < 0)) {
-      throw StateError('Auto-refill of empty Tableau Piles requires the '
-          'Game to have a Stock Pile from which to deal Cards');
-    }
-    if ((_excludedRank > 0) && (_excludedCardsPileIndex < 0)) {
-      throw UnimplementedError(
-          'Game has excluded cards but no Excluded Card Pile to put them on');
-    }
-
-    Pile stock = _piles[_stockPileIndex];
-    Pile rejects = _piles[_excludedCardsPileIndex];
-    bool excludedCardOnTop = false;
-    if (pile.nCards > 0) {
-      excludedCardOnTop = (_cards[pile.topCardIndex].rank == _excludedRank);
-    }
-    print('\n\n\n>>>>>>>> Entered _replenishTableauFromStock $pile '
-        'Ace on top $excludedCardOnTop');
-
-      if (excludedCardOnTop && (stock.hasNoCards || (pile.nCards > 1))) {
-        // Normal move of excluded card out of Pile.
-        print('replenishTableau normal move: excluded card out of Pile.');
-        List<CardView> excludedCards = pile.grabCards(1);
-        print('Pile ${pile.toString()} excludedCards $excludedCards Extra.none');
-        rejects.receiveMovingCards(
-          excludedCards,
-          speed: 3.0, // 10.0,
-          flipTime: 0.0, // No flip.
-        );
-        storeMove(
-          from: pile,
-          to: rejects,
-          nCards: 1,
-          extra: Extra.none,
-          leadCard: rejects.topCardIndex,
-          strength: 0,
-        );
-      } else if (stock.hasNoCards) {
-        // break;
-        print('STOCK HAS RUN OUT OF CARDS IN _replenishTableau...()');
-      } else if (excludedCardOnTop) {
-        // Compound move of excluded card out and Stock card in.
-        print('replenishTableau compound move: excluded out, Stock card in.');
-        _tableauIndex = pile.pileIndex;
-        _replaceTableauCard();
-      }
-      else {
-        // Normal move of Stock card to pile face-up.
-        // TODO - Need to animate this. Might also need to wait, if it's an Ace.
-        assert((pile.pileType == PileType.tableau) && pile.hasNoCards,
-            'Tableau Pile $pile is expected to be empty at this point');
-        print('replenishTableau normal move: Stock card in.');
-        _tableauIndex = pile.pileIndex;
-        List<CardView> stockCards = stock.grabCards(1);
-        pile.receiveMovingCards(
-          stockCards,
-          speed: 10.0,
-          flipTime: 0.3, // Flip card.
-          // TODO - Need to wait here, in case the incoming card is an Ace.
-          onComplete: () {
-            // TODO - "pile" might have changed before callback... Maybe we
-            //        should move all replenish Card logic to the Pile class.
-            if (_cards[pile.topCardIndex].rank == _excludedRank) {
-              _replaceTableauCard();
-            }
-          }, 
-          // TODO - How to test the above...
-        );
-        storeMove(
-          from: stock,
-          to: pile,
-          nCards: 1,
-          extra: Extra.toCardUp,
-          leadCard: pile.topCardIndex,
-          strength: 0,
-        );
-      }
-      if (pile.nCards > 0) {
-        excludedCardOnTop = (_cards[pile.topCardIndex].rank == _excludedRank);
-      }
-  }
-
-  var _tableauIndex = -1;
-
-  void _replaceTableauCard() {
-    final pileToReplenish = _piles[_tableauIndex];
-    final rejects = _piles[_excludedCardsPileIndex];
-    final stock = _piles[_stockPileIndex];
-
-    print('_replaceTableauCard() compound move: excluded out, Stock card in.');
-    List<CardView> excludedCards = pileToReplenish.grabCards(1);
-    print('Pile ${rejects.toString()} excludedCards $excludedCards Extra.replaceExcluded');
-    rejects.receiveMovingCards(
-      excludedCards,
-      speed: 10.0,
-      flipTime: 0.0, // No flip.
-    );
-    List<CardView> stockCards = stock.grabCards(1);
-    pileToReplenish.receiveMovingCards(
-      stockCards,
-      speed: 10.0,
-      flipTime: 0.3, // Flip card.
-      // TODO - Need to wait here, in case the incoming card is an Ace.
-      onComplete: () {
-        print('Replacement card arrived');
-        print('Pile $pileToReplenish: indexOfCard ${pileToReplenish.topCardIndex} card ${_cards[pileToReplenish.topCardIndex]} arrived...');
-        pileToReplenish.dump();
-        stock.dump();
-        if (_cards[pileToReplenish.topCardIndex].rank == _excludedRank) {
-          _replaceTableauCard();
-        }
-      }, 
-    );
-    storeMove(
-      from: pileToReplenish,
-      to: rejects,
-      nCards: 1,
-      extra: Extra.replaceExcluded,
-      leadCard: rejects.topCardIndex,
-      strength: 0,
-    );
-  }
-
-  bool _tapOnStockPile(CardView card, Pile fromPile, MoveResult tapResult) {
-    // Check and perform three different kinds of Stock Pile move.
-    // fromPile.dump();
-    print('Tap Stock Pile: $tapResult Waste Pile present $hasWastePile\n');
-
-    if (tapResult == MoveResult.pileEmpty) {
-      if (fromPile.pileSpec.tapEmptyRule == TapEmptyRule.tapNotAllowed) {
-        print('${fromPile.pileType} TAP ON EMPTY PILE WAS IGNORED');
-        return false;
-      }
-
-      // Turn over the Waste Pile and refill the Stock Pile.
-      return _tapOnEmptyStockPile(fromPile);
-
-    } else if (hasWastePile) {
-
-      // Turn one or more Stock Pile cards face-up onto the Waste Pile.
-      return _tapOnFilledStockPile(fromPile);
-
-    } else {
-
-      // Deal one Stock Pile card face-up onto each of several Tableau Piles.
-      return _dealToTableausFromStockPile(fromPile);
-    }
-  }
-
-  bool _tapToGoOut(CardView card, Pile fromPile) {
-    // Tapped on a Card that may be able to move to a Foundation and go out.
-
-    // TODO - Modify this to handle taps on Mod 3 Foundations. The base card
-    //        must be 2, 3 or 4, according to the PileSpec. Otherwise, the Pile
-    //        must be empty and ready to receive a 2, 3 or 4. Also, this type
-    //        of Foundation must be allowed to RECEIVE a tap on its top card.
-    bool putOK = false;
-    for (Pile target in _piles) {
-      if (target.pileType != PileType.foundation) {
-        continue;
-      }
-      putOK = target.checkPut(card);
-      print('Try ${target.pileType} at '
-          'row ${target.gridRow} col ${target.gridCol} putOK $putOK');
-      if (putOK) { // The card goes out.
-        List<CardView> movingCards = fromPile.grabCards(1);
-        target.receiveMovingCards(
-          movingCards,
-          flipTime: 0.0, // No flip.
-        );
-        // Remove this card from source pile and flip next card, if required.
-        // List<CardView> unused = fromPile.grabCards(1);
-        Extra flip = fromPile.needFlipTopCard() ?
-            Extra.fromCardUp : Extra.none;
-        storeMove(
-          from: fromPile,
-          to: target,
-          nCards: 1,
-          extra: flip,
-          leadCard: card.indexOfCard,
-          strength: 0,
-        );
-
-        if (_redealEmptyTableau && fromPile.hasNoCards &&
-            (fromPile.pileType == PileType.tableau)) {
-          print('CARD $card GOES OUT: replenish ${fromPile.toString()}');
-          _replenishTableauFromStock(fromPile);
-        }
-        return true;
-      }
-    } // End of Foundation Pile search.
-
-    return false; // The card is not ready to go out yet.
-  }
-
-  bool _tapOnEmptyStockPile(Pile fromPile) {
-    // Tapped on an empty Stock Pile: if the Game has a Waste Pile and it is
-    // not empty and not blocked, the Waste Pile is turned over and refills
-    // the Stock Pile. Some Games (e.g. Forty and Eight) limit the number of
-    // times this Move can occur. Others (e.g. Klondike) have no limit.
-
-    if (hasWastePile) {
-      // Turn over the Waste Pile, if the Game's rules allow it.
-      final waste = _piles[_wastePileIndex];
-      int n = waste.turnPileOver(fromPile);
-      if (n == 0) {
-        return false; // Not able to turn over the Waste Pile any more.
-      }
-
-      storeMove( // Record a successful Waste Pile turnover Move.
-        from: waste,
-        to: fromPile,
-        nCards: 1,
-        extra: Extra.none,
-        leadCard: 0,
-        strength: 0,
-      );
-      return true;
-    }
-    return false;
-  }
-
-  bool _tapOnFilledStockPile(Pile fromPile) {
-    // Deal one or more cards from the Stock Pile to the Waste Pile.
-    final waste = _piles[_wastePileIndex];
-    List<CardView> dealtCards = fromPile.grabCards(1); // TODO - May be 3 or 2.
-    waste.receiveMovingCards(
-      dealtCards,
-      speed: 15.0,
-      flipTime: 0.3, // Flip the card as it moves.
-    );
-    storeMove(
-      from: fromPile,
-      to: waste,
-      nCards: 1,
-      extra: Extra.toCardUp,
-      leadCard: dealtCards.first.indexOfCard,
-      strength: 0,
-    );
-    return true;
-  }
-
-    // TODO - DON'T ANIMATE THIS! Too tricky. Might need a queue. REVIEW...
-
-    // TODO - Provide support in makeMove() and moveBack() for auto Undo of
-    //        Move Types stockToTableaus, replaceExcluded, normal replenish of
-    //        Tableau from Stock and normal removeExcluded, back to and
-    //        including stockToTableaus or back to and excluding normal moves.
-
-  bool _dealToTableausFromStockPile(Pile fromPile) {
-    // Deal a card from the Stock Pile to each Tableau Pile.
-    assert(fromPile.pileType == PileType.stock);
-    if (fromPile.hasNoCards) {
-      print('NO MORE STOCK CARDS - _dealToTableausFromStockPile NOT ATTEMPTED');
-      return false;
-    }
-
-    var nDealtCards = 0;
-    var nCardsArrived = 0;
-    bool foundExcludedCard = false;
-
-    for (Pile pile in _tableaus) {
-      if (fromPile.hasNoCards) {
-        print('NO MORE STOCK CARDS - _dealToTableausFromStockPile '
-            'TERMINATED EARLY');
-        break; // No more Stock cards.
-      }
-      List<CardView> dealtCards = fromPile.grabCards(1);
-      if (dealtCards.first.rank == _excludedRank) {
-        print('EXCLUDED CARD: ${dealtCards.first} going to $pile');
-        foundExcludedCard = true;
-      }
-
-      // TODO - Need to wait for ALL cards to arrive, THEN examine the
-      //        Tableaus in left-to-right order. Might still need a queue
-      //        in _replenish...() for the case when two or more Aces are
-      //        dealt to the same pile during the replenishment operation. 
-      pile.receiveMovingCards(
-        dealtCards,
-        speed: 15.0,
-        flipTime: 0.3, // Flip the card as it moves.
-        onComplete: () {
-          print('Pile $pile: card $dealtCards index ${dealtCards.first.indexOfCard} arrived...');
-          nCardsArrived++;
-          if ((nCardsArrived == nDealtCards) && foundExcludedCard) {
-            _adjustDealToTableaus();
-          }
-        },
-      );
-      nDealtCards++;
-    }
-
-    if (nDealtCards > 0) {
-      storeMove(
-        from: fromPile,
-        to: fromPile, // Not used in Undo/Redo.
-        nCards: nDealtCards,
-        extra: Extra.stockToTableaus,
-        leadCard: 0, // No particular card.
-        strength: 0,
-      );
-    }
-    return (nDealtCards > 0);
-  }
-
-    // TODO - Change this concept to replenishTableaus()... Dependent on
-    //        removing excluded cards AND/OR GameSpec.redealEmptyTableau.
-
-    // TODO - AGAIN: Need to wait till all cards have arrived, THEN remove Aces.
-    // TODO - Maybe we could form a queue of Piles that will need to be looked
-    //        at again, either because there will be an Ace on top OR if there
-    //        is anything else that requires _replenishTableau...()(???).
-
-  void _adjustDealToTableaus() {
-    if (_redealEmptyTableau || (_excludedRank > 0)) {
-      // Most games do not need this extra action: Mod 3 is an exception.
-      for (Pile pile in _tableaus) {
-        if (pile.hasNoCards ||
-            (_cards[pile.topCardIndex].rank == _excludedRank)) {
-          _replenishTableauFromStock(pile);
-        }
-      }
-    }
-  }
-
-  // TODO - This sometimes allows more cards to move than it should. Maybe a
-  //        column being vacated is counted as an extra column too early.
-  // TODO - Probably corrected now: needs more testing and comparison with KPat.
-  bool _notEnoughSpaceToMove(int nCards, Pile start, Pile target) {
-    var emptyPiles = 0;
-    for (Pile pile in _piles) {
-      if ((pile.pileType == PileType.tableau) && (pile != start) &&
-          pile.hasNoCards) {
-        emptyPiles++;
-      }
-    }
-    if ((target.pileType == PileType.tableau) && target.hasNoCards) emptyPiles--;
-
-    final int maxCards = 1 << emptyPiles; // (2 to the power emptyPiles).
-    return (nCards > maxCards);
   }
 }
 
