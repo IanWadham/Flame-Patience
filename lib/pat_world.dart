@@ -53,7 +53,7 @@ class PatWorld extends World with HasGameReference<PatGame> {
   final List<Pile> foundations = [];
   final List<Pile> tableaus = [];
 
-  final cardMoves = CardMoves();
+  late CardMoves cardMoves;
   final gameplay = Gameplay();
 
   Pile get stock => piles[_stockPileIndex];
@@ -118,9 +118,9 @@ class PatWorld extends World with HasGameReference<PatGame> {
     // or Waste Pile. The validity of each Move is checked just once, during
     // the Tap or DragAndDrop callback that accepted and created the Move.
     // The cardMoves object is not a Component, so is not added to the World.
-
-    cardMoves.init(cards, piles,
-        stockPileIndex, wastePileIndex);
+/*
+    print('GAME DATA DIMENSIONS: cards ${cards.length} piles ${piles.length}');
+    cardMoves.init(cards, piles, stockPileIndex, wastePileIndex);
 
     // Move all cards to a place in this game-layout from which they are dealt.
 
@@ -133,7 +133,7 @@ class PatWorld extends World with HasGameReference<PatGame> {
       card.position = dealerPosition;
       card.priority = cardPriority++;
     }
-
+*/
     // Set up the FlameGame's World and Camera, then shuffle and deal the cards.
 
     addAll(cards);
@@ -153,10 +153,25 @@ class PatWorld extends World with HasGameReference<PatGame> {
     camera.viewfinder.anchor = Anchor.topCenter;
     print('WORLD SIZE ${game.size} play area size $playAreaSize');
 
+    print('GAME DATA DIMENSIONS: cards ${cards.length} piles ${piles.length}');
+
+    cardMoves = CardMoves(cards, piles, stockPileIndex);
+
+    // Move all cards to a place in this game-layout from which they are dealt.
+
+    // TODO - THIS will have to be part of gameplay.start().
+    final dealerX = (gameSpec.dealerCol + 0.5) * cellSize.x;
+    final dealerY = gameSpec.dealerRow * cellSize.x;
+    final dealerPosition = Vector2(dealerX, dealerY);
+    var cardPriority = 1;
+    for (CardView card in cards) {
+      card.position = dealerPosition;
+      card.priority = cardPriority++;
+    }
+
     deal(gameSpec);
 
-    gameplay.begin(cardMoves, cards, piles,
-        stockPileIndex, wastePileIndex);
+    gameplay.begin(cardMoves, cards, piles, stockPileIndex, wastePileIndex);
   }
 
   void addButton(String label, double buttonX, Action action) {

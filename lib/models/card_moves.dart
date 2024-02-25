@@ -1,14 +1,14 @@
 import 'dart:core';
-import 'dart:typed_data';
-
-import 'package:flame/components.dart' show Vector2;
 
 import '../components/card_view.dart';
 import '../components/pile.dart';
 import '../specs/pat_enums.dart';
 
+// TODO - Automate Undo/Redo of sequences of moves involving moves of Excluded
+//        cards to/from the ExcludedCards Pile, Combine with Stock-to-Tableaus.
+//        Would need to bring back some values from GamePlay to track these.
 // TODO - Another idea would be to have "Forced" flags for multiple Moves that
-//        have to be redone as one.
+//        have to be undone/redone as one.
 
 typedef CardMove = ({
   int fromPile, // Starting PileIndex.
@@ -20,104 +20,28 @@ typedef CardMove = ({
 });
 
 class CardMoves {
-  final List<CardView> _cards = [];
-  final List<Pile> _piles = [];
-
-  var _redoIndex = 0;
-  final List<CardMove> _playerMoves = [];
-
-  bool get hasStockPile => _stockPileIndex >= 0;
-  bool get hasWastePile => _wastePileIndex >= 0;
-
-  int _stockPileIndex = -1;
-  int _wastePileIndex = -1;
-  int _excludedCardsPileIndex = -1;
-  final List<Pile> _foundations = [];
-  final List<Pile> _tableaus = [];
-
-  // Most Games do not have these features: Mod 3 has both.
-  int _excludedRank = 0; // Rank of excluded cards (e.g. Aces in Mod 3).
-  bool _redealEmptyTableau = false; // Automatically redeal an empty Tableau?
-
-  void dump() {
-    print('DUMP ${_playerMoves.length} MOVES: redo index $_redoIndex');
-  }
-
-  void printMoves() {
-    List<String> moves = [];
-    for (CardMove move in _playerMoves) {
-      moves.add('${move.fromPile} ${move.toPile} n${move.nCards} '
-          '${_cards[move.leadCard]} e${move.extra.index}');
-    }
-    print(moves);
-  }
-
-  void init(List<CardView> cards, List<Pile> piles,
-      int stockPileIndex, int wastePileIndex) {
-    _cards.addAll(cards);
-    _piles.addAll(piles);
-    _stockPileIndex = stockPileIndex;
-    _wastePileIndex = wastePileIndex;
+  CardMoves(this._cards, this._piles, this._stockPileIndex) {
     for (Pile pile in _piles) {
-      if (pile.pileType == PileType.foundation) {
-        _foundations.add(pile);
-      }
+      // The Tableaus are used in the Move-Type "deal to Tableaus from Stock".
       if (pile.pileType == PileType.tableau) {
         _tableaus.add(pile);
       }
     }
   }
 
-/* TODO - KEEP THIS: TO BE INCLUDED IN views/game_start.dart.
-  void completeTheDeal(GameSpec gameSpec, int excludedCardsIndex) {
-    // Last step of PatWorld.deal() - but only if the Game excludes some cards or
-    // needs to deal a new Card to a Tableau that is empty or becomes empty.
-    assert ((gameSpec.excludedRank > 0) || gameSpec.redealEmptyTableau);
-    assert (gameSpec.excludedRank <= 13);
+  final List<CardView> _cards;
+  final List<Pile> _piles;
+  final int _stockPileIndex;
 
-    _excludedRank = gameSpec.excludedRank; // e.g. Aces in Mod 3 Game.
-    _excludedCardsPileIndex = (excludedCardsIndex >= 0)
-      ? excludedCardsIndex // Index of a Pile to hold and show excluded cards.
-      : -1; // If the Game does not have such a Pile, cards must just disappear.
-    _redealEmptyTableau = gameSpec.redealEmptyTableau; // e.g. in Mod 3 Game.
+  var _redoIndex = 0;
+  final List<CardMove> _playerMoves = [];
 
-    List<CardView> excludedCards = [];
-    for (Pile pile in _piles) {
-      if (pile.pileType == PileType.foundation) {
-        pile.removeExcludedCards(_excludedRank, excludedCards);
-        if (excludedCards.isNotEmpty) {
-          print('Pile ${pile.toString()} excludedCards $excludedCards');
-          if (_excludedCardsPileIndex >= 0) {
-            // ??????? _piles[_excludedCardsPileIndex].dropCards(excludedCards);
-            _piles[_excludedCardsPileIndex].receiveMovingCards(
-              excludedCards,
-              speed: 3.0, // 10.0,
-              flipTime: 0.0, // No flip.
-            );
-          } else { // NOT IMPLEMENTED YET.
-            throw UnimplementedError(
-                'Excluded Rank $_excludedRank has no Excluded Card Pile');
-          }
-          excludedCards.clear();
-        }
-      } else if (pile.pileType == PileType.tableau) {
-        if (pile.hasNoCards ||
-            (_cards[pile.topCardIndex].rank == _excludedRank)) {
-          Pile stock = _piles[_stockPileIndex];
-          // final List<CardView> look = stock.stockLookahead(1, rig: 3);
-          // print('Lookahead: $look $pile ${pile.pileType}');
-          _replenishTableauFromStock(pile);
-        }
-      }
-    }
-    // Discard the Moves recorded so far: they are not part of the gameplay.
-    _playerMoves.clear();
-    _redoIndex = 0;
-    print('Player Moves: $_playerMoves redo index $_redoIndex');
-  }
-*/
+  final List<Pile> _tableaus = [];
 
   void storeMove({
+    // Needs to be called every time a new Move is made by the player, whether
+    // the Move is animated or not. Animation mostly follows storeMove() in real
+    // time, but moving cards cannot be moved again if they are "in flight".
     required Pile from,
     required Pile to,
     required int nCards,
@@ -268,9 +192,24 @@ class CardMoves {
     List<CardMove> possibleMoves = [];
     return possibleMoves;
   }
+
+  void dump() {
+    print('DUMP ${_playerMoves.length} MOVES: redo index $_redoIndex');
+  }
+
+  void printMoves() {
+    List<String> moves = [];
+    for (CardMove move in _playerMoves) {
+      moves.add('${move.fromPile} ${move.toPile} n${move.nCards} '
+          '${_cards[move.leadCard]} e${move.extra.index}');
+    }
+    print(moves);
+  }
 }
 
 /*
+import 'dart:typed_data';
+
   // EXPERIMENTAL CODE - Might need to use ByteData in proposed Solver.
 
   final ByteData _b = ByteData(100);
