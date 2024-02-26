@@ -204,7 +204,7 @@ class CardView extends PositionComponent
   }
 
   //#region Effects
-
+/*
   void doMove(
     Vector2 to, {
     double speed = 15.0,
@@ -228,7 +228,7 @@ class CardView extends PositionComponent
       ),
     );
   }
-/*
+
   void doMoveAndFlip(
     Vector2 to, {
     double speed = 10.0,
@@ -254,6 +254,9 @@ class CardView extends PositionComponent
   }
 */
 
+  // TODO - Not urgent: experiment with doing the flip within some PART of the
+  //        move, instead of spreading it out over the whole move as at present.
+
   void doMoveAndFlip(
     Vector2 to, {
     double speed = 15.0,
@@ -263,26 +266,29 @@ class CardView extends PositionComponent
     Curve curve = Curves.easeOutQuad,
     VoidCallback? whenDone,
   }) {
+    // TODO - MUST handle move-only, move+flip and flip-only properly. NICE
+    //        to have an automatic instantaneous move if time < _minTime...
     final dt = speed > 0.0 ? (to - position).length / (speed * size.x) : 0.0;
     assert((((speed > 0.0) && (dt > 0.0)) || (flipTime > 0.0)),
         'Speed and distance must be > 0.0 OR flipTime must be > 0.0');
     final moveTime = dt > flipTime ? dt : flipTime; // Use the larger time.
-    print('Doing new move-and-flip... $to $this speed $speed pri $startPriority');
+    print('START new move+flip: $to $this speed $speed flip $flipTime '
+        'pri $startPriority');
     assert(_isMoving == false);
+    _isMoving = true;
+    bool flipOnly = ((flipTime > 0.0) && (speed <= 0.0));
     if (dt > 0.0) { // The card will change position.
-      _isMoving = true;
       add(
         CardMoveEffect(
           to,
-          // TODO - Could use onMax: here to release locks just before whenDone.
           EffectController(
             duration: moveTime,
             startDelay: start,
             curve: curve,
-            onMax: () {_isMoving = false;},
+            onMax: () {if (!flipOnly) _isMoving = false;},
           ),
           transitPriority: startPriority,
-          onComplete: whenDone,
+          onComplete: flipOnly ? null : whenDone,
         ),
       );
     }
@@ -300,17 +306,15 @@ class CardView extends PositionComponent
             reverseDuration: moveTime / 2,
             onMin: () {
               _viewFaceUp = true;
+              if (flipOnly) _isMoving = false;
             },
           ),
-          // TODO - Do we need an onComplete()? What if the move is flip-only?
-          // onComplete: () {
-            // onComplete?.call();
-          // },
+          onComplete: flipOnly ? whenDone : null,
         ),
       );
     }
   }
-
+/*
   void turnFaceUp({
     double time = 0.3,
     double start = 0.0,
@@ -341,6 +345,7 @@ class CardView extends PositionComponent
       ),
     );
   }
+*/
 }
 
 class CardMoveEffect extends MoveToEffect {
