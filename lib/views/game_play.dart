@@ -102,41 +102,48 @@ class Gameplay {
       final target = targets.first;
       if (target.checkPut(_movingCards.first)) {
         int nCards = _movingCards.length;
-        if (nCards > 1 &&
+        bool dropOK = true;
+        if (nCards > 1 && (target.pileType != PileType.tableau)) {
+          // Only Tableaus can accept more than one card - but not in all games.
+          dropOK = false;
+          print('Return _movingCards to start: target cannot accept > 1 card.');
+        }
+        else if (nCards > 1 &&
             target.pileSpec.dragRule == DragRule.fromAnywhereViaEmptySpace) {
-          // The move is OK, but is there enough space to do it? Some games
-          // require empty Tableaus or free cells to do a multi-card move,
-          // notably Free Cell and Forty & Eight. Others (e.g. Klondike) allow
-          // any number of cards to be moved provided there is a valid target.
+          // The move is OK, but is there enough space to do it?
+          //
+          // Some games require empty Tableaus or free cells to do a multi-card
+          // move, notably Free Cell and Forty & Eight. Others (e.g. Klondike)
+          // allow any number of cards to be moved - if there is a valid target.
           if (_notEnoughSpaceToMove(nCards, start, target)) {
             print('Return _movingCards to start: need more space to move.');
-            start.receiveMovingCards( // Return cards to starting Pile.
-              _movingCards,
-              speed: 15.0,
-              flipTime: 0.0, // No flip.
-            );
-            return;
+            dropOK = false;
           }
         }
-        target.receiveMovingCards(
-          _movingCards,
-          speed: 15.0,
-          flipTime: 0.0, // No flip.
-        );
-        Extra flip = start.needFlipTopCard() ? Extra.fromCardUp : Extra.none;
-        _cardMoves.storeMove(
-          from: start,
-          to: target,
-          nCards: cardCount,
-          extra: flip,
-          leadCard: _movingCards[0].indexOfCard,
-          strength: 0,
-        );
-        if (_redealEmptyTableau && start.hasNoCards &&
-            (start.pileType == PileType.tableau)) {
-          _replenishTableauFromStock(start);
+        if (dropOK) {
+          target.receiveMovingCards(
+            _movingCards,
+            speed: 15.0,
+            flipTime: 0.0, // No flip.
+          );
+          // TODO - Need to know whether to flip (as in Klondike) or not (as in
+          //        Forty Eight). The flip is animated in Pile currently... OK?
+          Extra flip = start.neededToFlipTopCard() ?
+              Extra.fromCardUp : Extra.none;
+          _cardMoves.storeMove(
+            from: start,
+            to: target,
+            nCards: cardCount,
+            extra: flip,
+            leadCard: _movingCards[0].indexOfCard,
+            strength: 0,
+          );
+          if (_redealEmptyTableau && start.hasNoCards &&
+              (start.pileType == PileType.tableau)) {
+            _replenishTableauFromStock(start);
+          }
+          return;
         }
-        return;
       }
     }
     print('Return _movingCards to start');
@@ -146,7 +153,7 @@ class Gameplay {
       flipTime: 0.0, // No flip.
     );
   }
-/*
+/* KEEP THIS!!!! Will be needed in views/game_start.dart.
   void completeTheDeal(GameSpec gameSpec, int excludedCardsIndex) {
     // Last step of PatWorld.deal() - but only if the Game excludes some cards or
     // needs to deal a new Card to a Tableau that is empty or becomes empty.
@@ -375,8 +382,9 @@ class Gameplay {
           flipTime: 0.0, // No flip.
         );
         // Remove this card from source pile and flip next card, if required.
-        // List<CardView> unused = fromPile.grabCards(1);
-        Extra flip = fromPile.needFlipTopCard() ?
+        // TODO - Need to know whether to flip (as in Klondike) or not (as in
+        //        Forty Eight). The flip is animated in Pile currently... OK?
+        Extra flip = fromPile.neededToFlipTopCard() ?
             Extra.fromCardUp : Extra.none;
         _cardMoves.storeMove(
           from: fromPile,
