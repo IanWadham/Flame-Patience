@@ -338,6 +338,7 @@ class PatWorld extends World with HasGameReference<PatGame> {
     var pileIndex = 0;
     for (GamePileSpec gamePile in gameSpec.gamePilesSpec) {
       final pileSpec = gamePile.pileSpec;
+      final pileType = pileSpec.pileType;
       final nPilesOfThisType = gamePile.nPilesSpec;
       if (nPilesOfThisType != gamePile.pileTrios.length) {
         throw FormatException('${pileSpec.pileType} requires $nPilesOfThisType '
@@ -350,27 +351,22 @@ class PatWorld extends World with HasGameReference<PatGame> {
         double pileX = (col + 0.5) * cellSize.x;
         double pileY = row * cellSize.y;
         final position = topLeft + Vector2(pileX, pileY);
-        final size = Vector2(cellSize.x, cellSize.y);
-        PileParameters p = (pileSpec.pileType, pileIndex, /*cellSize.x, cellSize.y,*/
-            row: row, col: col, deal: deal, position: position, size: size);
         print('New Pile ${pileSpec.pileType} $pileIndex pos $position row $row col $col');
-        final pile = Pile(pileSpec, p);
-/*
         final pile = Pile(
           pileSpec,
           pileIndex,
           cellSize.x,
           cellSize.y,
-          position: position,
           row: row,
           col: col,
           deal: deal,
+          position: position,
         );
-*/
+
         piles.add(pile);
 
-        // print('New pile: row $row col $col deal $deal '
-            // 'pos $position ${pile.pileType}');
+        print('New pile: row $row col $col deal $deal '
+            'pos $position ${pile.pileType}');
         switch (pile.pileType) {
           case PileType.stock:
             if (!gameSpec.hasStockPile) {
