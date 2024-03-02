@@ -1,5 +1,4 @@
 import 'dart:ui';
-// ??????? import 'dart:meta';
 
 import 'package:flame/components.dart';
 import 'package:flame/input.dart' show Vector2;
@@ -226,7 +225,7 @@ class Pile extends PositionComponent with HasWorldReference<PatWorld> {
       } else {
         // Fan out the second and subsequent cards.
         prev = _cards[_cards.length - 2];
-        final fanOut = prev.isFaceUpView ? _fanOutFaceUp : _fanOutFaceDown; // xxxxx
+        final fanOut = prev.isFaceUpView ? _fanOutFaceUp : _fanOutFaceDown;
         print('$pileType $pileIndex card ${card.name} FanOut $fanOut');
         card.position = prev.position + fanOut;
       }
@@ -431,11 +430,6 @@ class Pile extends PositionComponent with HasWorldReference<PatWorld> {
     // Player can put or drop cards onto Foundation or Tableau Piles only.
     String message = 'Check Put: ${card.toString()} $pileType'
         ' row $gridRow col $gridCol:';
-    // TODO - Why wasn't this (pileType == PileType.foundatiom) ||
-    //            (pileType == PileType.tableau)? And how did we get to
-    //        print 'first card OK' in any case?
-    // if ((pileType != PileType.foundation) || (pileType != PileType.waste)) {
-
     if ((pileType == PileType.foundation) || (pileType == PileType.tableau)) {
       if (_cards.isEmpty) {
         final firstOK =
@@ -534,8 +528,8 @@ class Pile extends PositionComponent with HasWorldReference<PatWorld> {
     }
   }
 
-  // TODO - Need to know whether to flip (as in Klondike) or not (as in Forty Eight).
-  //        If needed, the flip has to be ANIMATED somehow. Here or in GamePlay?
+  // TODO - Need to know whether to flip (as in Klondike) or not (as in Forty
+  //        Eight). If needed, the flip has to be ANIMATED. Here or in GamePlay?
   bool neededToFlipTopCard() {
     // Used in piles like Klondike Tableaus, where top cards must be face-up.
     print('Pile $pileIndex $pileType needFlip: rule ${pileSpec.dealFaceRule}');

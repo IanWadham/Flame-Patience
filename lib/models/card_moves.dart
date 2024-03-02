@@ -19,24 +19,31 @@ typedef CardMove = ({
   int leadCard, // For DEBUG: index number of first card (if known).
 });
 
+// The basic Move is to take one or more cards from the end of one pile and
+// add it/them to the end of another pile, working within the rules of the
+// current game and remembering any card flips that were required. All moves
+// can be undone or redone any number of times. The validity of each Move is
+// checked just once, during the Tap or DragAndDrop callback that accepted
+// and created the Move.
+
+// There is also a Move to turn over the whole Stock or Waste Pile.
+
 class CardMoves {
-  CardMoves(this._cards, this._piles, this._stockPileIndex) {
-    for (Pile pile in _piles) {
-      // The Tableaus are used in the Move-Type "deal to Tableaus from Stock".
-      if (pile.pileType == PileType.tableau) {
-        _tableaus.add(pile);
-      }
-    }
-  }
+  CardMoves(this._cards, this._piles, this._tableaus, this._stockPileIndex);
 
   final List<CardView> _cards;
   final List<Pile> _piles;
-  final int _stockPileIndex;
+  final _stockPileIndex; // -1 means "no Stock Pile": not all Games have one.
+  final List<Pile> _tableaus;
 
   var _redoIndex = 0;
   final List<CardMove> _playerMoves = [];
 
-  final List<Pile> _tableaus = [];
+  void reset() {
+    _playerMoves.clear();
+    _redoIndex = 0;
+    print('CardMoves reset: Moves: $_playerMoves redo index $_redoIndex');
+  }
 
   void storeMove({
     // Needs to be called every time a new Move is made by the player, whether

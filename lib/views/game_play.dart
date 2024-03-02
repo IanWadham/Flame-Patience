@@ -14,11 +14,14 @@ import '../components/card_view.dart';
 import '../components/pile.dart';
 import '../models/card_moves.dart';
 import '../specs/pat_enums.dart';
+import '../specs/pat_specs.dart';
+import 'game_start.dart';
 
 class Gameplay {
+  Gameplay(this._cards, this._piles);
 
-  final List<CardView> _cards = [];
-  final List<Pile> _piles = [];
+  final List<CardView> _cards;
+  final List<Pile> _piles;
 
   late CardMoves _cardMoves;
 
@@ -32,19 +35,13 @@ class Gameplay {
   int _excludedCardsPileIndex = -1;
   final List<Pile> _foundations = [];
   final List<Pile> _tableaus = [];
+    // ??????? if ((_excludedRank == 0) && !_redealEmptyTableau) {
 
   // Most Games do not have these features: Mod 3 has both.
   int _excludedRank = 0; // Rank of excluded cards (e.g. Aces in Mod 3).
   bool _redealEmptyTableau = false; // Automatically redeal an empty Tableau?
 
-  void begin(CardMoves cardMoves,
-      List<CardView> cards, List<Pile> piles,
-      int stockPileIndex, int wastePileIndex) {
-    _cardMoves = cardMoves;
-    _cards.addAll(cards);
-    _piles.addAll(piles);
-    _stockPileIndex = stockPileIndex;
-    _wastePileIndex = wastePileIndex;
+  void begin(GameSpec gameSpec, int randomSeed) {
     for (Pile pile in _piles) {
       if (pile.pileType == PileType.foundation) {
         _foundations.add(pile);
@@ -52,7 +49,47 @@ class Gameplay {
       if (pile.pileType == PileType.tableau) {
         _tableaus.add(pile);
       }
+      if (pile.pileType == PileType.stock) {
+        _stockPileIndex = pile.pileIndex;
+      }
+      if (pile.pileType == PileType.waste) {
+        _wastePileIndex = pile.pileIndex;
+      }
+      if (pile.pileType == PileType.excludedCards) {
+        _excludedCardsPileIndex = pile.pileIndex;
+      }
+
+      // Set game-wide rules for the gameplay in this Game.
+      _excludedRank = gameSpec.excludedRank;
+      _redealEmptyTableau = gameSpec.redealEmptyTableau;
     }
+
+    // Create Move storage and Undo/Redo facility.
+    _cardMoves = CardMoves(_cards, _piles, _tableaus, _stockPileIndex);
+
+    // Create a (temporary) Dealer and give it access to data needed for the
+    // for the deal (first three parameters) and a completeTheDeal() procedure
+    // needed in a few games (last four parameters).
+    final cardDealer = Dealer(_cards, _piles, _stockPileIndex,
+        gameSpec, _excludedCardsPileIndex, _replenishTableauFromStock,
+        _cardMoves,
+    );
+
+    // Decide whether a second phase is needed.
+    bool moreToDo = (gameSpec.excludedRank > 0 || gameSpec.redealEmptyTableau);
+
+    // Do the main deal, followed by a callback to completeTheDeal() if needed.
+    cardDealer.deal(gameSpec.dealSequence, randomSeed,
+        whenDone: moreToDo ? cardDealer.completeTheDeal : null,
+    );
+  }
+
+  void undoMove() {
+    _cardMoves.undoMove();
+  }
+
+  void redoMove() {
+    _cardMoves.redoMove();
   }
 
   bool tapMove(CardView card) {
@@ -153,54 +190,6 @@ class Gameplay {
       flipTime: 0.0, // No flip.
     );
   }
-/* KEEP THIS!!!! Will be needed in views/game_start.dart.
-  void completeTheDeal(GameSpec gameSpec, int excludedCardsIndex) {
-    // Last step of PatWorld.deal() - but only if the Game excludes some cards or
-    // needs to deal a new Card to a Tableau that is empty or becomes empty.
-    assert ((gameSpec.excludedRank > 0) || gameSpec.redealEmptyTableau);
-    assert (gameSpec.excludedRank <= 13);
-
-    _excludedRank = gameSpec.excludedRank; // e.g. Aces in Mod 3 Game.
-    _excludedCardsPileIndex = (excludedCardsIndex >= 0)
-      ? excludedCardsIndex // Index of a Pile to hold and show excluded cards.
-      : -1; // If the Game does not have such a Pile, cards must just disappear.
-    _redealEmptyTableau = gameSpec.redealEmptyTableau; // e.g. in Mod 3 Game.
-
-    List<CardView> excludedCards = [];
-    for (Pile pile in _piles) {
-      if (pile.pileType == PileType.foundation) {
-        pile.removeExcludedCards(_excludedRank, excludedCards);
-        if (excludedCards.isNotEmpty) {
-          print('Pile ${pile.toString()} excludedCards $excludedCards');
-          if (_excludedCardsPileIndex >= 0) {
-            // ??????? _piles[_excludedCardsPileIndex].dropCards(excludedCards);
-            _piles[_excludedCardsPileIndex].receiveMovingCards(
-              excludedCards,
-              speed: 3.0, // 10.0,
-              flipTime: 0.0, // No flip.
-            );
-          } else { // NOT IMPLEMENTED YET.
-            throw UnimplementedError(
-                'Excluded Rank $_excludedRank has no Excluded Card Pile');
-          }
-          excludedCards.clear();
-        }
-      } else if (pile.pileType == PileType.tableau) {
-        if (pile.hasNoCards ||
-            (_cards[pile.topCardIndex].rank == _excludedRank)) {
-          Pile stock = _piles[_stockPileIndex];
-          // final List<CardView> look = stock.stockLookahead(1, rig: 3);
-          // print('Lookahead: $look $pile ${pile.pileType}');
-          _replenishTableauFromStock(pile);
-        }
-      }
-    }
-    // Discard the Moves recorded so far: they are not part of the gameplay.
-    _playerMoves.clear();
-    _redoIndex = 0;
-    print('Player Moves: $_playerMoves redo index $_redoIndex');
-  }
-*/
 
   void _replenishTableauFromStock(Pile pile) {
     // Auto-refill an empty Tableau Pile, auto-remove excluded cards or both.
@@ -293,6 +282,7 @@ class Gameplay {
 
   var _tableauIndex = -1;
 
+  // TODO - Explain this "callback loop"...
   void _replaceTableauCard() {
     final pileToReplenish = _piles[_tableauIndex];
     final rejects = _piles[_excludedCardsPileIndex];
@@ -518,9 +508,17 @@ class Gameplay {
     }
   }
 
-  // TODO - This sometimes allows more cards to move than it should. Maybe a
-  //        column being vacated is counted as an extra column too early.
-  //        Probably corrected now: needs more testing and comparison with KPat.
+  // In this Gameplay rule, the number of cards you can move depends on how many
+  // empty Tableaus there are. It is based on moving one card at a time into or
+  // via the empty Tableaus. So, with two empty Tableaus, you can move up to
+  // three cards into them, one card at a time, and leave them there. Then you
+  // can move a fourth into another Tableau and put the other three on top of
+  // it, if all the cards satisfy the rule for that pile.
+  //
+  // All this is automated in actual play and is not animated (because that is
+  // tedious to watch). So, in an actual Game, you can move 1-2 cards if you
+  // have one empty Tableau, 1-4 if you have two empty Tableaus, and so on.
+  // The method is used to build up long sequences (e.g. in Forty and Eight).
   bool _notEnoughSpaceToMove(int nCards, Pile start, Pile target) {
     var emptyPiles = 0;
     for (Pile pile in _piles) {

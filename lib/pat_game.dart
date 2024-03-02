@@ -17,7 +17,7 @@ class PatGame extends FlameGame<PatWorld> {
   // same cards as before. The actual seed is computed in PatWorld, but is held
   // here in case the player chooses Action.sameDeal.
 
-  int gameIndex = 2; // ??????? 0;
+  int gameIndex = 0;
   // int seed = 95985215;
   int seed = 95885673;
   Action action = Action.newDeal;
@@ -41,9 +41,3 @@ class PatGame extends FlameGame<PatWorld> {
   @override
   Color backgroundColor() => screenBackground;
 }
-
-  // static final Color pileBackground = Colors.lime.shade300;
-  // static final Color pileBackground = Colors.lime.shade200;
-  // static final Color pileBackground = Colors.amber.shade200;
-  // static final Color pileBackground = Colors.brown.shade100;
-  // static final Color pileOutline = Colors.brown.shade400;
