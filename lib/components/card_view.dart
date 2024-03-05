@@ -204,55 +204,6 @@ class CardView extends PositionComponent
   }
 
   //#region Effects
-/*
-  void doMove(
-    Vector2 to, {
-    double speed = 15.0,
-    double start = 0.0,
-    Curve curve = Curves.easeOutQuad,
-    VoidCallback? onComplete,
-  }) {
-    assert(speed > 0.0, 'Speed must be > 0 widths per second');
-    final dt = (to - position).length / (speed * size.x);
-    assert(dt > 0, 'Distance to move must be > 0');
-    _isMoving = true;
-    priority = movingPriority;
-    add(
-      MoveToEffect(
-        to,
-        EffectController(duration: dt, startDelay: start, curve: curve),
-        onComplete: () {
-          _isMoving = false;
-          onComplete?.call();
-        },
-      ),
-    );
-  }
-
-  void doMoveAndFlip(
-    Vector2 to, {
-    double speed = 10.0,
-    double start = 0.0,
-    Curve curve = Curves.easeOutQuad,
-    VoidCallback? whenDone,
-  }) {
-    assert(speed > 0.0, 'Speed must be > 0 widths per second');
-    final dt = (to - position).length / (speed * size.x);
-    assert(dt > 0, 'Distance to move must be > 0');
-    priority = movingPriority;
-    add(
-      MoveToEffect(
-        to,
-        EffectController(duration: dt, startDelay: start, curve: curve),
-        onComplete: () {
-          turnFaceUp(
-            onComplete: whenDone,
-          );
-        },
-      ),
-    );
-  }
-*/
 
   // TODO - Not urgent: experiment with doing the flip within some PART of the
   //        move, instead of spreading it out over the whole move as at present.
@@ -266,14 +217,13 @@ class CardView extends PositionComponent
     Curve curve = Curves.easeOutQuad,
     VoidCallback? whenDone,
   }) {
-    // TODO - MUST handle move-only, move+flip and flip-only properly. NICE
-    //        to have an automatic instantaneous move if time < _minTime...
+    // TODO - NICE to have an automatic instantaneous move if time < _minTime...
     final dt = speed > 0.0 ? (to - position).length / (speed * size.x) : 0.0;
     assert((((speed > 0.0) && (dt > 0.0)) || (flipTime > 0.0)),
         'Speed and distance must be > 0.0 OR flipTime must be > 0.0');
     final moveTime = dt > flipTime ? dt : flipTime; // Use the larger time.
-    print('START new move+flip: $to $this speed $speed flip $flipTime '
-        'pri $startPriority');
+    // print('START new move+flip: $to $this speed $speed flip $flipTime '
+        // 'pri $startPriority');
     assert(_isMoving == false);
     _isMoving = true;
     bool flipOnly = ((flipTime > 0.0) && (speed <= 0.0));
@@ -314,38 +264,6 @@ class CardView extends PositionComponent
       );
     }
   }
-/*
-  void turnFaceUp({
-    double time = 0.3,
-    double start = 0.0,
-    VoidCallback? onComplete,
-  }) {
-    assert(!_viewFaceUp, 'Card must be face-down before turning face-up.');
-    assert(time > 0.0, 'Time to turn card over must be > 0');
-    assert(start >= 0.0, 'Start time must be >= 0');
-    priority = movingPriority;
-    add(
-      ScaleEffect.to(
-        Vector2(scale.x / 100, scale.y),
-        EffectController(
-          startDelay: start,
-          curve: Curves.easeOutSine,
-          duration: time / 2,
-          onMax: () {
-            _viewFaceUp = true;
-          },
-          reverseDuration: time / 2,
-          onMin: () {
-            _viewFaceUp = true;
-          },
-        ),
-        onComplete: () {
-          onComplete?.call();
-        },
-      ),
-    );
-  }
-*/
 }
 
 class CardMoveEffect extends MoveToEffect {
