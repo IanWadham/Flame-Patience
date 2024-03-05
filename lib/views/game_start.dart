@@ -14,7 +14,7 @@ import '../specs/pat_specs.dart';
 
 // Decoding of GameSpec into Piles and their layout (was in PatWorld's onLoad).
 // Shuffle and deal into the layout at the start of a Game.
-// Make adjustments after the deal (e.g. in Mod 3, remove Aces, refill Tableaus).
+// Make changes after the deal (e.g. in Mod 3, remove Aces, refill Tableaus).
 
 // There are two distinct classes in this file: GameLayOut and Dealer.
 
@@ -61,8 +61,6 @@ class GameLayout {
 
         piles.add(pile);
 
-        print('New pile: row $row col $col deal $deal '
-            'pos $position ${pile.pileType}');
         switch (pile.pileType) {
           case PileType.stock:
             if (!gameSpec.hasStockPile) {
@@ -137,21 +135,26 @@ class Dealer extends Component with HasWorldReference<PatWorld> {
   bool get hasStockPile => (_stockPileIndex >= 0);
 
   void deal(DealSequence dealSequence, int seed, {VoidCallback? whenDone,}) {
-    // final dealSequence = gameSpec.dealSequence;
-    final List<CardView> cardsToDeal = [];
-    for (final CardView card in _cards) {
-      if (card.isBaseCard) {
-        if (hasStockPile) {
-          _piles[_stockPileIndex].put(card);
-        }
-      } else {
-        cardsToDeal.add(card);
-      }
+    // TODO - Make sure every Game has a Stock Pile, even if it is no longer
+    //        used after the deal finishes (e.g. FreeCell and Yukon). If that
+    //        is the case, position the Stock Pile off-screen at top-left.
+    // TODO - After shuffling, put ALL cards in the Stock Pile and deal from it.
+    final cardsToDeal = List<CardView>.of(_cards);
+    CardView baseCard = cardsToDeal.removeAt(0);
+    if (hasStockPile) {
+      _piles[_stockPileIndex].put(baseCard);
     }
+
+    // Move all cards to a place in this game-layout from which they are dealt.
+    final dealerPosition = _piles[_stockPileIndex].position;
+    var cardPriority = 1;
+    for (CardView card in cardsToDeal) {
+      card.position = dealerPosition;
+      card.priority = cardPriority++;
+    }
+
     // ??????? cardsToDeal.shuffle(Random(seed));
     cardsToDeal.shuffle();
-
-    // print('Cards in Deal: $cardsToDeal');
 
     List<Pile> dealTargets = [];
     for (Pile pile in _piles) {
@@ -236,7 +239,6 @@ class Dealer extends Component with HasWorldReference<PatWorld> {
     }
 
     _piles[_stockPileIndex].dump();
-    print('DEAL: TRANSFER REMAINING CARDS TO STOCK PILE...');
     if (hasStockPile && cardsToDeal.isNotEmpty) {
       for (CardView card in cardsToDeal) {
         _piles[_stockPileIndex].put(card);

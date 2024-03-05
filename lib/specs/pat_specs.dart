@@ -1,7 +1,7 @@
 import 'pat_enums.dart';
 
 // These typedefs give names to definitions of Dart Record types. In each case,
-// the actual `type` is `(`, `)` and everything that lies between them.
+// the actual `type` is `(`, `)` and everything that lies between the parentheses.
 //
 // Record type definitions resemble parameter definitions in a function,
 // including the availability of named and positional fields, using `{}` to
@@ -29,8 +29,6 @@ typedef GameSpec = ({
   double cardPadY,
   bool hasStockPile,
   bool hasWastePile,
-  int dealerRow,
-  int dealerCol,
   int excludedRank,
   bool redealEmptyTableau,
   DealSequence dealSequence,
@@ -70,12 +68,10 @@ class PatData {
       nPacks: 1,
       nCellsWide: 7,
       nCellsHigh: 4,
-      cardPadX: 100,
-      cardPadY: 100,
+      cardPadX: 200,
+      cardPadY: 200, // 100,
       hasStockPile: true,
       hasWastePile: true,
-      dealerRow: 4,
-      dealerCol: 3,
       dealSequence: DealSequence.wholePileAtOnce,
       excludedRank: 0, // Deal ALL cards.
       redealEmptyTableau: false,
@@ -125,12 +121,10 @@ class PatData {
       nPacks: 2,
       nCellsWide: 8,
       nCellsHigh: 5,
-      cardPadX: 100,
+      cardPadX: 200,
       cardPadY: 100,
       hasStockPile: true,
       hasWastePile: true,
-      dealerRow: 5,
-      dealerCol: 0,
       dealSequence: DealSequence.wholePileAtOnce,
       excludedRank: 0, // Deal ALL cards.
       redealEmptyTableau: false,
@@ -183,15 +177,12 @@ class PatData {
       gameID: PatGameID.mod3,
       gameName: 'Mod 3',
       nPacks: 2,
-      nCellsWide: 10,
-      // ??????? nCellsHigh: 5,
-      nCellsHigh: 6,
-      cardPadX: 100,
-      cardPadY: 500,
+      nCellsWide: 9,
+      nCellsHigh: 5,
+      cardPadX: 200, // 100,
+      cardPadY: 200,
       hasStockPile: true,
       hasWastePile: false,
-      dealerRow: 8,
-      dealerCol: 1,
       dealSequence: DealSequence.wholePileAtOnce,
       excludedRank: 1, // Exclude Aces.
       redealEmptyTableau: true,
@@ -200,7 +191,7 @@ class PatData {
           pileSpec: standardStock,
           nPilesSpec: 1,
           pileTrios: [
-            (3, 9, 74),
+            (3, 8, 74),
           ]
         ),
         ( // GamePileSpec
@@ -264,7 +255,7 @@ class PatData {
           pileSpec: mod3ExcludedCards,
           nPilesSpec: 1,
           pileTrios: [
-            (0, 9, 0),
+            (1, 8, 0),
           ]
         ),
       ],
@@ -461,10 +452,9 @@ class PatData {
     putFirst: 1,
     dealFaceRule: DealFaceRule.faceUp,
     fanOutX: 0.0,
-    fanOutY: 0.25,
+    fanOutY: 0.22,
     growthCols: 0,
-    // ??????? growthRows: 1,
-    growthRows: 2,
+    growthRows: 1,
   );
 }
 

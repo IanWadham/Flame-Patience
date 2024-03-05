@@ -28,7 +28,7 @@ class Pile extends PositionComponent with HasWorldReference<PatWorld> {
 
     super(
       anchor: Anchor.topCenter,
-      size: Vector2(baseWidth, baseHeight),
+      size: Vector2(baseWidth, baseHeight), // i.e. cellSize from PatWorld.
       priority: -1,
     );
 
@@ -62,7 +62,7 @@ class Pile extends PositionComponent with HasWorldReference<PatWorld> {
 
   var _transitCount = 0; // The number of cards "in transit" to this Pile.
 
-  final bool debugMode = true;
+  // final bool debugMode = true;
 
   void dump() {
     print('DUMP Pile $pileIndex, $pileType: $_cards');
@@ -213,7 +213,7 @@ class Pile extends PositionComponent with HasWorldReference<PatWorld> {
 
   void dropCards(List<CardView> tail) {
     // Instantaneously drop and display cards on this pile (used in Undo/Redo).
-    print('Drop $tail on $pileType index $pileIndex, contents $_cards');
+    // print('Drop $tail on $pileType index $pileIndex, contents $_cards');
     CardView prev;
     for (final card in tail) {
       _cards.add(card);
@@ -260,7 +260,8 @@ class Pile extends PositionComponent with HasWorldReference<PatWorld> {
     // cards have to go, so that we can have smooth animation and landing, no
     // matter where the cards are starting. The cards are placed into the Pile,
     // but their priority, position and flip are controlled by the animation.
-    print('RECV $movingCards on $pileType index $pileIndex, contents $_cards');
+
+    // print('RECV $movingCards on $pileType index $pileIndex, contents $_cards');
     CardView prev;
     int nCardsToMove = movingCards.length;
 
@@ -318,9 +319,9 @@ class Pile extends PositionComponent with HasWorldReference<PatWorld> {
         start: startAt,
         startPriority: movePriority,
         whenDone: () {
-          print('Arriving: pile $pileIndex $pileType card ${card.name} '
-              'pri ${card.priority} '
-              'new pri ${card.newPriority} count $_transitCount');
+          // print('Arriving: pile $pileIndex $pileType card ${card.name} '
+              // 'pri ${card.priority} '
+              // 'new pri ${card.newPriority} count $_transitCount');
           card.priority = card.newPriority;
           _transitCount--;
             // TODO - Minor problem: if several cards are sent rapidly to the
@@ -582,7 +583,8 @@ class FanOut {
       // Initialize the FanOut variables. Allow extra space for FanOut down.
       print('  ${_pileSpec.pileType} '
           'Xgrowth ${_pileSpec.growthCols} Ygrowth ${_pileSpec.growthRows}');
-      final dy = _baseHeight - PatWorld.cardHeight - PatWorld.cardMargin / 2;
+      // ?????? final dy = _baseHeight - PatWorld.cardHeight - PatWorld.cardMargin / 2;
+      final dy = (_baseHeight - PatWorld.cardHeight) / 2;
       _limitX = _position!.x + _pileSpec.growthCols * _baseWidth;
       _limitY = _position!.y + _pileSpec.growthRows * _baseHeight + dy;
       _baseFanOut = Vector2(_pileSpec.fanOutX * PatWorld.cardWidth,
