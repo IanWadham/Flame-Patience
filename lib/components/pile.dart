@@ -284,17 +284,7 @@ class Pile extends PositionComponent with HasWorldReference<PatWorld> {
       }
       fanOutSpaces = nFaceUp * 1.0 + nFaceDown * faceDownFanOutFactor;
       fanOutSpaces -= newFaceUp ? 1.0 : faceDownFanOutFactor;
-/*
-      if (nPrevCardsInPile > 1) {
-        for (int n = 1; n < _cards.length; n++) {
-          fanOutSpaces += _cards[n - 1].isFaceUpView ?
-              1.0 : faceDownFanOutFactor;
-        }
-      }
-      // ??????? newFaceUp = (flipTime > 0.0) ? !newFaceUp : newFaceUp;
-      fanOutSpaces += (nCardsToMove - 1) * (newFaceUp ?
-          1.0 : faceDownFanOutFactor);
-*/
+
       if (_fanOut.check(fanOutSpaces, nCardsToMove)) {
         // FanOut must change: reposition all the cards currently in the Pile.
         _fanOutFaceUp = _fanOut.faceUpFanOut;
@@ -359,18 +349,6 @@ class Pile extends PositionComponent with HasWorldReference<PatWorld> {
             if (card.position != card.newPosition) {
               card.position = card.newPosition;
             }
-/*
-            // If Fan Out changed, reposition all cards.
-            if (_hasFanOut && _fanOut._fanOutChanged(_cards.last.position, _cards)) {
-              _fanOutFaceUp = _fanOut.faceUpFanOut;
-              _fanOutFaceDown = _fanOut.faceDownFanOut;
-              for (int n = 1; n < _cards.length; n++) {
-                final diff = _cards[n - 1].isFaceUpView ?
-                    _fanOutFaceUp : _fanOutFaceDown;
-                _cards[n].position = _cards[n - 1].position + diff;
-              }
-            }
-*/
             _setPileHitArea(); // TODO - Can do this before callback?
           }
           onComplete?.call(); // Optional callback for receiveMovingCards().
@@ -381,79 +359,6 @@ class Pile extends PositionComponent with HasWorldReference<PatWorld> {
       _transitCount++;
     }
   }
-
-/* OLD FanOut code...
-     // card.newFaceUp = (flipTime > 0.0) ?
-          // ??????? !card.isFaceUpView : card.isFaceUpView;
-      // ??????? _putFaceDown.add(!card.newFaceUp);
-      // ??? _putFaceDown.add(((flipTime > 0.0) ? false : card.isFaceDownView));
-    }
-    // TODO - Do a fan out calculation BEFORE deciding where the incoming cards
-    //        should go. If the fan out needs to change, move every card that
-    //        is already in the Pile...
-
-    // ??????? FanOutRequirement reqd = _fanOut.check(_cards);
-    // ??????? if (reqd.didChange)
-
-    if (_hasFanOut && _fanOut._fanOutChanged(_cards.last.position, _cards)) {
-      // Move the Pile's previous cards to new positions (with no animation).
-      _fanOutFaceUp = _fanOut.faceUpFanOut;
-      _fanOutFaceDown = _fanOut.faceDownFanOut;
-      for (int n = 1; n < nPrevCardsInPile; n++) {
-        final diff = _cards[n - 1].isFaceUpView ?
-            _fanOutFaceUp : _fanOutFaceDown;
-        _cards[n].position = _cards[n - 1].position + diff;
-      }
-    }
-
-    // Vector2 tailPosition = position + nDown * downFanOut + nUp * upFanOut;
-    // This is where the NEXT card will go, when it arrives.
-    Vector2 tailPosition = position;
-    bool tailFaceUp = false;
-
-    if (nPrevCardsInPile > 0) {
-      CardView tail = _cards[nPrevCardsInPile - 1]; // ??????? _cards.last;
-      print('Tail card: ${tail.name} moving ${tail.isMoving} '
-          'new pos ${tail.newPosition} curr pos ${tail.position}');
-      tailPosition = tail.isMoving ? tail.newPosition : tail.position;
-      // ?????? tailFaceUp = tail.isMoving ? tail.newFaceUp : tail.isFaceUpView;
-      tailFaceUp = _putFaceDown[nPrevCardsInPile - 1];
-    }
-    print('Tail position: $tailPosition tail face up $tailFaceUp');
-
-    for (final card in movingCards)
-*/
-/*
-      // Set up the animated moves the new cards should make.
-      print('_hasFanOut $_hasFanOut, _cards.length ${_cards.length}');
-      if (!_hasFanOut || _cards.length == 1) {
-        // The card will be aligned with the Pile's position.
-        card.newPosition = position;
-        // ??????? tailFaceUp = card.newFaceUp;
-        print('FIRST CARD IN PILE: ${card.name} pos ${card.newPosition}');
-            // ??????? 'face up ${card.newFaceUp}');
-      } else {
-        // Fan out the second and subsequent cards.
-        final fanOut = newFaceUp ? _fanOutFaceUp : _fanOutFaceDown;
-        tailPosition += fanOut;
-        card.newPosition = tailPosition;
-        // ??????? tailFaceUp = card.newFaceUp;
-// ?????? TODO - Sort this out...
-        // ??????? print('$pileType $pileIndex card ${card.name} FanOut $fanOut '
-            // ??????? 'newPos $tailPosition');
-        // ??????? print('CARD IN PILE: ${card.name} pos ${card.newPosition} '
-            // ??????? 'face up ${card.newFaceUp}');
-      }
-*/
-/*
-// OLD FanOut code went here....
-    }
-
-    // Make the required cards start moving. Later cards fly higher.
-    double startAt = startTime;
-    int movePriority = CardView.movingPriority + _transitCount;
-    for (final card in movingCards) {
-*/
 
   void setTopFaceUp(bool goFaceUp) {
     // Used by Undo and Redo to maintain flipped state of Cards.
@@ -545,27 +450,6 @@ class Pile extends PositionComponent with HasWorldReference<PatWorld> {
     }
     return result;
   }
-/*
-  void setTopFaceUp(bool goFaceUp) {
-    // TODO - POLISH THIS. Use it to keep List<bool> faceDown updated????
-    //        Used by Undo and Redo to maintain flipped state of Cards.
-    //        This is a "modelic" method... ???? In storeMove() only the
-    //        "extra:" parameter indicates what is happening and what WILL
-    //        happen in Undo/Redo.
-    if (_cards.isNotEmpty) {
-      CardView card = _cards.last;
-      print('setTopFaceUp($goFaceUp): $pileIndex $pileType ${card.toString()} '
-          'FaceUp ${card.isFaceUpView}');
-      if (goFaceUp) {
-        // Card moving into play from FaceDown view.
-        if (_cards.last.isFaceDownView) _cards.last.flipView();
-      } else {
-        // Undoing a move that included a flip to FaceUp view.
-        if (_cards.last.isFaceUpView) _cards.last.flipView();
-      }
-    }
-  }
-*/
 
   bool isTopCard(CardView card) {
     return _cards.isNotEmpty ? (card == _cards.last) : false;
@@ -670,30 +554,6 @@ class Pile extends PositionComponent with HasWorldReference<PatWorld> {
       height = (deltaY >= 0.0) ? baseHeight + deltaY : baseHeight - deltaY;
     }
   }
-/*
-  // TODO - Need to know whether to flip (as in Klondike) or not (as in Forty
-  //        Eight). If needed, the flip has to be ANIMATED. Here or in GamePlay?
-  bool neededToFlipTopCard() {
-    // Used in piles like Klondike Tableaus, where top cards must be face-up.
-    print('Pile $pileIndex $pileType needFlip: rule ${pileSpec.dealFaceRule}');
-    if (pileSpec.dealFaceRule == DealFaceRule.lastFaceUp) {
-      if (_cards.isNotEmpty && _cards.last.isFaceDownView) {
-        final savedPriority = _cards.last.priority;
-        _cards.last.doMoveAndFlip(
-          _cards.last.position,
-          speed: 0.0,
-          flipTime: 0.3,
-          start: 0.1,
-          whenDone: () {
-            _cards.last.priority = savedPriority;
-          },
-        );
-        return true; // Needed to flip the card.
-      }
-    }
-    return false;
-  }
-*/
 
   static final Paint pileOutlinePaint = Paint()
     ..color = PatGame.pileOutline
@@ -742,15 +602,6 @@ class FanOut {
     }
   }
 
-  // TODO - Base all calculations on nCards and nFaceDownCards. Assume that no
-  //        cards get turned face-down after the deal and that all face-down
-  //        cards are at the start of the pile. Then the fan out can also depend
-  //        on what the _cards index is, as compared to nFaceDownCards. Use card
-  //        counts as parameters to fan out calculations. Then the FanOut class
-  //        will not need CardView class. Assume also that only face-up cards
-  //        are dragged or tapped to go out and that face-down cards can only
-  //        be tapped in the Stock Pile, if any.
-
   var _hasFanOut = false;
   var _baseFanOut = Vector2(0.0, 0.0);
   var _fanOutFaceUp = Vector2(0.0, 0.0);
@@ -782,7 +633,6 @@ class FanOut {
       print('No FanOut change needed');
       return false; // No card-position changes are needed.
     }
-    // TODO - Re-calculate.
     print('Current FanOut $_fanOutFaceUp');
     var x = xWithinBounds ?
       _fanOutFaceUp.x : (_limitX - _position!.x) / spaceNeeded;
