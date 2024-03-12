@@ -31,13 +31,14 @@ class CardView extends PositionComponent
 
   List<CardView> movingCards = [];
 
+  Vector2 newPosition = Vector2(0.0, 0.0);
+  int newPriority = 0;
+
   bool _viewFaceUp = false;
   bool _isDragging = false;
 
   bool _isMoving = false;
-  bool newFaceUp = false;
-  Vector2 newPosition = Vector2(0.0, 0.0);
-  int newPriority = 0;
+  bool _isAnimatedFlip = false;
 
   // Packs are numbered 0-1, suits 0-3, ranks 1-13.
   int get pack => (indexOfCard - 1) ~/ 52;
@@ -54,7 +55,15 @@ class CardView extends PositionComponent
   bool get isFaceUpView => _viewFaceUp;
   bool get isFaceDownView => !_viewFaceUp;
 
-  void flipView() => _viewFaceUp = !_viewFaceUp;
+  void flipView() {
+    if (_isAnimatedFlip) {
+      // Animated flips always go towards FaceUp view (NOTE in doMoveAndFlip()).
+      _viewFaceUp = true;
+    } else {
+      // No animation: flip and render the card immediately.
+      _viewFaceUp = !_viewFaceUp;
+    }
+  }
 
   static final Paint baseBorderPaint = Paint()
     ..color = const Color(0xffdd2200) // Darkish red-orange.
@@ -243,6 +252,10 @@ class CardView extends PositionComponent
       );
     }
     if (flipTime > 0.0) {
+      // NOTE: Animated flips are to FaceUp only. Reverse flips occur in Undo
+      //       and when turning the Waste Pile over to Stock: they are always
+      //       instantaneous. 
+      _isAnimatedFlip = true;
       add(
         ScaleEffect.to(
           Vector2(scale.x / 100, scale.y),
@@ -255,6 +268,7 @@ class CardView extends PositionComponent
             },
             reverseDuration: moveTime / 2,
             onMin: () {
+              _isAnimatedFlip = false;
               _viewFaceUp = true;
               if (flipOnly) _isMoving = false;
             },
