@@ -227,7 +227,7 @@ class Gameplay {
         print('Pile ${pile.toString()} excludedCards $excludedCards Extra.none');
         rejects.receiveMovingCards(
           excludedCards,
-          speed: 3.0, // 10.0,
+          speed: 10.0,
           flipTime: 0.0, // No flip.
         );
         _cardMoves.storeMove(

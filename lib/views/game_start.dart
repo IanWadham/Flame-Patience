@@ -152,6 +152,8 @@ class Dealer extends Component with HasWorldReference<PatWorld> {
       card.position = dealerPosition;
       card.priority = cardPriority++;
     }
+    print('BEFORE SHUFFLE');
+    _piles[_stockPileIndex].dump();
 
     // ??????? cardsToDeal.shuffle(Random(seed));
     cardsToDeal.shuffle();
@@ -166,6 +168,9 @@ class Dealer extends Component with HasWorldReference<PatWorld> {
         dealTargets.add(pile);
       }
     }
+
+    print('BEFORE DEAL');
+    _piles[_stockPileIndex].dump();
 
     List<CardView> movingCards = [];
     var nDealtCards = 0;
@@ -206,7 +211,7 @@ class Dealer extends Component with HasWorldReference<PatWorld> {
             onComplete: () {
               nCardsArrived++;
               if (nCardsArrived == nDealtCards) {
-                print('DEAL COMPLETE...');
+                print('DEAL COMPLETE - Pile faceDown/faceUp case...');
                 whenDone?.call();
               }
             }
@@ -222,7 +227,7 @@ class Dealer extends Component with HasWorldReference<PatWorld> {
             onComplete: () {
               nCardsArrived++;
               if (nCardsArrived == nDealtCards) {
-                print('DEAL COMPLETE...');
+                print('DEAL COMPLETE - lastFaceUp case...');
                 whenDone?.call();
               }
             }
@@ -236,7 +241,7 @@ class Dealer extends Component with HasWorldReference<PatWorld> {
         throw UnimplementedError(
             'Dealing from L to R across the Piles is not implemented yet.');
       }
-    }
+    } // End for Pile target
 
     _piles[_stockPileIndex].dump();
     if (hasStockPile && cardsToDeal.isNotEmpty) {
@@ -267,7 +272,7 @@ class Dealer extends Component with HasWorldReference<PatWorld> {
           if (_excludedCardsPileIndex >= 0) {
             _piles[_excludedCardsPileIndex].receiveMovingCards(
               excludedCards,
-              speed: 3.0, // 10.0,
+              speed: 10.0,
               flipTime: 0.0, // No flip.
             );
           } else { // NOT IMPLEMENTED YET.
@@ -279,9 +284,6 @@ class Dealer extends Component with HasWorldReference<PatWorld> {
       } else if (pile.pileType == PileType.tableau) {
         if (pile.hasNoCards ||
             (_cards[pile.topCardIndex].rank == _excludedRank)) {
-          Pile stock = _piles[_stockPileIndex];
-          // final List<CardView> look = stock.stockLookahead(1, rig: 3);
-          // print('Lookahead: $look $pile ${pile.pileType}');
           _replenishTableauFromStock(pile);
         }
       }
