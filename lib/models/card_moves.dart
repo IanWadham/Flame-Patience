@@ -62,6 +62,7 @@ class CardMoves {
       _playerMoves.removeRange(_redoIndex, _playerMoves.length);
       print('MOVE LIST after PRUNING, index $_redoIndex:'); printMoves();
     }
+    assert(nCards > 0, 'storeMove(): BAD VALUE OF nCards = $nCards.');
     CardMove move = (
       fromPile: from.pileIndex,
       toPile: to.pileIndex,
@@ -72,7 +73,7 @@ class CardMoves {
     );
     _playerMoves.add(move);
     _redoIndex = _playerMoves.length;
-    // print('MOVE LIST after storeMove() index $_redoIndex:'); printMoves();
+    print('MOVE LIST after storeMove() index $_redoIndex:'); printMoves();
     print('Move: ${from.pileIndex} ${from.pileType} to ${to.pileIndex} '
         '${to.pileType} $nCards cards ${_cards[leadCard]} $extra');
   }

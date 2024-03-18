@@ -35,9 +35,8 @@ class Gameplay {
   int _excludedCardsPileIndex = -1;
   final List<Pile> _foundations = [];
   final List<Pile> _tableaus = [];
-    // ??????? if ((_excludedRank == 0) && !_redealEmptyTableau) {
 
-  // Most Games do not have these features: Mod 3 has both.
+  // Most Game types do not have these features: Mod 3 has both.
   int _excludedRank = 0; // Rank of excluded cards (e.g. Aces in Mod 3).
   bool _redealEmptyTableau = false; // Automatically redeal an empty Tableau?
 
@@ -107,43 +106,27 @@ class Gameplay {
     }
   }
 
-  var _fromPileIndex = -1;
-  var _startedAt = Vector2(0.0, 0.0);
-  final List<CardView> _movingCards = [];
-
-  bool dragStart(CardView card, Pile fromPile, List<CardView> movingCards) {
-    if (fromPile.isDragMoveValid(card, _movingCards) == MoveResult.valid) {
-      print('_movingCards $_movingCards');
-      _startedAt = card.position.clone();
-      movingCards.clear();
-      movingCards.addAll(_movingCards);
-      _fromPileIndex = fromPile.pileIndex;
-      return true;
-    }
-    // If not OK to drag, might have started a tap move on a Stock Pile.
-    return false;
-  }
-
-  void dragEnd(List<Pile> targets, double tolerance) {
-    final start = _piles[_fromPileIndex];
-    final cardCount = _movingCards.length;
-    if ((_movingCards.first.position - _startedAt).length < tolerance) {
-      start.dropCards(_movingCards); // Short drop: return card(s) to start.
+  void dragEnd(List<CardView> movingCards, Vector2 startPosition,
+        int fromPileIndex, List<Pile> targets, double tolerance) {
+    final start = _piles[fromPileIndex];
+    final cardCount = movingCards.length;
+    if ((movingCards.first.position - startPosition).length < tolerance) {
+      start.dropCards(movingCards); // Short drop: return card(s) to start.
       if (cardCount == 1) {
         // Only one card has moved a short distance. Treat that as a tap move.
-        tapMove(_movingCards.first);
+        tapMove(movingCards.first);
       }
       return;
     }
     if (targets.isNotEmpty) {
       final target = targets.first;
-      if (target.checkPut(_movingCards.first)) {
-        int nCards = _movingCards.length;
+      if (target.checkPut(movingCards.first)) {
+        int nCards = movingCards.length;
         bool dropOK = true;
         if (nCards > 1 && (target.pileType != PileType.tableau)) {
           // Only Tableaus can accept more than one card - but not in all games.
           dropOK = false;
-          print('Return _movingCards to start: target cannot accept > 1 card.');
+          print('Return movingCards to start: target cannot accept > 1 card.');
         }
         else if (nCards > 1 &&
             target.pileSpec.dragRule == DragRule.fromAnywhereViaEmptySpace) {
@@ -153,13 +136,13 @@ class Gameplay {
           // move, notably Free Cell and Forty & Eight. Others (e.g. Klondike)
           // allow any number of cards to be moved - if there is a valid target.
           if (_notEnoughSpaceToMove(nCards, start, target)) {
-            print('Return _movingCards to start: need more space to move.');
+            print('Return movingCards to start: need more space to move.');
             dropOK = false;
           }
         }
         if (dropOK) {
           target.receiveMovingCards(
-            _movingCards,
+            movingCards,
             speed: 15.0,
             flipTime: 0.0, // No flip.
           );
@@ -172,20 +155,22 @@ class Gameplay {
             to: target,
             nCards: cardCount,
             extra: flip,
-            leadCard: _movingCards[0].indexOfCard,
+            leadCard: movingCards[0].indexOfCard,
             strength: 0,
           );
           if (_redealEmptyTableau && start.hasNoCards &&
               (start.pileType == PileType.tableau)) {
+            // TODO - Will we always come back from this synchronously and
+            //        eventually get back to CardView without data problems?
             _replenishTableauFromStock(start);
           }
           return;
         }
       }
     }
-    print('Return _movingCards to start');
+    print('Return movingCards to start');
     start.receiveMovingCards( // Return cards to starting Pile.
-      _movingCards,
+      movingCards,
       speed: 15.0,
       flipTime: 0.0, // No flip.
     );
@@ -245,6 +230,7 @@ class Gameplay {
         // Compound move of excluded card out and Stock card in.
         print('replenishTableau compound move: excluded out, Stock card in.');
         _tableauIndex = pile.pileIndex;
+        // Loop to replace this excluded card and any others that arrive.
         _replaceTableauCard();
       }
       else {
@@ -254,6 +240,8 @@ class Gameplay {
         print('replenishTableau normal move: Stock card in.');
         _tableauIndex = pile.pileIndex;
         List<CardView> stockCards = stock.grabCards(1);
+        // TODO - Will we always come back from this synchronously and
+        //        eventually get back to CardView without data problems?
         pile.receiveMovingCards(
           stockCards,
           speed: 10.0,
@@ -264,7 +252,7 @@ class Gameplay {
             if (_cards[pile.topCardIndex].rank == _excludedRank) {
               _replaceTableauCard();
             }
-          }, 
+          },
         );
         _cardMoves.storeMove(
           from: stock,
@@ -282,7 +270,11 @@ class Gameplay {
 
   var _tableauIndex = -1;
 
-  // TODO - Explain this "callback loop"...
+  // This "loop" replaces any number of excluded cards that happen to be dealt,
+  // in succession, most commonly just the one that has arrived already. The
+  // function send the excluded card to its Pile, with no callback, then it
+  // requests another card from the Stock Pile using itself as a callback.
+  //
   void _replaceTableauCard() {
     final pileToReplenish = _piles[_tableauIndex];
     final rejects = _piles[_excludedCardsPileIndex];
@@ -296,7 +288,9 @@ class Gameplay {
       speed: 10.0,
       flipTime: 0.0, // No flip.
     );
+    // TODO - What if there is no Stock left to deal? Skip receiveMovingCards()?
     List<CardView> stockCards = stock.grabCards(1);
+    // if (stockCards.isNotEmpty) { } ???????
     pileToReplenish.receiveMovingCards(
       stockCards,
       speed: 10.0,
@@ -309,7 +303,7 @@ class Gameplay {
         if (_cards[pileToReplenish.topCardIndex].rank == _excludedRank) {
           _replaceTableauCard();
         }
-      }, 
+      },
     );
     _cardMoves.storeMove(
       from: pileToReplenish,
@@ -366,6 +360,8 @@ class Gameplay {
       print('Try ${target.pileType} at '
           'row ${target.gridRow} col ${target.gridCol} putOK $putOK');
       if (putOK) { // The card goes out.
+        // TODO - Have ALREADY grabbed the card if the "tap" is a short-drag,
+        //        so make sure it is in movingCards[] even if its a real tap.
         List<CardView> movingCards = fromPile.grabCards(1);
         target.receiveMovingCards(
           movingCards,
@@ -427,6 +423,8 @@ class Gameplay {
   bool _tapOnFilledStockPile(Pile fromPile) {
     // Deal one or more cards from the Stock Pile to the Waste Pile.
     final waste = _piles[_wastePileIndex];
+    // TODO - Have ALREADY grabbed the card if the "tap" is a short-drag,
+    //        so make sure it is in movingCards[] even if it is a real tap.
     List<CardView> dealtCards = fromPile.grabCards(1); // TODO - May be 3 or 2.
     waste.receiveMovingCards(
       dealtCards,
@@ -502,6 +500,8 @@ class Gameplay {
       for (Pile pile in _tableaus) {
         if (pile.hasNoCards ||
             (_cards[pile.topCardIndex].rank == _excludedRank)) {
+          // TODO - Will we always come back from this synchronously and
+          //        eventually get back to CardView without data problems?
           _replenishTableauFromStock(pile);
         }
       }

@@ -18,8 +18,11 @@ class CardView extends PositionComponent
           anchor: Anchor.topCenter,
           size: Vector2(PatWorld.cardWidth, PatWorld.cardHeight),
         );
+  // In general, moves are either instaneous or dynamic but buffered (i.e. no
+  // waiting for a callback). However there are a few exceptions. The idea is
+  // that the player can start moves as quickly as they like, provided they do
+  // not try to move the same card more than once at a time.
 
-  // final bool debugMode = true;
   final int indexOfCard;
   final Sprite face;
   final Sprite back;
@@ -29,10 +32,16 @@ class CardView extends PositionComponent
 
   static const movingPriority = 200; // To fly above 2 or 3 packs of 52 cards.
 
-  List<CardView> movingCards = [];
-
+  // Position and priority this card WILL have when it lands on a Pile, a little
+  // time after being dealt, dropped (after a drag), tapped or short-dragged
+  // (treated as a tap) and beginning a valid move or failing a drag-and-drop.
   Vector2 newPosition = Vector2(0.0, 0.0);
   int newPriority = 0;
+
+  // Data used to keep track of drag moves with this card as the leading-card.
+  final List<CardView> _movingCards = [];
+  var _startPosition = Vector2(0.0, 0.0);
+  var _fromPileIndex = -1;
 
   bool _viewFaceUp = false;
   bool _isDragging = false;
@@ -52,6 +61,7 @@ class CardView extends PositionComponent
 
   bool get isMoving => _isMoving;
 
+  Vector2 get pilePosition => _isMoving ? newPosition : position;
   bool get isFaceUpView => _viewFaceUp;
   bool get isFaceDownView => !_viewFaceUp;
 
@@ -136,6 +146,8 @@ class CardView extends PositionComponent
     handleTap();
   }
 
+  // TODO - Beep, flash or other view-type things if drag/tap not successful.
+
   void handleTap() {
     // Can be called by onTapUp or after a very short (failed) drag-and-drop.
     // For ease of gameplay the game accepts taps that include a short drag.
@@ -143,8 +155,8 @@ class CardView extends PositionComponent
     if (_isMoving) {
       return; // Ignore taps while moving, otherwise it's a sure way to crash...
     }
+    // TODO - Change the interface with GamePlay singleton?...
     bool success = world.gameplay.tapMove(this);
-    // TODO - Beep, flash or other view-type things if not successful.
     // print('CardView: Returned from tap on $name, pile ${pile.pileIndex} ${pile.pileType} success $success');
     return;
   }
@@ -163,24 +175,29 @@ class CardView extends PositionComponent
   void onDragStart(DragStartEvent event) {
     super.onDragStart(event);
     _isDragging = false;
+    _startPosition = position.clone();
+    _fromPileIndex = pile.pileIndex;
+    print('Card $this Pile index ${pile.pileIndex}');
 
     // The rules for this pile in this game might allow a multi-card move. The
     // cards to be moved, including one or none, are returned in movingCards.
     // Alternatively, dragging a Stock card or Base Card is treated as a tap.
 
     // TODO - Need to mark ALL dragged cards as isMoving. Will need a setter.
-    if (world.gameplay.dragStart(this, pile, movingCards)) {
+    if (pile.isDragMoveValid(this, _movingCards) == MoveResult.valid) {
+    // ??????? if (world.gameplay.dragStart(this, pile, movingCards)) {
       _isDragging = true;
       _isMoving = true;
       var cardPriority = movingPriority;
       String moving = 'Moving: ';
-      for (final movingCard in movingCards) {
+      for (final movingCard in _movingCards) {
         movingCard.priority = cardPriority;
         cardPriority++;
         moving += '${movingCard.toString()} ${movingCard.priority}, ';
       }
       print(moving);
     }
+    // TODO - Has it become a tap? Do we care at this point?...
   }
 
   @override
@@ -189,7 +206,7 @@ class CardView extends PositionComponent
       return;
     }
     final delta = event.localDelta;
-    movingCards.forEach((card) => card.position.add(delta));
+    _movingCards.forEach((card) => card.position.add(delta));
   }
 
   @override
@@ -207,12 +224,9 @@ class CardView extends PositionComponent
         .toList();
     // Drop the cards, if valid, or try a tap move if drag was too short,
     // or, if all else fails, return the card(s) to where they started.
-    world.gameplay.dragEnd(targets, PatWorld.dragTolerance);
-
-    // TODO - Beep, flash or other view-type things if not successful.
+    world.gameplay.dragEnd(_movingCards, _startPosition, _fromPileIndex,
+        targets, PatWorld.dragTolerance);
   }
-
-  //#region Effects
 
   // TODO - Not urgent: experiment with doing the flip within some PART of the
   //        move, instead of spreading it out over the whole move as at present.
@@ -233,7 +247,8 @@ class CardView extends PositionComponent
     final moveTime = dt > flipTime ? dt : flipTime; // Use the larger time.
     // print('START new move+flip: $to $this speed $speed flip $flipTime '
         // 'pri $startPriority');
-    assert(_isMoving == false);
+    // ????? Maybe needed to set _isMoving EARLIER - won't hurt to set it again.
+    // ????? assert(_isMoving == false);
     _isMoving = true;
     bool flipOnly = ((flipTime > 0.0) && (speed <= 0.0));
     if (dt > 0.0) { // The card will change position.
@@ -254,7 +269,7 @@ class CardView extends PositionComponent
     if (flipTime > 0.0) {
       // NOTE: Animated flips are to FaceUp only. Reverse flips occur in Undo
       //       and when turning the Waste Pile over to Stock: they are always
-      //       instantaneous. 
+      //       instantaneous.
       _isAnimatedFlip = true;
       add(
         ScaleEffect.to(
