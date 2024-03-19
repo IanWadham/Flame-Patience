@@ -24,22 +24,12 @@ class Pile extends PositionComponent with HasWorldReference<PatWorld> {
     _limitX = position!.x + pileSpec.growthCols * baseWidth,
     _limitY = position!.y + pileSpec.growthRows * baseHeight +
         (baseHeight - PatWorld.cardHeight) / 2,
-
-    _fanOut = FanOut(pileSpec, position, baseWidth, baseHeight),
-
     super(
       anchor: Anchor.topCenter,
       size: Vector2(baseWidth, baseHeight), // i.e. cellSize from PatWorld.
       priority: -1,
     );
-/*
-    _fanOutFaceUp = Vector2( // Initial value: needed by deal().
-        pileSpec.fanOutX * PatWorld.cardWidth,
-        pileSpec.fanOutY * PatWorld.cardHeight),
-    _fanOutFaceDown = Vector2( // Initial value: needed by deal().
-        pileSpec.fanOutX * PatWorld.cardWidth,
-        pileSpec.fanOutY * PatWorld.cardHeight) * Pile.faceDownFanOutFactor,
-*/
+
   static const faceDownFanOutFactor = 0.3;
 
   final PileSpec pileSpec;
@@ -62,8 +52,6 @@ class Pile extends PositionComponent with HasWorldReference<PatWorld> {
 
   bool get hasNoCards => pileType == PileType.stock ?
       _cards.length == 1 : _cards.isEmpty;
-
-  final FanOut _fanOut; // The FanOut calculator class.
 
   // These properties are calculated in the constructor from the Pile Spec.
   final bool _hasFanOut;
@@ -89,7 +77,7 @@ class Pile extends PositionComponent with HasWorldReference<PatWorld> {
     DragRule dragRule = pileSpec.dragRule;
     dragList.clear();
 
-    // String message = 'Drag $pileType row $gridRow col $gridCol:';
+    String message = 'Drag $pileType row $gridRow col $gridCol:';
     if (_cards.isEmpty) {
       // print('$message _cards is Empty');
       return MoveResult.pileEmpty;
@@ -107,61 +95,25 @@ class Pile extends PositionComponent with HasWorldReference<PatWorld> {
       // print('$message ${card.toString()} not face-up');
       return MoveResult.notValid;
     }
-    // TODO - Could use Pile.grabCards() to build the list, rather than
-    //        single or repeated removeLast(). That would do ONE expandFanOut.
 
-    if (cardOnTop) {
-      if (_cards.last.isMoving) {
+    assert(card.isFaceUpView && _cards.contains(card));
+    int nCards = cardOnTop ? 1 : (_cards.length - _cards.indexOf(card));
+    print('$message ${card.toString()} nCards $nCards $_cards');
+
+    // If any of the cards is already moving, cancel the drag.
+    for (int n = 1; n <= nCards; n++) {
+      print('$message nCards is card $n moving? ${_cards[_cards.length - n]}');
+      if (_cards[_cards.length - n].isMoving) {
         return MoveResult.notValid;
       }
-      dragList.add(_cards.removeLast());
-      _fanOut._expandFanOut(_cards);
-      _fanOutFaceUp = _fanOut.faceUpFanOut;
-      _fanOutFaceDown = _fanOut.faceDownFanOut;
-      _setPileHitArea();
-      // print('$message removed top card of Pile');
-      return MoveResult.valid;
-    }
-    assert(card.isFaceUpView && _cards.contains(card));
-    final index = _cards.indexOf(card);
-    // print('$message ${card.toString()} index $index $_cards');
-    dragList.addAll(_cards.getRange(index, _cards.length));
-
-    // Check that none of the cards is already moving. If so, cancel the drag.
-    bool bailOut = false;
-    for (final dragCard in dragList) {
-      if (dragCard.isMoving) {
-        bailOut = true;
-      }
-    }
-    if (bailOut) {	// TODO - No need for "bailOut": put code inside "for".
-      dragList.clear();
-      return MoveResult.notValid;
     }
 
-    // The dragged cards now leave the Pile.
-    _cards.removeRange(index, _cards.length);
-    _fanOut._expandFanOut(_cards);
-    _fanOutFaceUp = _fanOut.faceUpFanOut;
-    _fanOutFaceDown = _fanOut.faceDownFanOut;
-    // print('Pile $_cards, moving $dragList');
-    _setPileHitArea();
+    // The dragged cards leave the Pile and it adjusts its FanOut and hitArea.
+    dragList.addAll(grabCards(nCards));
+    print('$message nCards $nCards dragList $dragList');
     return MoveResult.valid;
   }
-/*
-  bool isCardInPile(CardView card, {required bool mustBeOnTop}) {
-    // Integrity check.
-    if (mustBeOnTop) {
-      print('Pile $pileIndex $pileType isCardInPile(): card ${card.name} '
-          'mustBeOnTop $mustBeOnTop... isTopCard()');
-      return isTopCard(card);
-    } else {
-      print('Pile $pileIndex $pileType isCardInPile(): card ${card.name} '
-          'mustBeOnTop $mustBeOnTop... contains()');
-      return _cards.contains(card);
-    }
-  }
-*/
+
   MoveResult isTapMoveValid(CardView card) {
     TapRule tapRule = pileSpec.tapRule;
     String message = 'Tap $pileType row $gridRow col $gridCol:';
@@ -212,48 +164,45 @@ class Pile extends PositionComponent with HasWorldReference<PatWorld> {
 
   List<CardView> grabCards(int nRequired) {
     // Grab up to nRequired cards from end of Pile, incl. none if Pile isEmpty.
-    List<CardView> tail = [];
+    List<CardView> tailCards = [];
     int nAvailable = (nCards >= nRequired) ? nRequired : nCards;
     int index = _cards.length - nAvailable;
     if (nAvailable > 0) {
-      tail.addAll(_cards.getRange(index, _cards.length));
+      tailCards.addAll(_cards.getRange(index, _cards.length));
       _cards.removeRange(index, _cards.length);
-      // _fanOut._expandFanOut(_cards);
-      // _fanOutFaceUp = _fanOut.faceUpFanOut;
-      // _fanOutFaceDown = _fanOut.faceDownFanOut;
-      _checkFanOut(_cards, tail, adding: false); 
+      _checkFanOut(_cards, tailCards, adding: false); 
       _setPileHitArea();
     }
-    return tail;
+    print('Grab $tailCards from $pileType index $pileIndex, contents $_cards');
+    return tailCards;
   }
 
-  void dropCards(List<CardView> tail) {
+  void dropCards(List<CardView> tailCards) {
     // Instantaneously drop and display cards on this pile (used in Undo/Redo).
-    // print('Drop $tail on $pileType index $pileIndex, contents $_cards');
-    for (final card in tail) {
-      _cards.add(card);
-      card.pile = this;
-      card.priority = _cards.length;
-      if (!_hasFanOut || _cards.length == 1) {
-        // The card is aligned with the Pile's position.
-        card.position = position;
-      } else {
-        // Fan out the second and subsequent cards.
-        final prev = _cards[_cards.length - 2];
-        final fanOut = prev.isFaceUpView ? _fanOutFaceUp : _fanOutFaceDown;
-        print('$pileType $pileIndex card ${card.name} FanOut $fanOut');
-        card.position = prev.position + fanOut;
-      }
-    }
-    // If Fan Out changed, reposition all cards.
-    // ??????? if (_checkFanOut(_cards, movingCards, adding: true)) {
-    if (_hasFanOut && _fanOut._fanOutChanged(_cards.last.position, _cards)) {
-      _fanOutFaceUp = _fanOut.faceUpFanOut;
-      _fanOutFaceDown = _fanOut.faceDownFanOut;
+
+    print('Drop $tailCards on $pileType index $pileIndex, contents $_cards');
+    // If Fan Out changed, reposition all cards currently in the Pile.
+    if (_checkFanOut(_cards, tailCards, adding: true) && _cards.isNotEmpty) {
       for (int n = 1; n < _cards.length; n++) {
         final diff = _cards[n - 1].isFaceUpView ?
             _fanOutFaceUp : _fanOutFaceDown;
         _cards[n].position = _cards[n - 1].position + diff;
+      }
+    }
+
+    for (final card in tailCards) {
+      _cards.add(card);
+      card.pile = this;
+      card.priority = _cards.length;
+      if (!_hasFanOut || _cards.isEmpty) {
+        // The card is aligned with the Pile's position.
+        card.position = position;
+      } else {
+        // Fan out the second and subsequent cards.
+        final prev = _cards[_cards.length - 1];
+        final fanOut = prev.isFaceUpView ? _fanOutFaceUp : _fanOutFaceDown;
+        print('$pileType $pileIndex card ${card.name} FanOut $fanOut');
+        card.position = prev.position + fanOut;
       }
     }
     _setPileHitArea();
@@ -627,6 +576,21 @@ class Pile extends PositionComponent with HasWorldReference<PatWorld> {
     }
   }
 
+/*
+  bool isCardInPile(CardView card, {required bool mustBeOnTop}) {
+    // Integrity check.
+    if (mustBeOnTop) {
+      print('Pile $pileIndex $pileType isCardInPile(): card ${card.name} '
+          'mustBeOnTop $mustBeOnTop... isTopCard()');
+      return isTopCard(card);
+    } else {
+      print('Pile $pileIndex $pileType isCardInPile(): card ${card.name} '
+          'mustBeOnTop $mustBeOnTop... contains()');
+      return _cards.contains(card);
+    }
+  }
+*/
+
   static final Paint pileOutlinePaint = Paint()
     ..color = PatGame.pileOutline
     ..style = PaintingStyle.stroke
@@ -641,116 +605,5 @@ class Pile extends PositionComponent with HasWorldReference<PatWorld> {
     // Outline and fill the image of the Pile (a little smaller than a card).
     canvas.drawRRect(PatWorld.pileRect, pileBackgroundPaint);
     canvas.drawRRect(PatWorld.pileRect, pileOutlinePaint);
-  }
-}
-
-class FanOut {
-  // The initial Fan Out values depend upon const values inside the Pile's
-  // PileSpec Record (see parameter _pileSpec). The _fanOutFaceUp and
-  // _fanOutFaceDown values can vary during gameplay, depending on the space
-  // available to the Pile, so must be var.
-  final PileSpec _pileSpec;
-  final Vector2? _position;
-  final double _baseWidth;
-  final double _baseHeight;
-
-  FanOut(this._pileSpec, this._position, this._baseWidth, this._baseHeight) {
-    if (_pileSpec.fanOutX != 0.0 || _pileSpec.fanOutY != 0.0) {
-      // Initialize the FanOut variables. Allow extra space for FanOut down.
-      print('  ${_pileSpec.pileType} '
-          'Xgrowth ${_pileSpec.growthCols} Ygrowth ${_pileSpec.growthRows}');
-      final dy = (_baseHeight - PatWorld.cardHeight) / 2;
-      _limitX = _position!.x + _pileSpec.growthCols * _baseWidth;
-      _limitY = _position!.y + _pileSpec.growthRows * _baseHeight + dy;
-      _baseFanOut = Vector2(_pileSpec.fanOutX * PatWorld.cardWidth,
-          _pileSpec.fanOutY * PatWorld.cardHeight);
-      _fanOutFaceUp = _baseFanOut;
-      _fanOutFaceDown = _baseFanOut * Pile.faceDownFanOutFactor;
-      print('  Limit X $_limitX, limit Y $_limitY extra Y $dy '
-          'FanOut $_baseFanOut');
-      _hasFanOut = true;
-    } else {
-      print('  ${_pileSpec.pileType} has NO FanOut');
-    }
-  }
-
-  var _hasFanOut = false;
-  var _baseFanOut = Vector2(0.0, 0.0);
-  var _fanOutFaceUp = Vector2(0.0, 0.0);
-  var _fanOutFaceDown = Vector2(0.0, 0.0);
-  var _limitX = 0.0;
-  var _limitY = 0.0;
-
-  Vector2 get faceUpFanOut => _fanOutFaceUp;
-  Vector2 get faceDownFanOut => _fanOutFaceDown;
-
-  // TODO - This called ONLY from within pile.dart.
-  bool _fanOutChanged(Vector2 lastPosition, List<CardView> cardsInPile) {
-    // Horizontal Piles can fan out either left or right. Vertical piles always
-    // fan out downwards. For X, test NOT overflowing right AND the same left.
-    bool xWithinBounds =
-        (!((_pileSpec.growthCols > 0) && (lastPosition.x >= _limitX)) &&
-        !((_pileSpec.growthCols < 0) && (lastPosition.x <= _limitX)));
-    bool yWithinBounds = !(lastPosition.y >= _limitY);
-    if (xWithinBounds && yWithinBounds) {
-      return false; // No card-position changes are needed.
-    }
-    var spaceNeeded = 0.0;
-    int nCards = cardsInPile.length;
-    for (int n = 1; n < nCards; n++) {
-      spaceNeeded +=
-          cardsInPile[n - 1].isFaceUpView ? 1.0 : Pile.faceDownFanOutFactor;
-    }
-    final x = xWithinBounds ?
-      _fanOutFaceUp.x : (_limitX - _position!.x) / spaceNeeded;
-    final y = yWithinBounds ?
-      _fanOutFaceUp.y : (_limitY - _position!.y) / spaceNeeded;
-    _fanOutFaceUp = Vector2(x, y);
-    _fanOutFaceDown = _fanOutFaceUp * Pile.faceDownFanOutFactor;
-    print('NEW FACE-UP FAN OUT $_fanOutFaceUp');
-    return true; // Card-position changes are needed.
-  }
-
-  // TODO - This called ONLY from within pile.dart.
-  void _expandFanOut(List<CardView> cardsInPile) {
-    if (!_hasFanOut) {
-      return; // No Fan Out in this pile.
-    }
-    print('Entering _expandFanOut()...');
-    var ratio = 1.0;
-    if (_pileSpec.fanOutX != 0.0) {
-      // Calculate (current / ideal) fan out ratio: always +ve even if both -ve.
-      ratio = _fanOutFaceUp.x / _baseFanOut.x;
-      if (ratio < 1.0) {
-        // Less than ideal: increase the cards' fan outs to base value or less.
-        _fanOutFaceUp.x = _adjustFanOut(_limitX - _position!.x, _baseFanOut.x, cardsInPile);
-      }
-      print('X Ratio $ratio, _fanOutFaceUp ${_fanOutFaceUp.toString()}');
-    }
-    if (_pileSpec.fanOutY != 0.0) {
-      ratio = _fanOutFaceUp.y / _baseFanOut.y;
-      if (ratio < 1.0) {
-        _fanOutFaceUp.y = _adjustFanOut(_limitY - _position!.y, _baseFanOut.y, cardsInPile);
-      }
-      print('Y Ratio $ratio, _fanOutFaceUp ${_fanOutFaceUp.toString()}');
-    }
-    _fanOutFaceDown = _fanOutFaceUp * Pile.faceDownFanOutFactor;
-    for (int n = 1; n < cardsInPile.length; n++) {
-      var delta = cardsInPile[n - 1].isFaceUpView ? _fanOutFaceUp : _fanOutFaceDown;
-      cardsInPile[n].position = cardsInPile[n - 1].position + delta;
-    }
-  }
-
-  double _adjustFanOut(double lengthAvailable, double baseLength,
-      List<CardView> cardsInPile) {
-    var slotsNeeded = 0.0;
-    for (int n = 1; n < cardsInPile.length; n++) {
-      slotsNeeded +=
-          cardsInPile[n - 1].isFaceUpView ? 1.0 : Pile.faceDownFanOutFactor;
-    }
-    double faceUpLength = lengthAvailable / slotsNeeded;
-    // When fanning out left, both values are negative, hence the division.
-    if (faceUpLength / baseLength > 1.0) faceUpLength = baseLength;
-    return faceUpLength;
   }
 }
