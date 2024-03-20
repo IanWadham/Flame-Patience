@@ -179,10 +179,9 @@ class Pile extends PositionComponent with HasWorldReference<PatWorld> {
 
   void dropCards(List<CardView> tailCards) {
     // Instantaneously drop and display cards on this pile (used in Undo/Redo).
-
     print('Drop $tailCards on $pileType index $pileIndex, contents $_cards');
-    // If Fan Out changed, reposition all cards currently in the Pile.
     if (_checkFanOut(_cards, tailCards, adding: true) && _cards.isNotEmpty) {
+      // If Fan Out changed, reposition all cards currently in the Pile.
       for (int n = 1; n < _cards.length; n++) {
         final diff = _cards[n - 1].isFaceUpView ?
             _fanOutFaceUp : _fanOutFaceDown;
@@ -191,9 +190,6 @@ class Pile extends PositionComponent with HasWorldReference<PatWorld> {
     }
 
     for (final card in tailCards) {
-      _cards.add(card);
-      card.pile = this;
-      card.priority = _cards.length;
       if (!_hasFanOut || _cards.isEmpty) {
         // The card is aligned with the Pile's position.
         card.position = position;
@@ -201,9 +197,13 @@ class Pile extends PositionComponent with HasWorldReference<PatWorld> {
         // Fan out the second and subsequent cards.
         final prev = _cards[_cards.length - 1];
         final fanOut = prev.isFaceUpView ? _fanOutFaceUp : _fanOutFaceDown;
-        print('$pileType $pileIndex card ${card.name} FanOut $fanOut');
         card.position = prev.position + fanOut;
+        print('$pileType $pileIndex prev $prev ${prev.position} '
+            'card $card ${card.position}');
       }
+      _cards.add(card);
+      card.pile = this;
+      card.priority = _cards.length;
     }
     _setPileHitArea();
   }
@@ -497,7 +497,8 @@ class Pile extends PositionComponent with HasWorldReference<PatWorld> {
       print('NO FanOut change...');
       return false;
     }
-    print('Enter checkFanOut: $pileCards moving $movingCards add: $adding');
+    print('Enter checkFanOut: $pileType $pileIndex $pileCards '
+        'moving $movingCards add: $adding');
 
     if (!adding && (_fanOutFaceUp == _baseFanOut)) {
       // TODO - If Pile is now empty, just set FanOuts to base values?
