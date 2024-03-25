@@ -170,10 +170,13 @@ class Pile extends PositionComponent with HasWorldReference<PatWorld> {
     if (nAvailable > 0) {
       tailCards.addAll(_cards.getRange(index, _cards.length));
       _cards.removeRange(index, _cards.length);
-      _checkFanOut(_cards, tailCards, adding: false); 
-      _setPileHitArea();
     }
     print('Grab $tailCards from $pileType index $pileIndex, contents $_cards');
+    if (_checkFanOut(_cards, tailCards, adding: false)) { 
+      // If Fan Out changed, reposition any cards remaining in the Pile.
+      _fanOutPileCards();
+      _setPileHitArea();
+    }
     return tailCards;
   }
 
@@ -182,11 +185,7 @@ class Pile extends PositionComponent with HasWorldReference<PatWorld> {
     print('Drop $tailCards on $pileType index $pileIndex, contents $_cards');
     if (_checkFanOut(_cards, tailCards, adding: true) && _cards.isNotEmpty) {
       // If Fan Out changed, reposition all cards currently in the Pile.
-      for (int n = 1; n < _cards.length; n++) {
-        final diff = _cards[n - 1].isFaceUpView ?
-            _fanOutFaceUp : _fanOutFaceDown;
-        _cards[n].position = _cards[n - 1].position + diff;
-      }
+      _fanOutPileCards();
     }
 
     for (final card in tailCards) {
@@ -491,6 +490,18 @@ class Pile extends PositionComponent with HasWorldReference<PatWorld> {
     dropCards(tail);
   }
 
+  void _fanOutPileCards() {
+    if (_cards.isNotEmpty) {
+      // Reposition the cards in the Pile.
+      _cards.first.position = position;
+      for (int n = 1; n < _cards.length; n++) {
+        final diff = _cards[n - 1].isFaceUpView ?
+            _fanOutFaceUp : _fanOutFaceDown;
+        _cards[n].position = _cards[n - 1].position + diff;
+      }
+    }
+  }
+
   bool _checkFanOut(List<CardView> pileCards, List<CardView> movingCards,
       {bool adding = false}) {
     if (!_hasFanOut || movingCards.isEmpty) {
@@ -528,39 +539,45 @@ class Pile extends PositionComponent with HasWorldReference<PatWorld> {
       }
     }
 
-    // Recalculate the FanOut spaces.
+    // Calculate the number of FanOut spaces needed.
     var slotsNeeded = 0.0;
     for (CardView card in pileCards) {
       slotsNeeded += card.isFaceUpView ? 1.0 : faceDownFanOutFactor;
     }
-    slotsNeeded += (movingCards.length - 1) * factor;
+    slotsNeeded += adding ? (movingCards.length - 1) * factor : -1.0;
+
+    // Avoid calculating a very large FanOut, or maybe even dividing by zero.
+    slotsNeeded = (slotsNeeded < 1.0) ? 1.0 : slotsNeeded;
 
     final lastPosition = position + _fanOutFaceUp * slotsNeeded;
     print('  Position of Last Card in Pile $lastPosition');
     print('  Limit X $_limitX, limit Y $_limitY base FanOut $_baseFanOut');
     print('  FanOut FaceUp $_fanOutFaceUp FaceDown $_fanOutFaceDown');
-    // Horizontal Piles can fan out either left or right. Vertical piles always
-    // fan out downwards. For X, test NOT overflowing right AND the same left.
-    bool xWithinBounds =
-        (!((pileSpec.growthCols > 0) && (lastPosition.x >= _limitX)) &&
-        !((pileSpec.growthCols < 0) && (lastPosition.x <= _limitX)));
-    bool yWithinBounds = !(lastPosition.y >= _limitY);
+
+    // Horizontal Piles fan out left or right. Vertical piles fan out downwards.
+    bool xWithinBounds = (pileSpec.growthCols > 0) ?
+        (lastPosition.x <= _limitX) : (lastPosition.x >= _limitX);
+    bool yWithinBounds = (lastPosition.y <= _limitY);
     print('xWithinBounds $xWithinBounds, yWithinBounds $yWithinBounds');
-    if (xWithinBounds && yWithinBounds) {
+    if (adding && xWithinBounds && yWithinBounds) {
       print('No FanOut change needed... within bounds.');
       return false; // No card-position changes are needed.
     }
 
     print('CURRENT FanOut $_fanOutFaceUp');
-    var x = xWithinBounds ?
+    // Need to decrease FanOut if adding or increase it if removing cards.
+    var x = adding && xWithinBounds ?
       _fanOutFaceUp.x : (_limitX - position.x) / slotsNeeded;
-    var y = yWithinBounds ?
+    var y = adding && yWithinBounds ?
       _fanOutFaceUp.y : (_limitY - position.y) / slotsNeeded;
+    print('Calculated FanOut: slots $slotsNeeded x ${_limitX - position.x} y ${_limitY - position.y}');
 
     // Don't let FanOut get too large after removing cards from the Pile. Use
     // ratios in the tests, to allow for FanOuts being negative.
-    x = ((x / _baseFanOut.x) > 1.0) ? _baseFanOut.x : x;
-    y = ((y / _baseFanOut.y) > 1.0) ? _baseFanOut.y : y;
+    if (!adding) {
+      x = ((x / _baseFanOut.x) > 1.0) ? _baseFanOut.x : x;
+      y = ((y / _baseFanOut.y) > 1.0) ? _baseFanOut.y : y;
+    }
 
     _fanOutFaceUp = Vector2(x, y);
     _fanOutFaceDown = _fanOutFaceUp * Pile.faceDownFanOutFactor;
