@@ -56,11 +56,11 @@ class CardMoves {
     int leadCard = 0,
     int strength = 0,
   }) {
-    print('MOVE LIST before storeMove() index $_redoIndex:'); printMoves();
+    // print('MOVE LIST before storeMove() index $_redoIndex:'); printMoves();
     if (_redoIndex < _playerMoves.length) {
       // Remove range from redoIndex to end.
       _playerMoves.removeRange(_redoIndex, _playerMoves.length);
-      print('MOVE LIST after PRUNING, index $_redoIndex:'); printMoves();
+      // print('MOVE LIST after PRUNING, index $_redoIndex:'); printMoves();
     }
     assert(nCards > 0, 'storeMove(): BAD VALUE OF nCards = $nCards.');
     CardMove move = (
@@ -73,7 +73,7 @@ class CardMoves {
     );
     _playerMoves.add(move);
     _redoIndex = _playerMoves.length;
-    print('MOVE LIST after storeMove() index $_redoIndex:'); printMoves();
+    // print('MOVE LIST after storeMove() index $_redoIndex:'); printMoves();
     print('Move: ${from.pileIndex} ${from.pileType} to ${to.pileIndex} '
         '${to.pileType} $nCards cards ${_cards[leadCard]} $extra');
   }
@@ -82,9 +82,9 @@ class CardMoves {
     if (_redoIndex < 1) {
       return;
     }
-    print('MOVE LIST before undoMove() index $_redoIndex:'); printMoves();
+    // print('MOVE LIST before undoMove() index $_redoIndex:'); printMoves();
     moveBack(_playerMoves[--_redoIndex]);
-    print('MOVE LIST after undoMove() index $_redoIndex:'); printMoves();
+    // print('MOVE LIST after undoMove() index $_redoIndex:'); printMoves();
   }
 
   void redoMove() {
@@ -92,9 +92,9 @@ class CardMoves {
     if (_redoIndex >= _playerMoves.length) {
       return;
     }
-    print('MOVE LIST before redoMove() index $_redoIndex:'); printMoves();
+    // print('MOVE LIST before redoMove() index $_redoIndex:'); printMoves();
     makeMove(_playerMoves[_redoIndex++]);
-    print('MOVE LIST after redoMove() index $_redoIndex:'); printMoves();
+    // print('MOVE LIST after redoMove() index $_redoIndex:'); printMoves();
   }
 
   void makeMove(CardMove move) {
