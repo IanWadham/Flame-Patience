@@ -21,10 +21,10 @@ packages:
     dependency: "direct main"
     description:
       name: flame
-      sha256: "2a2352741500ce47823dcf212f06b23e9bdb622454eab90244ee6da58e23b488"
+      sha256: da1812e2f17a8ffd5d43ea6a83137794e7f482bcf50419bc9847b8efdb39f791
       url: "https://pub.dev"
     source: hosted
-    version: "1.15.0"
+    version: "1.17.0"
   flutter:
     dependency: "direct main"
     description: flutter
@@ -85,4 +85,4 @@ packages:
     version: "2.1.4"
 sdks:
   dart: ">=3.2.0-0 <4.0.0"
-  flutter: ">=3.13.0"
+  flutter: ">=3.19.0"
