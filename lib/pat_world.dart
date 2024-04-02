@@ -11,6 +11,7 @@ import 'components/flat_button.dart';
 import 'models/card_moves.dart';
 
 import 'pat_game.dart';
+import 'pat_menu_world.dart';
 import 'specs/pat_enums.dart';
 import 'specs/pat_specs.dart';
 import 'specs/card_image_specs.dart';
@@ -18,7 +19,7 @@ import 'specs/card_image_specs.dart';
 import 'views/game_play.dart';
 import 'views/game_start.dart';
 
-class PatWorld extends World with HasGameReference<PatGame> {
+class PatWorld extends PatBaseWorld with HasGameReference<PatGame> {
   static const cardDeckName = 'Ancient_Egyptians'; // TODO - Setting needed.
   static const cardWidth = 900.0;
   static const cardHeight = 1200.0;
@@ -109,6 +110,8 @@ class PatWorld extends World with HasGameReference<PatGame> {
     camera.viewfinder.position = Vector2(playAreaSize.x / 2.0, 0.0);
     camera.viewfinder.anchor = Anchor.topCenter;
     print('WORLD SIZE ${game.size} play area size $playAreaSize');
+    print('Viewport AR = ${game.size.x/game.size.y}, play AR ${playAreaSize.x/playAreaSize.y}');
+    print('\n');
 
     print('GAME DATA DIMENSIONS: cards ${cards.length} piles ${piles.length}');
 
@@ -129,7 +132,7 @@ class PatWorld extends World with HasGameReference<PatGame> {
         switch (action) {
           case Action.newGame:
             game.changeGame();
-            game.world = PatWorld();
+            // game.world = PatMenuWorld(); // PatWorld();
           case Action.undo:
             gameplay.undoMove();
           case Action.redo:

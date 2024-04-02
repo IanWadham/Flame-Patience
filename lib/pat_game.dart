@@ -1,14 +1,21 @@
 import 'package:flame/game.dart';
+import 'package:flame/components.dart';
 import 'package:flutter/material.dart' show Colors, Color;
 
+import 'pat_menu_world.dart';
 import 'pat_world.dart';
 import 'specs/pat_specs.dart';
 
 enum Action { newDeal, sameDeal, newGame, undo, redo }
 
-class PatGame extends FlameGame<PatWorld> {
-  // The PatGame constructor creates the first PatWorld.
-  PatGame() : super(world: PatWorld());
+class PatBaseWorld extends World with HasGameReference<PatGame> {
+// An empty parent-World from which two very different worlds inherit.
+}
+
+class PatGame extends FlameGame<PatBaseWorld> {
+  // The PatGame constructor creates the first PatMenuWorld. It replaces itself
+  // with a PatWorld for gameplay after the player has selected a game-type.
+  PatGame() : super(world: PatMenuWorld());
 
   // These three values persist between deals and are starting conditions
   // for the next deal to be played on PatWorld. The type of game being played
@@ -28,8 +35,8 @@ class PatGame extends FlameGame<PatWorld> {
   // required to construct layouts, deals and rules of play for many Patience
   // (Solitaire) games. GameSpecs depend heavily on the Dart 3 record concept.
 
-  void changeGame() => // This can show a menu screen in later versions.
-      gameIndex = (gameIndex < PatData.gameList.length - 1) ? ++gameIndex : 0;
+  void changeGame() => world = PatMenuWorld(); // This can show a menu screen in later versions.
+      //gameIndex = (gameIndex < PatData.gameList.length - 1) ? ++gameIndex : 0;
 
   // Color settings for the playing area, board layout and action-buttons.
   static final Color screenBackground = Colors.amber.shade100;
