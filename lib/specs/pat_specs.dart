@@ -1,4 +1,5 @@
 import 'pat_enums.dart';
+import 'rule_book.dart';
 
 // These typedefs give names to definitions of Dart Record types. In each case,
 // the actual `type` is `(`, `)` and everything that lies between the parentheses.
@@ -33,6 +34,8 @@ typedef GameSpec = ({
   bool redealEmptyTableau,
   DealSequence dealSequence,
   List<GamePileSpec> gamePilesSpec,
+  List<String> gameRules,
+  List<String> gameTips,
 });
 
 typedef GamePileSpec = ({
@@ -75,6 +78,8 @@ class PatData {
       dealSequence: DealSequence.wholePileAtOnce,
       excludedRank: 0, // Deal ALL cards.
       redealEmptyTableau: false,
+      gameRules: RuleBook.klondikeDraw1Rules,
+      gameTips: RuleBook.klondikeDraw1Tips,
       gamePilesSpec: [
         ( // GamePileSpec
           pileSpec: standardStock,
@@ -128,6 +133,8 @@ class PatData {
       dealSequence: DealSequence.wholePileAtOnce,
       excludedRank: 0, // Deal ALL cards.
       redealEmptyTableau: false,
+      gameRules: RuleBook.fortyAndEightRules,
+      gameTips: RuleBook.fortyAndEightTips,
       gamePilesSpec: [
         ( // GamePileSpec
           pileSpec: fortyAndEightStock,
@@ -186,6 +193,8 @@ class PatData {
       dealSequence: DealSequence.wholePileAtOnce,
       excludedRank: 1, // Exclude Aces.
       redealEmptyTableau: true,
+      gameRules: RuleBook.mod3Rules,
+      gameTips: RuleBook.mod3Tips,
       gamePilesSpec: [
         ( // GamePileSpec
           pileSpec: standardStock,

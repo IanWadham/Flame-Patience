@@ -120,8 +120,8 @@ class Dealer extends Component with HasWorldReference<PatWorld> {
       this._replenishTableauFromStock, this._cardMoves,
   );
 
-  // This data and function-paraameter are needed by the deal() and completeTheDeal()
-  // methods and are provided by the GamePlay start() method.
+  // This data and function-paraameter are needed by the deal() and
+  // completeTheDeal() methods and are provided by the GamePlay start() method.
   final List<CardView> _cards;
   final List<Pile> _piles;
   final int _stockPileIndex;
@@ -155,8 +155,7 @@ class Dealer extends Component with HasWorldReference<PatWorld> {
     print('BEFORE SHUFFLE');
     _piles[_stockPileIndex].dump();
 
-    // ??????? cardsToDeal.shuffle(Random(seed));
-    cardsToDeal.shuffle();
+    cardsToDeal.shuffle(Random(seed));
 
     List<Pile> dealTargets = [];
     for (Pile pile in _piles) {

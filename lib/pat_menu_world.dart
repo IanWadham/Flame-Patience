@@ -114,6 +114,7 @@ class MenuItem extends PositionComponent
 
   @override
   void onTapUp(TapUpEvent event) {
+    // Load and start the selected game in a new World.
     game.gameIndex = myGameIndex;
     game.world = PatWorld();
   }

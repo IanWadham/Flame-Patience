@@ -6,7 +6,7 @@ import 'pat_menu_world.dart';
 import 'pat_world.dart';
 import 'specs/pat_specs.dart';
 
-enum Action { newDeal, sameDeal, newGame, undo, redo }
+enum Action { newDeal, sameDeal, newGame, undo, redo, showRules, showMoves }
 
 class PatBaseWorld extends World with HasGameReference<PatGame> {
 // An empty parent-World from which two very different worlds inherit.
@@ -17,6 +17,9 @@ class PatGame extends FlameGame<PatBaseWorld> {
   // with a PatWorld for gameplay after the player has selected a game-type.
   PatGame() : super(world: PatMenuWorld());
 
+  // Constant used when creating seed for Random class.
+  static const int maxInt = 0xFFFFFFFE; // (2 to the power 32) - 1
+
   // These three values persist between deals and are starting conditions
   // for the next deal to be played on PatWorld. The type of game being played
   // (gameIndex) stays the same between deals, unless Action.newGame is taken.
@@ -25,7 +28,6 @@ class PatGame extends FlameGame<PatBaseWorld> {
   // here in case the player chooses Action.sameDeal.
 
   int gameIndex = 0;
-  // int seed = 95985215;
   int seed = 95885673;
   Action action = Action.newDeal;
 
@@ -35,11 +37,11 @@ class PatGame extends FlameGame<PatBaseWorld> {
   // required to construct layouts, deals and rules of play for many Patience
   // (Solitaire) games. GameSpecs depend heavily on the Dart 3 record concept.
 
-  void changeGame() => world = PatMenuWorld(); // This can show a menu screen in later versions.
-      //gameIndex = (gameIndex < PatData.gameList.length - 1) ? ++gameIndex : 0;
+  void changeGame() => world = PatMenuWorld(); // Show the menu-world screen.
 
   // Color settings for the playing area, board layout and action-buttons.
-  static final Color screenBackground = Colors.amber.shade100;
+  // static final Color screenBackground = Colors.amber.shade100;
+  static final Color screenBackground = Colors.amber.shade300;
   static final Color pileBackground = Colors.amberAccent.shade100;
   static final Color pileOutline = Colors.brown.shade600;
   static const Color buttonHighlight = Colors.red;
