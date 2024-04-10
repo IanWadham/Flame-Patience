@@ -12,13 +12,10 @@ import '../pat_world.dart';
 import '../specs/pat_enums.dart';
 import '../specs/pat_specs.dart';
 
-// Decoding of GameSpec into Piles and their layout (was in PatWorld's onLoad).
-// Shuffle and deal into the layout at the start of a Game.
-// Make changes after the deal (e.g. in Mod 3, remove Aces, refill Tableaus).
-
 // There are two distinct classes in this file: GameLayOut and Dealer.
 
 class GameLayout {
+// Decode GameSpec into Piles and their layout (called from PatWorld's onLoad).
 
   int generatePiles(GameSpec gameSpec, Vector2 cellSize, List<Pile> piles) {
     var pileSpecErrorCount = 0;
@@ -31,7 +28,6 @@ class GameLayout {
     int _stockPileIndex = -1; // No Stock Pile yet: not all games have one.
     int _wastePileIndex = -1; // No Waste Pile yet: not all games have one.
     int _excludedCardsPileIndex = -1; // Games with Excluded Cards need this.
-
     for (GamePileSpec gamePile in gameSpec.gamePilesSpec) {
       final pileSpec = gamePile.pileSpec;
       final pileType = pileSpec.pileType;
@@ -47,14 +43,13 @@ class GameLayout {
         double pileX = (col + 0.5) * cellSize.x;
         double pileY = row * cellSize.y;
         final position = PatWorld.topLeft + Vector2(pileX, pileY);
-        print('New Pile ${pileSpec.pileType} $pileIndex pos $position row $row col $col');
+        // print('New Pile ${pileSpec.pileType} $pileIndex pos $position '
+        //     'row $row col $col');
         final pile = Pile(
           pileSpec,
           pileIndex,
           cellSize.x,
           cellSize.y,
-          row: row,
-          col: col,
           deal: deal,
           position: position,
         );
@@ -92,10 +87,17 @@ class GameLayout {
 
     final foundationsNeeded = gameSpec.gameID == PatGameID.mod3 ? 24
         : 4 * gameSpec.nPacks;
-    if (!foundStockSpec && gameSpec.hasStockPile) {
-      throw FormatException(
-          'NO Stock Pile specified but GameSpec hasStockPile is true');
-      pileSpecErrorCount++;
+    if (!foundStockSpec) {
+      if (gameSpec.hasStockPile) {
+        throw FormatException(
+            'NO Stock Pile specified but GameSpec hasStockPile is true');
+        pileSpecErrorCount++;
+      } else {
+        // Create a Stock Pile, but off-screen and just for Dealer usage.
+        final pile = createDefaultStockPile(cellSize, piles.length);
+        _stockPileIndex = piles.length;
+        piles.add(pile);
+      }
     } else if (!foundWasteSpec && gameSpec.hasWastePile) {
       throw FormatException(
           'NO Waste Pile specified but GameSpec hasWastePile is true');
@@ -111,17 +113,31 @@ class GameLayout {
     // If there are errors in the Pile Specs, probably will not get this far.
     return pileSpecErrorCount;
   }
+
+  Pile createDefaultStockPile(Vector2 cellSize, int pileIndex) {
+    final pileSpec = PatData.dealerStock;
+    final pile = Pile(
+          pileSpec,
+          pileIndex,
+          cellSize.x,
+          cellSize.y,
+          position: Vector2(0.0, 0.0) - cellSize,
+    );
+    return pile;
+  }
 } // End of GameLayout class.
 
 
 class Dealer extends Component with HasWorldReference<PatWorld> {
+// This Class shuffles and deals into the layout at the start of a Game and
+// makes changes after the deal (e.g. in Mod 3, remove Aces, refill Tableaus).
   Dealer(this._cards, this._piles, this._stockPileIndex,
       this._gameSpec, this._excludedCardsPileIndex,
       this._replenishTableauFromStock, this._cardMoves,
   );
 
-  // This data and function-paraameter are needed by the deal() and
-  // completeTheDeal() methods and are provided by the GamePlay start() method.
+  // The following data and function-parameter are needed by the deal() and
+  // completeTheDeal() methods and are provided by the GamePlay.start() method.
   final List<CardView> _cards;
   final List<Pile> _piles;
   final int _stockPileIndex;
@@ -135,27 +151,16 @@ class Dealer extends Component with HasWorldReference<PatWorld> {
   bool get hasStockPile => (_stockPileIndex >= 0);
 
   void deal(DealSequence dealSequence, int seed, {VoidCallback? whenDone,}) {
-    // TODO - Make sure every Game has a Stock Pile, even if it is no longer
-    //        used after the deal finishes (e.g. FreeCell and Yukon). If that
-    //        is the case, position the Stock Pile off-screen at top-left.
-    // TODO - After shuffling, put ALL cards in the Stock Pile and deal from it.
     final cardsToDeal = List<CardView>.of(_cards);
-    CardView baseCard = cardsToDeal.removeAt(0);
-    if (hasStockPile) {
-      _piles[_stockPileIndex].put(baseCard);
-    }
+    assert(_stockPileIndex >= 0);
+    final Pile stockPile = _piles[_stockPileIndex];
+    final baseCard = cardsToDeal.removeAt(0);
+    stockPile.put(baseCard);
 
-    // Move all cards to a place in this game-layout from which they are dealt.
-    final dealerPosition = _piles[_stockPileIndex].position;
-    var cardPriority = 1;
-    for (CardView card in cardsToDeal) {
-      card.position = dealerPosition;
-      card.priority = cardPriority++;
-    }
-    print('BEFORE SHUFFLE');
-    _piles[_stockPileIndex].dump();
-
+    // Shuffle the cards. Put them in the Stock Pile, from which they are dealt.
     cardsToDeal.shuffle(Random(seed));
+    stockPile.dropCards(cardsToDeal);
+    cardsToDeal.clear();
 
     List<Pile> dealTargets = [];
     for (Pile pile in _piles) {
@@ -169,7 +174,7 @@ class Dealer extends Component with HasWorldReference<PatWorld> {
     }
 
     print('BEFORE DEAL');
-    _piles[_stockPileIndex].dump();
+    stockPile.dump();
 
     List<CardView> movingCards = [];
     var nDealtCards = 0;
@@ -180,8 +185,8 @@ class Dealer extends Component with HasWorldReference<PatWorld> {
         bool pileFaceUp = false;
         bool lastFaceUp = false;
         int nCardsLeftToDeal = target.nCardsToDeal;
-        while (nCardsLeftToDeal > 0 && cardsToDeal.isNotEmpty) {
-          CardView card = cardsToDeal.removeLast();
+        while (nCardsLeftToDeal > 0 && (stockPile.nCards > 0)) {
+          CardView card = stockPile.grabCards(1).first;
           movingCards.add(card);
           switch (target.pileSpec.dealFaceRule) {
             case DealFaceRule.faceUp:
@@ -210,7 +215,7 @@ class Dealer extends Component with HasWorldReference<PatWorld> {
             onComplete: () {
               nCardsArrived++;
               if (nCardsArrived == nDealtCards) {
-                print('DEAL COMPLETE - Pile faceDown/faceUp case...');
+                // print('DEAL COMPLETE - Pile faceDown/faceUp case...');
                 whenDone?.call();
               }
             }
@@ -226,7 +231,7 @@ class Dealer extends Component with HasWorldReference<PatWorld> {
             onComplete: () {
               nCardsArrived++;
               if (nCardsArrived == nDealtCards) {
-                print('DEAL COMPLETE - lastFaceUp case...');
+                // print('DEAL COMPLETE - lastFaceUp case...');
                 whenDone?.call();
               }
             }
@@ -236,20 +241,12 @@ class Dealer extends Component with HasWorldReference<PatWorld> {
         movingCards.clear();
         lastCard.clear();
       } else if (dealSequence == DealSequence.pilesInTurn) {
-        // TODO - NOT IMPLEMENTED YET.
         throw UnimplementedError(
             'Dealing from L to R across the Piles is not implemented yet.');
       }
     } // End for Pile target
 
-    _piles[_stockPileIndex].dump();
-    if (hasStockPile && cardsToDeal.isNotEmpty) {
-      for (CardView card in cardsToDeal) {
-        _piles[_stockPileIndex].put(card);
-      }
-      _piles[_stockPileIndex].dump();
-      cardsToDeal.clear();
-    }
+    stockPile.dump();
   }
 
   void completeTheDeal() {
@@ -274,7 +271,7 @@ class Dealer extends Component with HasWorldReference<PatWorld> {
               speed: 10.0,
               flipTime: 0.0, // No flip.
             );
-          } else { // NOT IMPLEMENTED YET.
+          } else { // Not implemented yet.
             throw UnimplementedError(
                 'Excluded Rank $_excludedRank has no Excluded Card Pile');
           }
@@ -287,6 +284,6 @@ class Dealer extends Component with HasWorldReference<PatWorld> {
         }
       }
     }
-    _cardMoves.reset(); // Clear any Moves made so far (not part of gameplay).
+    _cardMoves.reset(); // Clear any Moves made so far (not part of Gameplay).
   }
 } // End of Dealer class.

@@ -465,6 +465,23 @@ class PatData {
     growthCols: 0,
     growthRows: 1,
   );
+
+  static const PileSpec dealerStock = (
+    // Reserved for the Dealer, in games that do not use a Stock Pile.
+    pileType: PileType.stock,
+    pileName: 'dealerStock',
+    hasBaseCard: true,
+    dragRule: DragRule.dragNotAllowed,
+    tapRule: TapRule.tapNotAllowed,
+    tapEmptyRule: TapEmptyRule.tapNotAllowed,
+    putRule: PutRule.putNotAllowed,
+    putFirst: 0,
+    dealFaceRule: DealFaceRule.faceDown,
+    fanOutX: 0.0,
+    fanOutY: 0.0,
+    growthCols: 0,
+    growthRows: 0,
+  );
 }
 
 /*
