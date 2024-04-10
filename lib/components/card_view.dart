@@ -93,7 +93,7 @@ class CardView extends PositionComponent
         size: PatWorld.cardSize,
       );
     } else {
-      // Draw the Base Card in outline only.
+      // Draw the Base Card, in outline only.
       canvas.drawRRect(PatWorld.baseCardRect, baseBorderPaint);
     }
     return;
@@ -114,24 +114,21 @@ class CardView extends PositionComponent
   // before the finger or mouse button is raised, a TapCancel event occurs
   // followed by a DragStart event.
   //
-  // The Stock Pile does not allow drags-and-drops, so a TapCancel on the Stock
-  // Pile is treated as equivalent to a TapUp on the Stock Pile and the drag is
-  // ignored. Drags on other piles are followed, if the rules of the game allow
-  // such a move, but if the drag finishes within a very short distance, it is
-  // treated as a TapUp, as it is in the StockPile case..
-  //
-  // This is all so that a small movement or hand-tremor during a tap will not
-  // cause the tap action to fail silently and be lost, which would annoy the
-  // player, especially if he/she is trying to play fast.
+  // This code treats a very short drag as a tap, so that a small movement or
+  // hand-tremor during a tap will not cause the tap action to fail silently
+  // and be lost (which will annoy the player).
   //
   // USE OF TAP MOVES:
   //
   // A tap on a face-up card makes it auto-move and go out to a Foundation Pile
-  // (if acceptable), but if it is face-down on a Stock Pile, it turns over and
-  // moves to the Waste Pile. In Klondike Draw 3, three cards are turned over
+  // (if acceptable). If it is face-down on a Stock Pile, it turns over and
+  // moves to another pile. In Klondike Draw 3, three cards are turned over
   // and moved. Some games have a Stock Pile but no Waste Pile: what happens
   // then depends on the rules of the game. And some have neither a Stock Pile
   // nor a Waste Pile (i.e. all the cards are dealt face-up, as in Free Cell).
+  // If the Stock Pile is empty, a tap on it is received by the Base Card and
+  // usually causes Waste Pile cards to return to the Stock, depending on the
+  // rules of the game.
   //
   // USE OF DRAG AND DROP MOVES:
   //
@@ -150,14 +147,12 @@ class CardView extends PositionComponent
 
   void handleTap() {
     // Can be called by onTapUp or after a very short (failed) drag-and-drop.
-    // For ease of gameplay the game accepts taps that include a short drag.
-
     if (_isMoving) {
       return; // Ignore taps while moving, otherwise it's a sure way to crash...
     }
-    // TODO - Change the interface with GamePlay singleton?...
     bool success = world.gameplay.tapMove(this);
-    // print('CardView: Returned from tap on $name, pile ${pile.pileIndex} ${pile.pileType} success $success');
+    // print('CardView: Returned from tap on $name, pile ${pile.pileIndex} '
+        // '${pile.pileType} success $success');
     return;
   }
 
@@ -183,9 +178,7 @@ class CardView extends PositionComponent
     // cards to be moved, including one or none, are returned in movingCards.
     // Alternatively, dragging a Stock card or Base Card is treated as a tap.
 
-    // TODO - Need to mark ALL dragged cards as isMoving. Will need a setter.
     if (pile.isDragMoveValid(this, _movingCards) == MoveResult.valid) {
-    // ??????? if (world.gameplay.dragStart(this, pile, movingCards)) {
       _isDragging = true;
       _isMoving = true;
       var cardPriority = movingPriority;
@@ -197,7 +190,6 @@ class CardView extends PositionComponent
       }
       print(moving);
     }
-    // TODO - Has it become a tap? Do we care at this point?...
   }
 
   @override
@@ -217,11 +209,13 @@ class CardView extends PositionComponent
     }
     _isMoving = false;
     _isDragging = false;
+
     // Find out what is under the center-point of this card when dropped.
     final targets = parent!
         .componentsAtPoint(position + Vector2(0.0, height / 2.0))
         .whereType<Pile>()
         .toList();
+
     // Drop the cards, if valid, or try a tap move if drag was too short,
     // or, if all else fails, return the card(s) to where they started.
     world.gameplay.dragEnd(_movingCards, _startPosition, _fromPileIndex,
@@ -230,7 +224,10 @@ class CardView extends PositionComponent
 
   // TODO - Not urgent: experiment with doing the flip within some PART of the
   //        move, instead of spreading it out over the whole move as at present.
+  // TODO - NICE to have: an automatic instantaneous move if time < _minTime...
 
+  // The ONLY animation function of Cards. Depending on parameter values, it
+  // does a simple Move, a combined Move and Flip, or a Flip with no move. 
   void doMoveAndFlip(
     Vector2 to, {
     double speed = 15.0,
@@ -240,15 +237,13 @@ class CardView extends PositionComponent
     Curve curve = Curves.easeOutQuad,
     VoidCallback? whenDone,
   }) {
-    // TODO - NICE to have an automatic instantaneous move if time < _minTime...
     final dt = speed > 0.0 ? (to - position).length / (speed * size.x) : 0.0;
     assert((((speed > 0.0) && (dt > 0.0)) || (flipTime > 0.0)),
         'Speed and distance must be > 0.0 OR flipTime must be > 0.0');
     final moveTime = dt > flipTime ? dt : flipTime; // Use the larger time.
     // print('START new move+flip: $to $this speed $speed flip $flipTime '
         // 'pri $startPriority');
-    // ????? Maybe needed to set _isMoving EARLIER - won't hurt to set it again.
-    // ????? assert(_isMoving == false);
+    // Maybe _isMoving was set EARLIER - but it won't hurt to set it again.
     _isMoving = true;
     bool flipOnly = ((flipTime > 0.0) && (speed <= 0.0));
     if (dt > 0.0) { // The card will change position.
@@ -294,6 +289,12 @@ class CardView extends PositionComponent
     }
   }
 }
+
+// This extension is to support multiple overlapped moves, e.g. when dealing. It
+// allows cards to stay in their correct place in the starting pile while they
+// wait to move, then to "fly" at the correct height when they are moving. The
+// Pile.receiveMovingCard() method later allocates the correct priority in the
+// receiving Pile when the cards "land". 
 
 class CardMoveEffect extends MoveToEffect {
   CardMoveEffect(
