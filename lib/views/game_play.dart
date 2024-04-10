@@ -357,8 +357,7 @@ class Gameplay {
         continue;
       }
       putOK = target.checkPut(card);
-      print('Try ${target.pileType} at '
-          'row ${target.gridRow} col ${target.gridCol} putOK $putOK');
+      print('Try Pile ${target.pileIndex} ${target.pileType}: putOK $putOK');
       if (putOK) { // The card goes out.
         // TODO - Have ALREADY grabbed the card if the "tap" is a short-drag,
         //        so make sure it is in movingCards[] even if its a real tap.

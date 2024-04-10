@@ -11,11 +11,9 @@ import 'card_view.dart';
 
 class Pile extends PositionComponent with HasWorldReference<PatWorld> {
   Pile(this.pileSpec, this.pileIndex, this.baseWidth, this.baseHeight,
-      {required int row, required int col, int deal = 0, super.position})
+      {int deal = 0, super.position})
     :
     pileType = pileSpec.pileType,
-    gridRow = row,
-    gridCol = col,
     nCardsToDeal = deal,
     _hasFanOut = (pileSpec.fanOutX != 0.0) || (pileSpec.fanOutY != 0.0),
     _baseFanOut = Vector2( // The starting FanOut and the maximum allowed.
@@ -36,8 +34,6 @@ class Pile extends PositionComponent with HasWorldReference<PatWorld> {
   final PileType pileType;
 
   final int pileIndex;
-  final int gridRow;
-  final int gridCol;
   final int nCardsToDeal;
   final double baseWidth;
   final double baseHeight;
@@ -77,7 +73,7 @@ class Pile extends PositionComponent with HasWorldReference<PatWorld> {
     DragRule dragRule = pileSpec.dragRule;
     dragList.clear();
 
-    String message = 'Drag $pileType row $gridRow col $gridCol:';
+    String message = 'Drag Pile $pileIndex, $pileType:';
     if (_cards.isEmpty) {
       // print('$message _cards is Empty');
       return MoveResult.pileEmpty;
@@ -116,7 +112,7 @@ class Pile extends PositionComponent with HasWorldReference<PatWorld> {
 
   MoveResult isTapMoveValid(CardView card) {
     TapRule tapRule = pileSpec.tapRule;
-    String message = 'Tap $pileType row $gridRow col $gridCol:';
+    String message = 'Tap Pile $pileIndex, $pileType:';
     if (pileSpec.tapRule == TapRule.tapNotAllowed) {
       print('$message tap not allowed');
       return MoveResult.notValid; // e.g. Foundation Piles do not accept taps.
@@ -401,8 +397,7 @@ class Pile extends PositionComponent with HasWorldReference<PatWorld> {
 
   bool checkPut(CardView card) {
     // Player can put or drop cards onto Foundation or Tableau Piles only.
-    String message = 'Check Put: ${card.toString()} $pileType'
-        ' row $gridRow col $gridCol:';
+    String message = 'Check Put: ${card.name} Pile $pileIndex, $pileType:';
     if ((pileType == PileType.foundation) || (pileType == PileType.tableau)) {
       if (_cards.isEmpty) {
         final firstOK =
