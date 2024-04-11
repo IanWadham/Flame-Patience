@@ -128,16 +128,18 @@ class PatWorld extends PatBaseWorld with HasGameReference<PatGame> {
     // in case it is needed in the future (e.g. for saving/reloading a Game).
     gameplay = Gameplay(cards, piles);
 
+    // Start the Game with a random seed or a test-seed for debugging purposes.
+    // Otherwise, use the same seed again and get a replay of the previous deal.
     print('GAME ACTION ${game.action}');
     if (game.action != Action.sameDeal) {
       // New deal: change the Random Number Generator's seed.
       print('NEW SEED!!!');
-      game.seed = Random().nextInt(PatGame.maxInt);
+      game.seed = (game.testSeed == 0) ?  Random().nextInt(PatGame.maxInt) :
+          game.testSeed;
     }
     print('GAME SEED ${game.seed}');
-    // Otherwise, use the same seed again and get a replay of the previous deal.
 
-    // Start the Game by shuffling and dealing the cards.
+    // Shuffle and deal the cards.
     gameplay.begin(gameSpec, game.seed);
   }
 
