@@ -182,64 +182,63 @@ class Dealer extends Component with HasWorldReference<PatWorld> {
     double cardDealTime = 0.1;
     for (Pile target in dealTargets) {
       if (dealSequence == DealSequence.wholePileAtOnce) {
-        bool pileFaceUp = false;
-        bool lastFaceUp = false;
+        // Decide what mixture of FaceDown and FaceUp cards to deal.
         int nCardsLeftToDeal = target.nCardsToDeal;
+        int nCardsFaceDown = 0;
+        int nCardsFaceUp = 0;
+        switch (target.pileSpec.dealFaceRule) {
+          case DealFaceRule.faceUp:
+            nCardsFaceUp = nCardsLeftToDeal;
+          case DealFaceRule.lastFaceUp:
+            nCardsFaceDown = nCardsLeftToDeal - 1;
+            nCardsFaceUp = 1;
+          case DealFaceRule.last5FaceUp:
+            if (nCardsLeftToDeal <= 5) {
+              nCardsFaceUp = nCardsLeftToDeal;
+            } else {
+              nCardsFaceDown = nCardsLeftToDeal - 5;
+              nCardsFaceUp = 5;
+            }
+          case DealFaceRule.faceDown:
+            nCardsFaceDown = nCardsLeftToDeal;
+          case DealFaceRule.notUsed:
+            break;
+        }
+
+        // Deal 1 or 2 chunks: all FaceDown, all FaceUp or FaceDown then FaceUp.
         while (nCardsLeftToDeal > 0 && (stockPile.nCards > 0)) {
-          CardView card = stockPile.grabCards(1).first;
-          movingCards.add(card);
-          switch (target.pileSpec.dealFaceRule) {
-            case DealFaceRule.faceUp:
-              pileFaceUp = true;
-            case DealFaceRule.lastFaceUp:
-              if (nCardsLeftToDeal == 1) {
-                lastFaceUp = true;
-              }
-            case DealFaceRule.faceDown:
-            case DealFaceRule.notUsed:
-              break;
+          int nStock = stockPile.nCards;
+          int nToDeal = 0;
+          bool flip = false;
+          if (nCardsFaceDown > 0) {
+            nToDeal = (nStock < nCardsFaceDown) ? nStock : nCardsFaceDown;
+            movingCards = stockPile.grabCards(nToDeal);
+            nCardsFaceDown = 0;
+          } else if (nCardsFaceUp > 0) {
+            flip = true;
+            nToDeal = (nStock < nCardsFaceUp) ? nStock : nCardsFaceUp;
+            movingCards = stockPile.grabCards(nToDeal);
+            nCardsFaceUp = 0;
           }
-          nCardsLeftToDeal--;
-        }
-        List<CardView> lastCard = [];
-        if (lastFaceUp) {
-          lastCard.add(movingCards.removeLast());
-        }
-        if (movingCards.isNotEmpty) {
-          target.receiveMovingCards(
-            movingCards,
-            speed: 15.0,
-            startTime: nDealtCards * cardDealTime,
-            flipTime: pileFaceUp ? 0.3 : 0.0,
-            intervalTime: cardDealTime,
-            onComplete: () {
-              nCardsArrived++;
-              if (nCardsArrived == nDealtCards) {
-                // print('DEAL COMPLETE - Pile faceDown/faceUp case...');
-                whenDone?.call();
+          nCardsLeftToDeal -= nToDeal;
+          if (movingCards.isNotEmpty) {
+            target.receiveMovingCards(
+              movingCards,
+              speed: 15.0,
+              startTime: nDealtCards * cardDealTime,
+              flipTime: flip ? 0.3 : 0.0,
+              intervalTime: cardDealTime,
+              onComplete: () {
+                nCardsArrived++;
+                if (nCardsArrived == nDealtCards) {
+                  whenDone?.call();
+                }
               }
-            }
-          );
-          nDealtCards += movingCards.length;
-        }
-        if (lastFaceUp) {
-          target.receiveMovingCards(
-            lastCard,
-            speed: 15.0,
-            startTime: nDealtCards * cardDealTime,
-            flipTime: 0.3,
-            onComplete: () {
-              nCardsArrived++;
-              if (nCardsArrived == nDealtCards) {
-                // print('DEAL COMPLETE - lastFaceUp case...');
-                whenDone?.call();
-              }
-            }
-          );
-          nDealtCards++;
+            );
+            nDealtCards += movingCards.length;
+          }
         }
         movingCards.clear();
-        lastCard.clear();
       } else if (dealSequence == DealSequence.pilesInTurn) {
         throw UnimplementedError(
             'Dealing from L to R across the Piles is not implemented yet.');
@@ -281,6 +280,10 @@ class Dealer extends Component with HasWorldReference<PatWorld> {
         if (pile.hasNoCards ||
             (_cards[pile.topCardIndex].rank == _excludedRank)) {
           _replenishTableauFromStock(pile);
+          // TODO - We need to wait HERE if another Ace is on its way from the
+          //        Stock Pile - NOT start examining the next Tableau and
+          //        calling _replenishTableau concurrently if there is yet
+          //        another Ace there.
         }
       }
     }
