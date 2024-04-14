@@ -79,4 +79,16 @@ class RuleBook {
   static const mod3Tips = [
     'Sorry, nothing written yet.'
   ];
+  static const simpleSimonRules = [
+    'Sorry, nothing written yet.'
+  ];
+  static const simpleSimonTips = [
+    'Sorry, nothing written yet.'
+  ];
+  static const yukonRules = [
+    'Sorry, nothing written yet.'
+  ];
+  static const yukonTips = [
+    'Sorry, nothing written yet.'
+  ];
 }

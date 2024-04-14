@@ -269,6 +269,91 @@ class PatData {
         ),
       ],
     ),
+    ( // GameSpec
+      gameID: PatGameID.simpleSimon,
+      gameName: 'Simple Simon',
+      nPacks: 1,
+      nCellsWide: 10,
+      nCellsHigh: 5,
+      cardPadX: 100,
+      cardPadY: 50,
+      hasStockPile: false,
+      hasWastePile: false,
+      dealSequence: DealSequence.wholePileAtOnce,
+      excludedRank: 0, // Deal ALL cards.
+      redealEmptyTableau: false,
+      gameRules: RuleBook.simpleSimonRules,
+      gameTips: RuleBook.simpleSimonTips,
+      gamePilesSpec: [
+        ( // GamePileSpec
+          pileSpec: standardFoundation,
+          nPilesSpec: 4,
+          pileTrios: [
+            (0, 3, 0),
+            (0, 4, 0),
+            (0, 5, 0),
+            (0, 6, 0),
+          ]
+        ),
+        ( // GamePileSpec
+          pileSpec: simpleSimonTableau,
+          nPilesSpec: 10,
+          pileTrios: [
+            (1, 0, 8),
+            (1, 1, 8),
+            (1, 2, 8),
+            (1, 3, 7),
+            (1, 4, 6),
+            (1, 5, 5),
+            (1, 6, 4),
+            (1, 7, 3),
+            (1, 8, 2),
+            (1, 9, 1),
+          ]
+        ),
+      ],
+    ),
+    ( // GameSpec
+      gameID: PatGameID.yukon,
+      gameName: 'Yukon',
+      nPacks: 1,
+      nCellsWide: 8,
+      nCellsHigh: 4,
+      cardPadX: 200,
+      cardPadY: 200, // 100,
+      hasStockPile: false,
+      hasWastePile: false,
+      dealSequence: DealSequence.wholePileAtOnce,
+      excludedRank: 0, // Deal ALL cards.
+      redealEmptyTableau: false,
+      gameRules: RuleBook.yukonRules,
+      gameTips: RuleBook.yukonTips,
+      gamePilesSpec: [
+        ( // GamePileSpec
+          pileSpec: standardFoundation,
+          nPilesSpec: 4,
+          pileTrios: [
+            (0, 7, 0),
+            (1, 7, 0),
+            (2, 7, 0),
+            (3, 7, 0),
+          ]
+        ),
+        ( // GamePileSpec
+          pileSpec: yukonTableau,
+          nPilesSpec: 7,
+          pileTrios: [
+            (0, 0, 1),
+            (0, 1, 6),
+            (0, 2, 7),
+            (0, 3, 8),
+            (0, 4, 9),
+            (0, 5, 10),
+            (0, 6, 11),
+          ]
+        ),
+      ],
+    ),
   ]; // End List<GameSpec> gameList
 
   // Specifications of Piles, as used in the above games.
@@ -350,7 +435,7 @@ class PatData {
     fanOutX: 0.0,
     fanOutY: 0.25,
     growthCols: 0,
-    growthRows: 2,
+    growthRows: 3,
   );
 
   static const PileSpec fortyAndEightTableau = (
@@ -383,6 +468,22 @@ class PatData {
     fanOutY: 0.18,
     growthCols: 0,
     growthRows: 1,
+  );
+
+  static const PileSpec simpleSimonTableau = (
+    pileType: PileType.tableau,
+    pileName: 'simpleSimonTableau',
+    hasBaseCard: false,
+    dragRule: DragRule.multiDragSequenceOnly,
+    tapRule: TapRule.goOut,
+    tapEmptyRule: TapEmptyRule.tapNotAllowed,
+    putRule: PutRule.descendingAnySuitBy1,
+    putFirst: 0, // Any card.
+    dealFaceRule: DealFaceRule.faceUp,
+    fanOutX: 0.0,
+    fanOutY: 0.25,
+    growthCols: 0,
+    growthRows: 3,
   );
 
   static const PileSpec standardFoundation = (
@@ -464,6 +565,22 @@ class PatData {
     fanOutY: 0.22,
     growthCols: 0,
     growthRows: 1,
+  );
+
+  static const PileSpec yukonTableau = (
+    pileType: PileType.tableau,
+    pileName: 'yukonTableau',
+    hasBaseCard: false,
+    dragRule: DragRule.fromAnywhere,
+    tapRule: TapRule.goOut,
+    tapEmptyRule: TapEmptyRule.tapNotAllowed,
+    putRule: PutRule.descendingAlternateColorsBy1,
+    putFirst: 13, // King.
+    dealFaceRule: DealFaceRule.last5FaceUp,
+    fanOutX: 0.0,
+    fanOutY: 0.25,
+    growthCols: 0,
+    growthRows: 3,
   );
 
   static const PileSpec dealerStock = (

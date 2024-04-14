@@ -3,6 +3,8 @@ enum PatGameID {
   klondikeDraw3,
   fortyAndEight,
   mod3,
+  simpleSimon,
+  yukon,
   noSuchGame,
 }
 
@@ -31,6 +33,7 @@ enum DragRule {
   fromTop,
   fromAnywhere,
   fromAnywhereViaEmptySpace,
+  multiDragSequenceOnly,
 }
 
 enum PutRule {
@@ -39,6 +42,7 @@ enum PutRule {
   ascendingSameSuitBy3,
   descendingSameSuitBy1,
   descendingAlternateColorsBy1,
+  descendingAnySuitBy1,
   sameRank,
 }
 
@@ -59,7 +63,13 @@ enum DealFaceRule {
   notUsed,
   faceDown,
   faceUp,
+  // TODO - These two rules have two possible applications: at Deal time AND
+  //        when a FaceDown card is uncovered in a Tableau (it auto-flips). We
+  //        probably should have a separate rule for the latter case. Or maybe
+  //        we should have a fourth number in "Trio" that says exactly how many
+  //        FaceUp cards should be dealt on a Pile.
   lastFaceUp,
+  last5FaceUp,
 }
 
 enum Extra {
