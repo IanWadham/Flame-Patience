@@ -58,7 +58,7 @@ class Pile extends PositionComponent with HasWorldReference<PatWorld> {
   var _transitCount = 0; // The number of cards "in transit" to this Pile.
 
   // @override
-  // final debugMode = true;
+  final debugMode = true;
 
   void dump() {
     print('DUMP Pile $pileIndex, $pileType: nCards ${_cards.length} $_cards');
@@ -167,7 +167,9 @@ class Pile extends PositionComponent with HasWorldReference<PatWorld> {
       tailCards.addAll(_cards.getRange(index, _cards.length));
       _cards.removeRange(index, _cards.length);
     }
-    print('Grab $tailCards from $pileType index $pileIndex, contents $_cards');
+    // print('Grab $tailCards from $pileType index $pileIndex, '
+        // 'contents $_cards');
+    print('Grab $tailCards from $pileType index $pileIndex');
     if (_checkFanOut(_cards, tailCards, adding: false)) { 
       // If Fan Out changed, reposition any cards remaining in the Pile.
       _fanOutPileCards();
@@ -320,7 +322,8 @@ class Pile extends PositionComponent with HasWorldReference<PatWorld> {
   bool neededToFlipTopCard() {
     // Used in piles like Klondike Tableaus, where top cards must be face-up.
     print('Pile $pileIndex $pileType needFlip: rule ${pileSpec.dealFaceRule}');
-    if (pileSpec.dealFaceRule == DealFaceRule.lastFaceUp) {
+    if ((pileSpec.dealFaceRule == DealFaceRule.lastFaceUp) ||
+        (pileSpec.dealFaceRule == DealFaceRule.last5FaceUp)) {
       if (_cards.isNotEmpty && _cards.last.isFaceDownView) {
         final savedPriority = _cards.last.priority;
         _cards.last.doMoveAndFlip(
@@ -416,6 +419,8 @@ class Pile extends PositionComponent with HasWorldReference<PatWorld> {
             delta = 3;
           case PutRule.descendingSameSuitBy1:
             delta = -1;
+          case PutRule.descendingAnySuitBy1:
+            return (card.rank == _cards.last.rank - 1);
           case PutRule.descendingAlternateColorsBy1:
             final isCardOK = (card.isRed == !_cards.last.isRed) &&
                 (card.rank == _cards.last.rank - 1);
