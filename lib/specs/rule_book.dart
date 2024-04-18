@@ -91,4 +91,10 @@ class RuleBook {
   static const yukonTips = [
     'Sorry, nothing written yet.'
   ];
+  static const klondikeDraw3Rules = [
+    'Sorry, nothing written yet.'
+  ];
+  static const klondikeDraw3Tips = [
+    'Sorry, nothing written yet.'
+  ];
 }

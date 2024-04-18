@@ -286,7 +286,7 @@ class PatData {
       gameTips: RuleBook.simpleSimonTips,
       gamePilesSpec: [
         ( // GamePileSpec
-          pileSpec: standardFoundation,
+          pileSpec: simpleSimonFoundation,
           nPilesSpec: 4,
           pileTrios: [
             (0, 3, 0),
@@ -350,6 +350,61 @@ class PatData {
             (0, 4, 9),
             (0, 5, 10),
             (0, 6, 11),
+          ]
+        ),
+      ],
+    ),
+    ( // GameSpec
+      gameID: PatGameID.klondikeDraw3,
+      gameName: 'Klondike - Draw 3',
+      nPacks: 1,
+      nCellsWide: 7,
+      nCellsHigh: 4,
+      cardPadX: 200,
+      cardPadY: 200, // 100,
+      hasStockPile: true,
+      hasWastePile: true,
+      dealSequence: DealSequence.wholePileAtOnce,
+      excludedRank: 0, // Deal ALL cards.
+      redealEmptyTableau: false,
+      gameRules: RuleBook.klondikeDraw3Rules,
+      gameTips: RuleBook.klondikeDraw3Tips,
+      gamePilesSpec: [
+        ( // GamePileSpec
+          pileSpec: standardStock,
+          nPilesSpec: 1,
+          pileTrios: [
+            (0, 0, 24),
+          ]
+        ),
+        ( // GamePileSpec
+          pileSpec: standardWaste,
+          nPilesSpec: 1,
+          pileTrios: [
+            (0, 1, 0),
+          ]
+        ),
+        ( // GamePileSpec
+          pileSpec: standardFoundation,
+          nPilesSpec: 4,
+          pileTrios: [
+            (0, 3, 0),
+            (0, 4, 0),
+            (0, 5, 0),
+            (0, 6, 0),
+          ]
+        ),
+        ( // GamePileSpec
+          pileSpec: klondikeTableau,
+          nPilesSpec: 7,
+          pileTrios: [
+            (1, 0, 1),
+            (1, 1, 2),
+            (1, 2, 3),
+            (1, 3, 4),
+            (1, 4, 5),
+            (1, 5, 6),
+            (1, 6, 7),
           ]
         ),
       ],
@@ -475,7 +530,7 @@ class PatData {
     pileName: 'simpleSimonTableau',
     hasBaseCard: false,
     dragRule: DragRule.multiDragSequenceOnly,
-    tapRule: TapRule.goOut,
+    tapRule: TapRule.tapNotAllowed,
     tapEmptyRule: TapEmptyRule.tapNotAllowed,
     putRule: PutRule.descendingAnySuitBy1,
     putFirst: 0, // Any card.
@@ -495,7 +550,23 @@ class PatData {
     tapEmptyRule: TapEmptyRule.tapNotAllowed,
     putRule: PutRule.ascendingSameSuitBy1,
     putFirst: 1, // Ace.
-    dealFaceRule: DealFaceRule.faceDown,
+    dealFaceRule: DealFaceRule.notUsed,
+    fanOutX: 0.0,
+    fanOutY: 0.0,
+    growthCols: 0,
+    growthRows: 0,
+  );
+
+  static const PileSpec simpleSimonFoundation = (
+    pileType: PileType.foundation,
+    pileName: 'simpleSimonFoundation',
+    hasBaseCard: false,
+    dragRule: DragRule.fromTop,
+    tapRule: TapRule.tapNotAllowed,
+    tapEmptyRule: TapEmptyRule.tapNotAllowed,
+    putRule: PutRule.wholeSuit,
+    putFirst: 13, // King.
+    dealFaceRule: DealFaceRule.notUsed,
     fanOutX: 0.0,
     fanOutY: 0.0,
     growthCols: 0,
@@ -506,7 +577,7 @@ class PatData {
     pileType: PileType.foundation,
     pileName: 'mod3Foundation',
     hasBaseCard: false,
-    dragRule: DragRule.fromTop,
+    dragRule: DragRule.dragNotAllowed,
     tapRule: TapRule.goOut,
     tapEmptyRule: TapEmptyRule.tapNotAllowed,
     putRule: PutRule.ascendingSameSuitBy3,

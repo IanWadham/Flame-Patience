@@ -44,6 +44,7 @@ enum PutRule {
   descendingAlternateColorsBy1,
   descendingAnySuitBy1,
   sameRank,
+  wholeSuit,
 }
 
 enum TapRule {
