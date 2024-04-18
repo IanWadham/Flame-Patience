@@ -95,6 +95,15 @@ class Pile extends PositionComponent with HasWorldReference<PatWorld> {
     assert(card.isFaceUpView && _cards.contains(card));
     int nCards = cardOnTop ? 1 : (_cards.length - _cards.indexOf(card));
     print('$message ${card.toString()} nCards $nCards $_cards');
+    if ((nCards > 1) && (dragRule == DragRule.multiDragSequenceOnly)) {
+      int correctRank = card.rank;
+      for (int n = _cards.length - nCards; n < _cards.length; n++) {
+        if ((_cards[n].suit != card.suit) || (_cards[n].rank != correctRank)) {
+          return MoveResult.notValid;
+        }
+        correctRank--;
+      }
+    }
 
     // If any of the cards is already moving, cancel the drag.
     for (int n = 1; n <= nCards; n++) {
@@ -430,6 +439,9 @@ class Pile extends PositionComponent with HasWorldReference<PatWorld> {
             print('$message sameRank? card ${card.rank} '
                 'pile ${_cards.last.rank}');
             return card.rank == _cards.last.rank;
+          case PutRule.wholeSuit:
+             // Leading card's rank must be King (Simple Simon game) or Ace(?).
+             return card.rank == pileSpec.putFirst;
           case PutRule.putNotAllowed:
             return false; // Cannot put card on this Foundation Pile.
         }

@@ -42,6 +42,7 @@ class Gameplay {
 
   void begin(GameSpec gameSpec, int randomSeed) {
     for (Pile pile in _piles) {
+      // TODO - Why not use a switch() statement?
       if (pile.pileType == PileType.foundation) {
         _foundations.add(pile);
       }
@@ -69,6 +70,8 @@ class Gameplay {
     // Create a (temporary) Dealer and give it access to data needed for the
     // for the deal (first three parameters) and a completeTheDeal() procedure
     // needed in a few games (last four parameters).
+    // TODO - Removing excluded cards to a special Pile works OK, but the
+    //        cards do a strange "dance" or shuffle within the Pile. Why?
     final cardDealer = Dealer(_cards, _piles, _stockPileIndex,
         gameSpec, _excludedCardsPileIndex, _replenishTableauFromStock,
         _cardMoves,
@@ -123,10 +126,14 @@ class Gameplay {
       if (target.checkPut(movingCards.first)) {
         int nCards = movingCards.length;
         bool dropOK = true;
-        if (nCards > 1 && (target.pileType != PileType.tableau)) {
-          // Only Tableaus can accept more than one card - but not in all games.
-          dropOK = false;
-          print('Return movingCards to start: target cannot accept > 1 card.');
+        if (target.pileType == PileType.foundation) {
+          // Tableaus can accept more than one card - but not in all games.
+          // Foundations usually accept just 1 card: Simple Simon accepts 13.
+          if (nCards != ((target.pileSpec.putRule == PutRule.wholeSuit) ?
+                13 : 1)) {
+            dropOK = false;
+            print('Return movingCards to start: target cannot accept card(s).');
+          }
         }
         else if (nCards > 1 &&
             target.pileSpec.dragRule == DragRule.fromAnywhereViaEmptySpace) {
@@ -175,6 +182,13 @@ class Gameplay {
       flipTime: 0.0, // No flip.
     );
   }
+ 
+  // TODO - This method and _replaceTableauCard() should DEFINITELY become
+  //        part of the Pile class. The Dealer operates asynchronously on
+  //        more than one Pile at a time, which works as long as there are
+  //        not too many Aces on the Stock Pile. If there are Aces, you can
+  //        get an Ace stating on a Pile and a five of Spades going to the
+  //        Aces Pile. Happened on Mod 3 deal with seed 1567865991.
 
   void _replenishTableauFromStock(Pile pile) {
     // Auto-refill an empty Tableau Pile, auto-remove excluded cards or both.
@@ -202,9 +216,24 @@ class Gameplay {
     if (pile.nCards > 0) {
       excludedCardOnTop = (_cards[pile.topCardIndex].rank == _excludedRank);
     }
+    // TODO - ??? At this point we could loop to grab one card at a time
+    //            from the Stock Pile until we see one that is not an Ace.
+    //            We could send any successive Aces off to the Aces Pile
+    //            and then receive the first GOOD card here. It might look
+    //            strange because subsequent Aces would seem to fly direct
+    //            from Stock Pile to Aces pile. OTOH we could set up a PSEUDO
+    //            Stock Pile or "queue" of all the cards that SHOULD be dealt
+    //            onto this Tableau. Then the cards could take the correct
+    //            one-leg or two-leg flights and the NEXT Tableau could be
+    //            dealt asynchronously and perhaps replenished (if there is
+    //            yet another Ace in Stock). At the worst, one or two cards
+    //            might appear to fly from below the top of the Stock Pile,
+    //            but no Pile would receive the WRONG cards.
     print('\n\n\n>>>>>>>> Entered _replenishTableauFromStock $pile '
         'Ace on top $excludedCardOnTop');
 
+      // TODO - Sometimes the excluded cards Pile creates a gap in the FanOut
+      //        and the last excluded card overlaps the Stock Pile area, Why?	
       if (excludedCardOnTop && (stock.hasNoCards || (pile.nCards > 1))) {
         // Normal move of excluded card out of Pile.
         print('replenishTableau normal move: excluded card out of Pile.');
