@@ -44,9 +44,10 @@ class PatGame extends FlameGame<PatBaseWorld> {
 
   // Color settings for the playing area, board layout and action-buttons.
   // static final Color screenBackground = Colors.amber.shade100;
-  static final Color screenBackground = Colors.amber.shade300;
+  // static final Color screenBackground = Color(0xfff4d340); // Colors.amber.shade300;
+  static final Color screenBackground = Color(0xffeeca34); // Colors.amber.shade300;
   static final Color pileBackground = Colors.amberAccent.shade100;
-  static final Color pileOutline = Colors.brown.shade600;
+  static final Color pileOutline = Colors.brown.shade800;
   static const Color buttonHighlight = Colors.red;
   static const Color stockPileHighlight = Colors.red;
 

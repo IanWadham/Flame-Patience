@@ -48,6 +48,8 @@ class PatWorld extends PatBaseWorld with HasGameReference<PatGame> {
   static const suits = '♥♦♣♠';
   static const ranks = ' A23456789TJQK';
 
+  late GameSpec gameSpec;
+
   // final bool debugMode = true;
 
   final List<CardView> cards = [];
@@ -69,7 +71,7 @@ class PatWorld extends PatBaseWorld with HasGameReference<PatGame> {
   Future<void> onLoad() async {
     print('Game Index is ${game.gameIndex} '
         'name ${PatData.gameList[game.gameIndex].gameName}');
-    final gameSpec = PatData.gameList[game.gameIndex];
+    gameSpec = PatData.gameList[game.gameIndex]; // Late.
     final cellSize = Vector2(cardWidth + gameSpec.cardPadX,
         cardHeight + gameSpec.cardPadY);
     pileRect = cardRect.deflate(shrinkage)
