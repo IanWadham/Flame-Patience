@@ -62,8 +62,8 @@ class CardView extends PositionComponent
   bool get isMoving => _isMoving;
 
   Vector2 get pilePosition => _isMoving ? newPosition : position;
-  bool get isFaceUpView => _viewFaceUp;
-  bool get isFaceDownView => !_viewFaceUp;
+  bool get isFaceUpView => _isAnimatedFlip ? true : _viewFaceUp;
+  bool get isFaceDownView => _isAnimatedFlip ? false : !_viewFaceUp;
 
   void flipView() {
     if (_isAnimatedFlip) {
