@@ -5,6 +5,9 @@ enum PatGameID {
   mod3,
   simpleSimon,
   yukon,
+  freecell,
+  gypsy,
+  grandfather,
   noSuchGame,
 }
 
@@ -14,6 +17,7 @@ enum PileType {
   tableau,
   foundation,
   excludedCards,
+  freecell,
 }
 
 enum MoveResult {
@@ -33,7 +37,13 @@ enum DragRule {
   fromTop,
   fromAnywhere,
   fromAnywhereViaEmptySpace,
-  multiDragSequenceOnly,
+}
+
+enum MultiCardsRule {
+  multiCardsNotAllowed,
+  inAnyOrder,
+  descendingSameSuitBy1,
+  descendingAlternateColorsBy1,
 }
 
 enum PutRule {
@@ -45,6 +55,7 @@ enum PutRule {
   descendingAnySuitBy1,
   sameRank,
   wholeSuit,
+  ifEmptyAnyCard,
 }
 
 enum TapRule {
@@ -64,19 +75,15 @@ enum DealFaceRule {
   notUsed,
   faceDown,
   faceUp,
-  // TODO - These two rules have two possible applications: at Deal time AND
-  //        when a FaceDown card is uncovered in a Tableau (it auto-flips). We
-  //        probably should have a separate rule for the latter case. Or maybe
-  //        we should have a fourth number in "Trio" that says exactly how many
-  //        FaceUp cards should be dealt on a Pile.
   lastFaceUp,
+  last2FaceUp,
   last5FaceUp,
 }
 
 enum Extra {
-  // Actions that might follow card-moves from pile to pile. Having this
-  // enum allows multiple Moves to be treated as one in undo/redo and will
-  // also simplify the proposed Solver's task.
+  // Actions that might happen after card-moves from pile to pile. Having
+  // this enum allows multiple Moves to be treated as one in undo/redo and
+  // will also simplify the proposed Solver's task.
 
   none, // The Move is a simple transfer of cards from one pile to another.
   fromCardUp, // The last card of the "from" pile turns Face Up at the finish.

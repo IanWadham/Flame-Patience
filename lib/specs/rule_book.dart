@@ -97,4 +97,22 @@ class RuleBook {
   static const klondikeDraw3Tips = [
     'Sorry, nothing written yet.'
   ];
+  static const freecellRules = [
+    'Sorry, nothing written yet.'
+  ];
+  static const freecellTips = [
+    'Sorry, nothing written yet.'
+  ];
+  static const gypsyRules = [
+    'Sorry, nothing written yet.'
+  ];
+  static const gypsyTips = [
+    'Sorry, nothing written yet.'
+  ];
+  static const grandfatherRules = [
+    'Sorry, nothing written yet.'
+  ];
+  static const grandfatherTips = [
+    'Sorry, nothing written yet.'
+  ];
 }

@@ -53,12 +53,12 @@ typedef PileSpec = ({
   DragRule dragRule,
   TapRule tapRule,
   TapEmptyRule tapEmptyRule,
+  MultiCardsRule multiCardsRule,
   PutRule putRule,
   int putFirst,
   DealFaceRule dealFaceRule,
   double fanOutX,
   double fanOutY,
-  // NOTE: Cells' fan out Down space = (0.5 * cardMargin): more in Mod3 cells.
   int growthCols, // Usually 0, can be +ve for fan out R or -ve for fan out L.
   int growthRows, // Usually 0, can be +ve for fan out Down, -ve unlikely.
 });
@@ -378,7 +378,7 @@ class PatData {
           ]
         ),
         ( // GamePileSpec
-          pileSpec: standardWaste,
+          pileSpec: klondike3Waste,
           nPilesSpec: 1,
           pileTrios: [
             (0, 1, 0),
@@ -409,6 +409,159 @@ class PatData {
         ),
       ],
     ),
+    ( // GameSpec
+      gameID: PatGameID.freecell,
+      gameName: 'Freecell',
+      nPacks: 1,
+      nCellsWide: 8,
+      nCellsHigh: 4,
+      cardPadX: 200,
+      cardPadY: 200, // 100,
+      hasStockPile: false,
+      hasWastePile: false,
+      dealSequence: DealSequence.wholePileAtOnce,
+      excludedRank: 0, // Deal ALL cards.
+      redealEmptyTableau: false,
+      gameRules: RuleBook.freecellRules,
+      gameTips: RuleBook.freecellTips,
+      gamePilesSpec: [
+        ( // GamePileSpec
+          pileSpec: freecell,
+          nPilesSpec: 4,
+          pileTrios: [
+            (0, 0, 0),
+            (0, 1, 0),
+            (0, 2, 0),
+            (0, 3, 0),
+          ]
+        ),
+        ( // GamePileSpec
+          pileSpec: standardFoundation,
+          nPilesSpec: 4,
+          pileTrios: [
+            (0, 4, 0),
+            (0, 5, 0),
+            (0, 6, 0),
+            (0, 7, 0),
+          ]
+        ),
+        ( // GamePileSpec
+          pileSpec: freecellTableau,
+          nPilesSpec: 8,
+          pileTrios: [
+            (1, 0, 7),
+            (1, 1, 7),
+            (1, 2, 7),
+            (1, 3, 7),
+            (1, 4, 6),
+            (1, 5, 6),
+            (1, 6, 6),
+            (1, 7, 6),
+          ]
+        ),
+      ],
+    ),
+    ( // GameSpec
+      gameID: PatGameID.gypsy,
+      gameName: 'Gypsy',
+      nPacks: 2,
+      nCellsWide: 10,
+      nCellsHigh: 5,
+      cardPadX: 200,
+      cardPadY: 100,
+      hasStockPile: true,
+      hasWastePile: false,
+      dealSequence: DealSequence.wholePileAtOnce,
+      excludedRank: 0, // Deal ALL cards.
+      redealEmptyTableau: false,
+      gameRules: RuleBook.gypsyRules,
+      gameTips: RuleBook.gypsyTips,
+      gamePilesSpec: [
+        ( // GamePileSpec
+          pileSpec: standardStock,
+          nPilesSpec: 1,
+          pileTrios: [
+            (4, 9, 80),
+          ]
+        ),
+        ( // GamePileSpec
+          pileSpec: standardFoundation,
+          nPilesSpec: 8,
+          pileTrios: [
+            (0, 8, 0),
+            (1, 8, 0),
+            (2, 8, 0),
+            (3, 8, 0),
+            (0, 9, 0),
+            (1, 9, 0),
+            (2, 9, 0),
+            (3, 9, 0),
+          ]
+        ),
+        ( // GamePileSpec
+          pileSpec: gypsyTableau,
+          nPilesSpec: 8,
+          pileTrios: [
+            (0, 0, 3),
+            (0, 1, 3),
+            (0, 2, 3),
+            (0, 3, 3),
+            (0, 4, 3),
+            (0, 5, 3),
+            (0, 6, 3),
+            (0, 7, 3),
+          ]
+        ),
+      ],
+    ),
+    ( // GameSpec
+      gameID: PatGameID.grandfather,
+      gameName: 'Grandfather',
+      nPacks: 1,
+      nCellsWide: 7,
+      nCellsHigh: 4,
+      cardPadX: 200,
+      cardPadY: 200, // 100,
+      hasStockPile: true,
+      hasWastePile: false,
+      dealSequence: DealSequence.wholePileAtOnce,
+      excludedRank: 0, // Deal ALL cards.
+      redealEmptyTableau: false,
+      gameRules: RuleBook.grandfatherRules,
+      gameTips: RuleBook.grandfatherTips,
+      gamePilesSpec: [
+        ( // GamePileSpec
+          pileSpec: standardStock,
+          nPilesSpec: 1,
+          pileTrios: [
+            (0, 0, 0),
+          ]
+        ),
+        ( // GamePileSpec
+          pileSpec: standardFoundation,
+          nPilesSpec: 4,
+          pileTrios: [
+            (0, 2, 0),
+            (0, 3, 0),
+            (0, 4, 0),
+            (0, 5, 0),
+          ]
+        ),
+        ( // GamePileSpec
+          pileSpec: grandfatherTableau,
+          nPilesSpec: 7,
+          pileTrios: [
+            (1, 0, 1),
+            (1, 1, 7),
+            (1, 2, 9),
+            (1, 3, 11),
+            (1, 4, 10),
+            (1, 5, 8),
+            (1, 6, 6),
+          ]
+        ),
+      ],
+    ),
   ]; // End List<GameSpec> gameList
 
   // Specifications of Piles, as used in the above games.
@@ -420,6 +573,7 @@ class PatData {
     dragRule: DragRule.dragNotAllowed,
     tapRule: TapRule.turnOver1,
     tapEmptyRule: TapEmptyRule.turnOverWasteUnlimited,
+    multiCardsRule: MultiCardsRule.multiCardsNotAllowed,
     putRule: PutRule.putNotAllowed,
     putFirst: 0,
     dealFaceRule: DealFaceRule.faceDown,
@@ -436,6 +590,7 @@ class PatData {
     dragRule: DragRule.dragNotAllowed,
     tapRule: TapRule.turnOver1,
     tapEmptyRule: TapEmptyRule.turnOverWasteOnce,
+    multiCardsRule: MultiCardsRule.multiCardsNotAllowed,
     putRule: PutRule.putNotAllowed,
     putFirst: 0,
     dealFaceRule: DealFaceRule.faceDown,
@@ -452,6 +607,7 @@ class PatData {
     dragRule: DragRule.fromTop,
     tapRule: TapRule.goOut,
     tapEmptyRule: TapEmptyRule.tapNotAllowed,
+    multiCardsRule: MultiCardsRule.multiCardsNotAllowed,
     putRule: PutRule.putNotAllowed,
     putFirst: 0,
     dealFaceRule: DealFaceRule.faceUp,
@@ -468,12 +624,30 @@ class PatData {
     dragRule: DragRule.fromTop,
     tapRule: TapRule.goOut,
     tapEmptyRule: TapEmptyRule.tapNotAllowed,
+    multiCardsRule: MultiCardsRule.multiCardsNotAllowed,
     putRule: PutRule.putNotAllowed,
     putFirst: 0,
     dealFaceRule: DealFaceRule.faceUp,
     fanOutX: -0.2,
     fanOutY: 0.0,
     growthCols: -6,
+    growthRows: 0,
+  );
+
+  static const PileSpec klondike3Waste = (
+    pileType: PileType.waste,
+    pileName: 'klondike3Waste',
+    hasBaseCard: false,
+    dragRule: DragRule.fromTop,
+    tapRule: TapRule.goOut,
+    tapEmptyRule: TapEmptyRule.tapNotAllowed,
+    multiCardsRule: MultiCardsRule.multiCardsNotAllowed,
+    putRule: PutRule.putNotAllowed,
+    putFirst: 0,
+    dealFaceRule: DealFaceRule.faceUp,
+    fanOutX: 0.28,
+    fanOutY: 0.0,
+    growthCols: 1,
     growthRows: 0,
   );
 
@@ -487,6 +661,7 @@ class PatData {
     putRule: PutRule.descendingAlternateColorsBy1,
     putFirst: 13, // King.
     dealFaceRule: DealFaceRule.lastFaceUp,
+    multiCardsRule: MultiCardsRule.descendingAlternateColorsBy1,
     fanOutX: 0.0,
     fanOutY: 0.25,
     growthCols: 0,
@@ -500,6 +675,7 @@ class PatData {
     dragRule: DragRule.fromAnywhereViaEmptySpace,
     tapRule: TapRule.goOut,
     tapEmptyRule: TapEmptyRule.tapNotAllowed,
+    multiCardsRule: MultiCardsRule.descendingSameSuitBy1,
     putRule: PutRule.descendingSameSuitBy1,
     putFirst: 0, // Any card.
     dealFaceRule: DealFaceRule.faceUp,
@@ -517,6 +693,7 @@ class PatData {
     tapRule: TapRule.goOut,
     tapEmptyRule: TapEmptyRule.tapNotAllowed,
     putRule: PutRule.putNotAllowed,
+    multiCardsRule: MultiCardsRule.multiCardsNotAllowed,
     putFirst: 0, // Any card.
     dealFaceRule: DealFaceRule.faceUp,
     fanOutX: 0.0,
@@ -529,12 +706,81 @@ class PatData {
     pileType: PileType.tableau,
     pileName: 'simpleSimonTableau',
     hasBaseCard: false,
-    dragRule: DragRule.multiDragSequenceOnly,
+    dragRule: DragRule.fromAnywhere,
     tapRule: TapRule.tapNotAllowed,
     tapEmptyRule: TapEmptyRule.tapNotAllowed,
+    multiCardsRule: MultiCardsRule.descendingSameSuitBy1,
     putRule: PutRule.descendingAnySuitBy1,
     putFirst: 0, // Any card.
     dealFaceRule: DealFaceRule.faceUp,
+    fanOutX: 0.0,
+    fanOutY: 0.25,
+    growthCols: 0,
+    growthRows: 3,
+  );
+
+  static const PileSpec yukonTableau = (
+    pileType: PileType.tableau,
+    pileName: 'yukonTableau',
+    hasBaseCard: false,
+    dragRule: DragRule.fromAnywhere,
+    tapRule: TapRule.goOut,
+    tapEmptyRule: TapEmptyRule.tapNotAllowed,
+    multiCardsRule: MultiCardsRule.inAnyOrder,
+    putRule: PutRule.descendingAlternateColorsBy1,
+    putFirst: 13, // King.
+    dealFaceRule: DealFaceRule.last5FaceUp,
+    fanOutX: 0.0,
+    fanOutY: 0.25,
+    growthCols: 0,
+    growthRows: 3,
+  );
+
+  static const PileSpec freecellTableau = (
+    pileType: PileType.tableau,
+    pileName: 'freecellTableau',
+    hasBaseCard: false,
+    dragRule: DragRule.fromAnywhereViaEmptySpace,
+    tapRule: TapRule.goOut,
+    tapEmptyRule: TapEmptyRule.tapNotAllowed,
+    multiCardsRule: MultiCardsRule.descendingAlternateColorsBy1,
+    putRule: PutRule.descendingAlternateColorsBy1,
+    putFirst: 0, // Any card.
+    dealFaceRule: DealFaceRule.faceUp,
+    fanOutX: 0.0,
+    fanOutY: 0.25,
+    growthCols: 0,
+    growthRows: 2,
+  );
+
+  static const PileSpec gypsyTableau = (
+    pileType: PileType.tableau,
+    pileName: 'gypsyTableau',
+    hasBaseCard: false,
+    dragRule: DragRule.fromAnywhere,
+    tapRule: TapRule.goOut,
+    tapEmptyRule: TapEmptyRule.tapNotAllowed,
+    multiCardsRule: MultiCardsRule.descendingAlternateColorsBy1,
+    putRule: PutRule.descendingAlternateColorsBy1,
+    putFirst: 0, // Any card.
+    dealFaceRule: DealFaceRule.last2FaceUp,
+    fanOutX: 0.0,
+    fanOutY: 0.25,
+    growthCols: 0,
+    growthRows: 4,
+  );
+
+  static const PileSpec grandfatherTableau = (
+    pileType: PileType.tableau,
+    pileName: 'grandfatherTableau',
+    hasBaseCard: false,
+    dragRule: DragRule.fromAnywhere,
+    tapRule: TapRule.goOut,
+    tapEmptyRule: TapEmptyRule.tapNotAllowed,
+    multiCardsRule: MultiCardsRule.inAnyOrder,
+    putRule: PutRule.descendingSameSuitBy1,
+    putFirst: 13, // King.
+    dealFaceRule: DealFaceRule.notUsed, // Grandfather has its own special deal.
     fanOutX: 0.0,
     fanOutY: 0.25,
     growthCols: 0,
@@ -548,6 +794,7 @@ class PatData {
     dragRule: DragRule.fromTop,
     tapRule: TapRule.tapNotAllowed,
     tapEmptyRule: TapEmptyRule.tapNotAllowed,
+    multiCardsRule: MultiCardsRule.multiCardsNotAllowed,
     putRule: PutRule.ascendingSameSuitBy1,
     putFirst: 1, // Ace.
     dealFaceRule: DealFaceRule.notUsed,
@@ -564,6 +811,7 @@ class PatData {
     dragRule: DragRule.fromTop,
     tapRule: TapRule.tapNotAllowed,
     tapEmptyRule: TapEmptyRule.tapNotAllowed,
+    multiCardsRule: MultiCardsRule.multiCardsNotAllowed,
     putRule: PutRule.wholeSuit,
     putFirst: 13, // King.
     dealFaceRule: DealFaceRule.notUsed,
@@ -580,6 +828,7 @@ class PatData {
     dragRule: DragRule.dragNotAllowed,
     tapRule: TapRule.goOut,
     tapEmptyRule: TapEmptyRule.tapNotAllowed,
+    multiCardsRule: MultiCardsRule.multiCardsNotAllowed,
     putRule: PutRule.ascendingSameSuitBy3,
     putFirst: 2, // Two.
     dealFaceRule: DealFaceRule.faceUp,
@@ -596,6 +845,7 @@ class PatData {
     dragRule: DragRule.fromTop,
     tapRule: TapRule.goOut,
     tapEmptyRule: TapEmptyRule.tapNotAllowed,
+    multiCardsRule: MultiCardsRule.multiCardsNotAllowed,
     putRule: PutRule.ascendingSameSuitBy3,
     putFirst: 3, // Three.
     dealFaceRule: DealFaceRule.faceUp,
@@ -612,6 +862,7 @@ class PatData {
     dragRule: DragRule.fromTop,
     tapRule: TapRule.goOut,
     tapEmptyRule: TapEmptyRule.tapNotAllowed,
+    multiCardsRule: MultiCardsRule.multiCardsNotAllowed,
     putRule: PutRule.ascendingSameSuitBy3,
     putFirst: 4, // Four.
     dealFaceRule: DealFaceRule.faceUp,
@@ -629,6 +880,7 @@ class PatData {
     dragRule: DragRule.dragNotAllowed,
     tapRule: TapRule.tapNotAllowed,
     tapEmptyRule: TapEmptyRule.tapNotAllowed,
+    multiCardsRule: MultiCardsRule.multiCardsNotAllowed,
     putRule: PutRule.sameRank,
     putFirst: 1,
     dealFaceRule: DealFaceRule.faceUp,
@@ -638,20 +890,22 @@ class PatData {
     growthRows: 1,
   );
 
-  static const PileSpec yukonTableau = (
-    pileType: PileType.tableau,
-    pileName: 'yukonTableau',
+  static const PileSpec freecell = (
+    // Used in Freecell game: can hold one card only.
+    pileType: PileType.freecell,
+    pileName: 'freecell',
     hasBaseCard: false,
-    dragRule: DragRule.fromAnywhere,
+    dragRule: DragRule.fromTop,
     tapRule: TapRule.goOut,
     tapEmptyRule: TapEmptyRule.tapNotAllowed,
-    putRule: PutRule.descendingAlternateColorsBy1,
-    putFirst: 13, // King.
-    dealFaceRule: DealFaceRule.last5FaceUp,
+    multiCardsRule: MultiCardsRule.multiCardsNotAllowed,
+    putRule: PutRule.ifEmptyAnyCard,
+    putFirst: 0,
+    dealFaceRule: DealFaceRule.notUsed,
     fanOutX: 0.0,
-    fanOutY: 0.25,
+    fanOutY: 0.0,
     growthCols: 0,
-    growthRows: 3,
+    growthRows: 0,
   );
 
   static const PileSpec dealerStock = (
@@ -662,6 +916,7 @@ class PatData {
     dragRule: DragRule.dragNotAllowed,
     tapRule: TapRule.tapNotAllowed,
     tapEmptyRule: TapEmptyRule.tapNotAllowed,
+    multiCardsRule: MultiCardsRule.multiCardsNotAllowed,
     putRule: PutRule.putNotAllowed,
     putFirst: 0,
     dealFaceRule: DealFaceRule.faceDown,
