@@ -58,7 +58,7 @@ class Pile extends PositionComponent with HasWorldReference<PatWorld> {
   var _transitCount = 0; // The number of cards "in transit" to this Pile.
 
   // @override
-  final debugMode = true;
+  final debugMode = false;
 
   void dump() {
     print('DUMP Pile $pileIndex, $pileType: nCards ${_cards.length} $_cards');
@@ -70,7 +70,8 @@ class Pile extends PositionComponent with HasWorldReference<PatWorld> {
   }
 
   MoveResult isDragMoveValid(CardView card, List<CardView> dragList) {
-    DragRule dragRule = pileSpec.dragRule;
+    final dragRule = pileSpec.dragRule;
+    final multiCardsRule = pileSpec.multiCardsRule;
     dragList.clear();
 
     String message = 'Drag Pile $pileIndex, $pileType:';
@@ -95,14 +96,32 @@ class Pile extends PositionComponent with HasWorldReference<PatWorld> {
     assert(card.isFaceUpView && _cards.contains(card));
     int nCards = cardOnTop ? 1 : (_cards.length - _cards.indexOf(card));
     print('$message ${card.toString()} nCards $nCards $_cards');
-    if ((nCards > 1) && (dragRule == DragRule.multiDragSequenceOnly)) {
-      int correctRank = card.rank;
-      for (int n = _cards.length - nCards; n < _cards.length; n++) {
-        if ((_cards[n].suit != card.suit) || (_cards[n].rank != correctRank)) {
-          return MoveResult.notValid;
+    print('Drag rule is $dragRule');
+    if (nCards > 1) {
+      var prevCard = card;
+      for (int n = _cards.length - nCards + 1; n < _cards.length; n++) {
+        print('SEQUENCE-TEST ${_cards[n]} versus $prevCard');
+        switch (pileSpec.multiCardsRule) {
+          case MultiCardsRule.inAnyOrder:
+            print('DO NOT CHECK SEQUENCE');
+            break; // Do not check the order (e.g. Yukon).
+          case MultiCardsRule.descendingSameSuitBy1:
+            print('Apply MultiCardsRule.descendingSameSuitBy1');
+            if ((_cards[n].suit != prevCard.suit) ||
+                (_cards[n].rank != prevCard.rank - 1)) {
+              return MoveResult.notValid;
+            }
+          case MultiCardsRule.descendingAlternateColorsBy1:
+            print('Apply MultiCardsRule.descendingAlternateColorsBy1');
+            if ((_cards[n].isRed == prevCard.isRed) ||
+                (_cards[n].rank != prevCard.rank - 1)) {
+              return MoveResult.notValid;
+            }
+          default:
         }
-        correctRank--;
+        prevCard = _cards[n];
       }
+      print('SEQUENCE OK TO DRAG');
     }
 
     // If any of the cards is already moving, cancel the drag.
@@ -150,6 +169,7 @@ class Pile extends PositionComponent with HasWorldReference<PatWorld> {
         }
       case PileType.waste:
       case PileType.tableau:
+      case PileType.freecell:
         if (tapRule != TapRule.goOut) {
           print('$message $tapRule invalid - should be TapRule.goOut');
           return MoveResult.notValid;
@@ -179,7 +199,7 @@ class Pile extends PositionComponent with HasWorldReference<PatWorld> {
     // print('Grab $tailCards from $pileType index $pileIndex, '
         // 'contents $_cards');
     print('Grab $tailCards from $pileType index $pileIndex');
-    if (_checkFanOut(_cards, tailCards, adding: false)) { 
+    if (_checkFanOut(_cards, tailCards, adding: false)) {
       // If Fan Out changed, reposition any cards remaining in the Pile.
       _fanOutPileCards();
       _setPileHitArea();
@@ -240,6 +260,7 @@ class Pile extends PositionComponent with HasWorldReference<PatWorld> {
     if (_hasFanOut) {
       if (_checkFanOut(_cards, movingCards, adding: true)) {
         // FanOut must change: reposition all the cards currently in the Pile.
+        print('FAN OUT HAS CHANGED...');
         for (int n = 1; n < nPrevCardsInPile; n++) {
           final diff =
               _cards[n - 1].isFaceUpView ?  _fanOutFaceUp : _fanOutFaceDown;
@@ -252,16 +273,22 @@ class Pile extends PositionComponent with HasWorldReference<PatWorld> {
       }
     }
 
-    // Calculate where the first incoming card will go.
+    // Incoming cards go after previous cards, except in klondikeDraw3 Waste.
     Vector2 tailPosition = position;
-    if (nPrevCardsInPile > 0) {
+    if ((nPrevCardsInPile > 0) && !((world.gameSpec.gameID == PatGameID.klondikeDraw3) && (pileType == PileType.waste))) {
       CardView card = _cards.last;
       tailPosition = card.isMoving ? card.newPosition : card.position;
+      // bool tailFaceUp = card.isMoving ? card.newFaceUp : card.isFaceUpView;
       tailPosition += card.isFaceUpView ? _fanOutFaceUp : _fanOutFaceDown;
+      // ?? tailPosition +=  tailFaceUp ? _fanOutFaceUp : _fanOutFaceDown;
+      // print('INCOMING $movingCards nPrevCards $nPrevCardsInPile last $card moving? ${card.isMoving} newPos ${card.newPosition} oldPos ${card.position} isFaceUpView? ${card.isFaceUpView} fanOutFaceUp $_fanOutFaceUp tailFaceUp? ${card.isFaceUpView} tailPosition $tailPosition');
     }
 
     double startAt = startTime;
     int movePriority = CardView.movingPriority + _transitCount;
+
+    // TODO - Need ways to right-adjust Klondike 3 Waste Pile top-cards when
+    //        a card is moved out or the tail of the Stock deals <3 cards.
 
     for (final card in movingCards) {
       _cards.add(card);
@@ -273,11 +300,13 @@ class Pile extends PositionComponent with HasWorldReference<PatWorld> {
         // The card will be aligned with the Pile's position.
         card.newPosition = position;
         tailPosition += newFaceUp ? _fanOutFaceUp : _fanOutFaceDown;
-        // print('FIRST CARD IN PILE: ${card.name} pos ${card.newPosition}');
+        print('FIRST CARD IN PILE: ${card.name} pos ${card.newPosition}');
+        print('newFaceUp $newFaceUp FanOuts $_fanOutFaceUp $_fanOutFaceDown');
       } else {
         // Fan out the second and subsequent cards.
         card.newPosition = tailPosition;
-        // print('SUBSEQUENT POSITION: $tailPosition');
+        print('SUBSEQUENT POSITION: $tailPosition');
+        print('newFaceUp $newFaceUp FanOuts $_fanOutFaceUp $_fanOutFaceDown');
         tailPosition += newFaceUp ? _fanOutFaceUp : _fanOutFaceDown;
       }
 
@@ -326,13 +355,10 @@ class Pile extends PositionComponent with HasWorldReference<PatWorld> {
     }
   }
 
-  // TODO - Need to know whether to flip (as in Klondike) or not (as in Forty
-  //        Eight). If needed, the flip has to be ANIMATED. Here or in GamePlay?
   bool neededToFlipTopCard() {
-    // Used in piles like Klondike Tableaus, where top cards must be face-up.
-    print('Pile $pileIndex $pileType needFlip: rule ${pileSpec.dealFaceRule}');
-    if ((pileSpec.dealFaceRule == DealFaceRule.lastFaceUp) ||
-        (pileSpec.dealFaceRule == DealFaceRule.last5FaceUp)) {
+    // Used in Tableau piles (e.g. Klondike), where top cards must be face-up.
+    print('Pile $pileIndex $pileType needFlip?');
+    if (pileType == PileType.tableau) {
       if (_cards.isNotEmpty && _cards.last.isFaceDownView) {
         final savedPriority = _cards.last.priority;
         _cards.last.doMoveAndFlip(
@@ -361,48 +387,6 @@ class Pile extends PositionComponent with HasWorldReference<PatWorld> {
     print(' After remove Aces $pileIndex $pileType: $_cards $excludedCards');
   }
 
-  List<CardView> stockLookahead(int excludedRank,
-      {bool addPlayableCard = true, int rig = 0}) {
-    List<CardView> result = [];
-    if ((_cards.length == 1) || (pileType != PileType.stock)) {
-      return result;
-    }
-    if (rig > 0) {
-      List<CardView> aces = [];
-      List<CardView> doctored = [];
-      print('RIGGED STOCK: $rig LEADING ACES');
-      dump();
-      for (final card in _cards) {
-        if (card.isBaseCard) {
-          doctored.add(card);
-        } else if ((card.rank == excludedRank) && (rig > 0)) {
-          rig--;
-          aces.add(card);
-        } else {
-          doctored.add(card);
-        }
-      }
-      for (final card in aces) {
-        doctored.add(card);
-      }
-      _cards.clear();
-      _cards.addAll(doctored);
-      dump();
-    }
-
-    for (final card in _cards.reversed.toList()) {
-      if (card.rank == excludedRank) {
-        result.add(card);
-      } else {
-        if (addPlayableCard) {
-          result.add(card);
-        }
-        break;
-      }
-    }
-    return result;
-  }
-
   bool isTopCard(CardView card) {
     return _cards.isNotEmpty ? (card == _cards.last) : false;
   }
@@ -410,7 +394,8 @@ class Pile extends PositionComponent with HasWorldReference<PatWorld> {
   bool checkPut(CardView card) {
     // Player can put or drop cards onto Foundation or Tableau Piles only.
     String message = 'Check Put: ${card.name} Pile $pileIndex, $pileType:';
-    if ((pileType == PileType.foundation) || (pileType == PileType.tableau)) {
+    if ((pileType == PileType.foundation) || (pileType == PileType.tableau) ||
+        (pileType == PileType.freecell)) {
       if (_cards.isEmpty) {
         final firstOK =
             (pileSpec.putFirst == 0) || (card.rank == pileSpec.putFirst);
@@ -442,6 +427,9 @@ class Pile extends PositionComponent with HasWorldReference<PatWorld> {
           case PutRule.wholeSuit:
              // Leading card's rank must be King (Simple Simon game) or Ace(?).
              return card.rank == pileSpec.putFirst;
+          case PutRule.ifEmptyAnyCard:
+            // PileType.freecell can accept just one card.
+            return _cards.isEmpty;
           case PutRule.putNotAllowed:
             return false; // Cannot put card on this Foundation Pile.
         }
@@ -605,21 +593,6 @@ class Pile extends PositionComponent with HasWorldReference<PatWorld> {
       height = (deltaY >= 0.0) ? baseHeight + deltaY : baseHeight - deltaY;
     }
   }
-
-/*
-  bool isCardInPile(CardView card, {required bool mustBeOnTop}) {
-    // Integrity check.
-    if (mustBeOnTop) {
-      print('Pile $pileIndex $pileType isCardInPile(): card ${card.name} '
-          'mustBeOnTop $mustBeOnTop... isTopCard()');
-      return isTopCard(card);
-    } else {
-      print('Pile $pileIndex $pileType isCardInPile(): card ${card.name} '
-          'mustBeOnTop $mustBeOnTop... contains()');
-      return _cards.contains(card);
-    }
-  }
-*/
 
   static final Paint pileOutlinePaint = Paint()
     ..color = PatGame.pileOutline

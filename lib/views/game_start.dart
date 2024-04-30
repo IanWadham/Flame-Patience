@@ -25,6 +25,7 @@ class GameLayout {
 
     final List<Pile> foundations = [];
     final List<Pile> tableaus = [];
+    final List<Pile> freecells = [];
     int _stockPileIndex = -1; // No Stock Pile yet: not all games have one.
     int _wastePileIndex = -1; // No Waste Pile yet: not all games have one.
     int _excludedCardsPileIndex = -1; // Games with Excluded Cards need this.
@@ -79,6 +80,8 @@ class GameLayout {
             tableaus.add(pile);
           case PileType.excludedCards:
             _excludedCardsPileIndex = pileIndex;
+          case PileType.freecell:
+            freecells.add(pile);
             break;
         }
         pileIndex++;
@@ -150,6 +153,9 @@ class Dealer extends Component with HasWorldReference<PatWorld> {
 
   bool get hasStockPile => (_stockPileIndex >= 0);
 
+  var nDealtCards = 0;
+  var nCardsArrived = 0;
+
   void deal(DealSequence dealSequence, int seed, {VoidCallback? whenDone,}) {
     final cardsToDeal = List<CardView>.of(_cards);
     assert(_stockPileIndex >= 0);
@@ -176,9 +182,13 @@ class Dealer extends Component with HasWorldReference<PatWorld> {
     print('BEFORE DEAL');
     stockPile.dump();
 
+    if (_gameSpec.gameID == PatGameID.grandfather) {
+      // The Grandfather Game has an idiosyncratic deal, which is hand-coded.
+      grandfatherDeal(stockPile, dealTargets);
+      return;
+    }
+
     List<CardView> movingCards = [];
-    var nDealtCards = 0;
-    var nCardsArrived = 0;
     double cardDealTime = 0.1;
     for (Pile target in dealTargets) {
       if (dealSequence == DealSequence.wholePileAtOnce) {
@@ -192,6 +202,13 @@ class Dealer extends Component with HasWorldReference<PatWorld> {
           case DealFaceRule.lastFaceUp:
             nCardsFaceDown = nCardsLeftToDeal - 1;
             nCardsFaceUp = 1;
+          case DealFaceRule.last2FaceUp:
+            if (nCardsLeftToDeal <= 2) {
+              nCardsFaceUp = nCardsLeftToDeal;
+            } else {
+              nCardsFaceDown = nCardsLeftToDeal - 2;
+              nCardsFaceUp = 2;
+            }
           case DealFaceRule.last5FaceUp:
             if (nCardsLeftToDeal <= 5) {
               nCardsFaceUp = nCardsLeftToDeal;
@@ -280,13 +297,77 @@ class Dealer extends Component with HasWorldReference<PatWorld> {
         if (pile.hasNoCards ||
             (_cards[pile.topCardIndex].rank == _excludedRank)) {
           _replenishTableauFromStock(pile);
-          // TODO - We need to wait HERE if another Ace is on its way from the
-          //        Stock Pile - NOT start examining the next Tableau and
-          //        calling _replenishTableau concurrently if there is yet
-          //        another Ace there.
         }
       }
     }
     _cardMoves.reset(); // Clear any Moves made so far (not part of Gameplay).
+  }
+
+  void grandfatherDeal(Pile stockPile, List<Pile> dealTargets) {
+    // Implement the Grandfather Game's idiosyncratic Deal and Redeal actions.
+    final nCols = dealTargets.length;
+    final nRows = nCols;
+    int nStock = stockPile.nCards;
+    int start = 0;
+    int stop = nCols - 1;
+    int inc = 1;
+
+    // Deal an inverted pyramid of cards, row by row, most face-down.
+    for (int row = 0; (row < nRows) && (nStock > 0); row++) {
+      int n = start;
+      bool faceUp = true;
+      do {
+        // Deal a card.
+        print('Row $row n $n ends $start $stop inc $inc');
+        dealGrandfatherCard(stockPile, dealTargets[n], faceUp: faceUp);
+        faceUp = false;
+        n += inc;
+      } while ((--nStock > 0) && (n != stop + inc));
+      // Switch between L to R deal and reverse: 1 card less per row each time.
+      int temp = start + inc;
+      start = stop;
+      stop = temp;
+      inc = -inc;
+    }
+    int n = 0;
+    while (nStock-- > 0) {
+      // If cards available, keep dealing to 6 of the 7 Tableaus face-up.
+      dealGrandfatherCard(stockPile, dealTargets[n + 1], faceUp: true);
+      n = (n + 1) % 6;
+    }
+    for (int col = 0; col < 7; col++) {
+      // Ensure that the top card of each Tableau is face-up.
+    }
+  }
+
+  void dealGrandfatherCard(Pile stockPile, Pile pile, {required bool faceUp}) {
+    // Deal one card in Grandfather Game.
+    pile.receiveMovingCards(
+      stockPile.grabCards(1),
+      speed: 25.0,
+      startTime: 0.2 * nDealtCards,
+      flipTime: faceUp ? 0.1 : 0.0,
+      onComplete: () {
+        nCardsArrived++;
+        if (nCardsArrived == nDealtCards) {
+          print('GRANDFATHER DEAL FINISHED'); // whenDone?.call();
+          adjustGrandfatherTopCards();
+        }
+      }
+    );
+    nDealtCards++;
+  }
+
+  void adjustGrandfatherTopCards() {
+    // In the 2nd and 3rd deals, with fewer than 52 cards, some top-cards
+    // might have ended up face-down when the Stock Pile ran out of cards.
+    for (Pile pile in _piles) {
+      if ((pile.pileType == PileType.tableau) && (pile.topCardIndex != -1)) {
+        CardView card = _cards[pile.topCardIndex];
+        if (card.isFaceDownView) {
+          card.flipView();
+        }
+      }
+    }
   }
 } // End of Dealer class.

@@ -24,6 +24,8 @@ class Gameplay {
   final List<Pile> _piles;
 
   late CardMoves _cardMoves;
+  late PatGameID _gameID;
+  late GameSpec _gameSpec; // TODO - Clean up interfaces to Dealer.
 
   var _redoIndex = 0;
 
@@ -36,11 +38,13 @@ class Gameplay {
   final List<Pile> _foundations = [];
   final List<Pile> _tableaus = [];
 
-  // Most Game types do not have these features: Mod 3 has both.
+  // Most Game do not have these features: Mod 3 has both of the first two.
   int _excludedRank = 0; // Rank of excluded cards (e.g. Aces in Mod 3).
   bool _redealEmptyTableau = false; // Automatically redeal an empty Tableau?
+  int _grandfatherRedeals = 2; // Allowed number of redeals in Grandfather Game.
 
   void begin(GameSpec gameSpec, int randomSeed) {
+    _gameSpec = gameSpec; // TODO - Clean up interfaces to Dealer.
     for (Pile pile in _piles) {
       // TODO - Why not use a switch() statement?
       if (pile.pileType == PileType.foundation) {
@@ -64,14 +68,18 @@ class Gameplay {
       _redealEmptyTableau = gameSpec.redealEmptyTableau;
     }
 
-    // Create Move storage and Undo/Redo facility.
+    // Get Game ID (late) - needed in Klondike Draw 3.
+    _gameID = gameSpec.gameID;
+
+    // Create Move storage and Undo/Redo facility (late).
     _cardMoves = CardMoves(_cards, _piles, _tableaus, _stockPileIndex);
+
+    // TODO - Removing excluded cards to a special Pile works OK, but the
+    //        cards do a strange "dance" or shuffle within the Pile. Why?
 
     // Create a (temporary) Dealer and give it access to data needed for the
     // for the deal (first three parameters) and a completeTheDeal() procedure
     // needed in a few games (last four parameters).
-    // TODO - Removing excluded cards to a special Pile works OK, but the
-    //        cards do a strange "dance" or shuffle within the Pile. Why?
     final cardDealer = Dealer(_cards, _piles, _stockPileIndex,
         gameSpec, _excludedCardsPileIndex, _replenishTableauFromStock,
         _cardMoves,
@@ -153,8 +161,8 @@ class Gameplay {
             speed: 15.0,
             flipTime: 0.0, // No flip.
           );
-          // TODO - Need to know whether to flip (as in Klondike) or not (as in
-          //        Forty Eight). The flip is animated in Pile currently... OK?
+          // Need to know whether to flip (as in Klondike) or not (as in
+          // Fort & Eight). The decision and animation is in a Pile method.
           Extra flip = start.neededToFlipTopCard() ?
               Extra.fromCardUp : Extra.none;
           _cardMoves.storeMove(
@@ -182,7 +190,7 @@ class Gameplay {
       flipTime: 0.0, // No flip.
     );
   }
- 
+
   // TODO - This method and _replaceTableauCard() should DEFINITELY become
   //        part of the Pile class. The Dealer operates asynchronously on
   //        more than one Pile at a time, which works as long as there are
@@ -388,16 +396,14 @@ class Gameplay {
       putOK = target.checkPut(card);
       print('Try Pile ${target.pileIndex} ${target.pileType}: putOK $putOK');
       if (putOK) { // The card goes out.
-        // TODO - Have ALREADY grabbed the card if the "tap" is a short-drag,
-        //        so make sure it is in movingCards[] even if its a real tap.
         List<CardView> movingCards = fromPile.grabCards(1);
         target.receiveMovingCards(
           movingCards,
           flipTime: 0.0, // No flip.
         );
-        // Remove this card from source pile and flip next card, if required.
-        // TODO - Need to know whether to flip (as in Klondike) or not (as in
-        //        Forty Eight). The flip is animated in Pile currently... OK?
+        // Remove this card from source pile and flip next card, if required
+        // (as in Klondike) or not (as in Forty & Eight). The decision and
+        // animation is in a Pile method.
         Extra flip = fromPile.neededToFlipTopCard() ?
             Extra.fromCardUp : Extra.none;
         _cardMoves.storeMove(
@@ -445,24 +451,61 @@ class Gameplay {
       );
       return true;
     }
+    else if ((_gameID == PatGameID.grandfather) && (_grandfatherRedeals > 0)) {
+      print('REDEAL GRANDFATHER GAME');
+      // Collect cards from the Grandfather Tableaus.
+      for (Pile pile in _tableaus.reversed) { // Right-hand Tableau first...
+        List<CardView> cardsToRedeal = pile.grabCards(pile.nCards);
+        for (CardView card in cardsToRedeal) {
+          if (card.isFaceUpView) {
+            card.flipView();
+          }
+        }
+        _piles[_stockPileIndex].dropCards(cardsToRedeal);
+      }
+      _piles[_stockPileIndex].dump();
+
+      final cardDealer = Dealer(_cards, _piles, _stockPileIndex,
+          _gameSpec, -1, _replenishTableauFromStock, _cardMoves,);
+
+      // Do the redeal for the Grandfather game.
+      cardDealer.grandfatherDeal(_piles[_stockPileIndex], _tableaus);
+
+      _grandfatherRedeals--;
+      return true;
+    }
     return false;
   }
 
   bool _tapOnFilledStockPile(Pile fromPile) {
     // Deal one or more cards from the Stock Pile to the Waste Pile.
     final waste = _piles[_wastePileIndex];
-    // TODO - Have ALREADY grabbed the card if the "tap" is a short-drag,
-    //        so make sure it is in movingCards[] even if it is a real tap.
-    List<CardView> dealtCards = fromPile.grabCards(1); // TODO - May be 3 or 2.
+    fromPile.dump();
+    List<CardView> dealtCards = [];
+    int nCards = (_gameID == PatGameID.klondikeDraw3) ? 3 : 1;
+
+    // In Klondike Draw 3, the LAST card drawn goes on TOP of the Waste Pile.
+    // This means the dealtCards[] must be drawn one-at-a-time and the last
+    // of the 3, 2 or 1 cards goes on top. The other cards go under (if avail).
+    for (int n = 0; n < nCards; n++) {
+      dealtCards.add(fromPile.grabCards(1).first);
+      if (fromPile.hasNoCards) {
+        nCards = n + 1;
+        break;
+      }
+    }
     waste.receiveMovingCards(
       dealtCards,
       speed: 15.0,
       flipTime: 0.3, // Flip the card as it moves.
+      startTime: 0.0,
+      intervalTime: 0.2,
     );
+    fromPile.dump();
     _cardMoves.storeMove(
       from: fromPile,
       to: waste,
-      nCards: 1,
+      nCards: nCards,
       extra: Extra.toCardUp,
       leadCard: dealtCards.first.indexOfCard,
       strength: 0,
@@ -541,23 +584,32 @@ class Gameplay {
   // via the empty Tableaus. So, with two empty Tableaus, you can move up to
   // three cards into them, one card at a time, and leave them there. Then you
   // can move a fourth into another Tableau and put the other three on top of
-  // it, if all the cards satisfy the rule for that pile.
+  // it, if all the cards satisfy the rule for that pile. In the Freecell Game,
+  // empty cells also affect the number you can move.
   //
   // All this is automated in actual play and is not animated (because that is
   // tedious to watch). So, in an actual Game, you can move 1-2 cards if you
   // have one empty Tableau, 1-4 if you have two empty Tableaus, and so on.
   // The method is used to build up long sequences (e.g. in Forty and Eight).
+
   bool _notEnoughSpaceToMove(int nCards, Pile start, Pile target) {
     var emptyPiles = 0;
+    var emptyCells = 0;
     for (Pile pile in _piles) {
       if ((pile.pileType == PileType.tableau) && (pile != start) &&
           pile.hasNoCards) {
         emptyPiles++;
       }
+      else if ((pile.pileType == PileType.freecell) && pile.hasNoCards) {
+        emptyCells++;
+      }
     }
-    if ((target.pileType == PileType.tableau) && target.hasNoCards) emptyPiles--;
+    if ((target.pileType == PileType.tableau) && target.hasNoCards) {
+      emptyPiles--;
+    }
 
-    final int maxCards = 1 << emptyPiles; // (2 to the power emptyPiles).
+    // Max cards = (emptyCells + 1) * (2 to the power emptyPiles).
+    final int maxCards = (emptyCells + 1) * (1 << emptyPiles);
     return (nCards > maxCards);
   }
 }
