@@ -37,6 +37,7 @@ class Gameplay {
   int _excludedCardsPileIndex = -1;
   final List<Pile> _foundations = [];
   final List<Pile> _tableaus = [];
+  final List<Pile> _freecells = [];
 
   // Most Game do not have these features: Mod 3 has both of the first two.
   int _excludedRank = 0; // Rank of excluded cards (e.g. Aces in Mod 3).
@@ -46,23 +47,20 @@ class Gameplay {
   void begin(GameSpec gameSpec, int randomSeed) {
     _gameSpec = gameSpec; // TODO - Clean up interfaces to Dealer.
     for (Pile pile in _piles) {
-      // TODO - Why not use a switch() statement?
-      if (pile.pileType == PileType.foundation) {
-        _foundations.add(pile);
+      switch(pile.pileType) {
+        case PileType.foundation:
+          _foundations.add(pile);
+        case PileType.tableau:
+          _tableaus.add(pile);
+        case PileType.stock:
+          _stockPileIndex = pile.pileIndex;
+        case PileType.waste:
+          _wastePileIndex = pile.pileIndex;
+        case PileType.excludedCards:
+          _excludedCardsPileIndex = pile.pileIndex;
+        case PileType.freecell:
+          _freecells.add(pile);
       }
-      if (pile.pileType == PileType.tableau) {
-        _tableaus.add(pile);
-      }
-      if (pile.pileType == PileType.stock) {
-        _stockPileIndex = pile.pileIndex;
-      }
-      if (pile.pileType == PileType.waste) {
-        _wastePileIndex = pile.pileIndex;
-      }
-      if (pile.pileType == PileType.excludedCards) {
-        _excludedCardsPileIndex = pile.pileIndex;
-      }
-
       // Set game-wide rules for the gameplay in this Game.
       _excludedRank = gameSpec.excludedRank;
       _redealEmptyTableau = gameSpec.redealEmptyTableau;
@@ -131,7 +129,7 @@ class Gameplay {
     }
     if (targets.isNotEmpty) {
       final target = targets.first;
-      if (target.checkPut(movingCards.first)) {
+      if (target.checkPut(movingCards)) {
         int nCards = movingCards.length;
         bool dropOK = true;
         if (target.pileType == PileType.foundation) {
@@ -393,7 +391,7 @@ class Gameplay {
       if (target.pileType != PileType.foundation) {
         continue;
       }
-      putOK = target.checkPut(card);
+      putOK = target.checkPut([card]);
       print('Try Pile ${target.pileIndex} ${target.pileType}: putOK $putOK');
       if (putOK) { // The card goes out.
         List<CardView> movingCards = fromPile.grabCards(1);

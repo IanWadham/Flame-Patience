@@ -391,8 +391,9 @@ class Pile extends PositionComponent with HasWorldReference<PatWorld> {
     return _cards.isNotEmpty ? (card == _cards.last) : false;
   }
 
-  bool checkPut(CardView card) {
-    // Player can put or drop cards onto Foundation or Tableau Piles only.
+  bool checkPut(List<CardView> cardsToBePut) {
+    // Player can put cards onto Foundation, Tableau or Freecell Piles only.
+    CardView card = cardsToBePut.first;
     String message = 'Check Put: ${card.name} Pile $pileIndex, $pileType:';
     if ((pileType == PileType.foundation) || (pileType == PileType.tableau) ||
         (pileType == PileType.freecell)) {
@@ -400,6 +401,11 @@ class Pile extends PositionComponent with HasWorldReference<PatWorld> {
         final firstOK =
             (pileSpec.putFirst == 0) || (card.rank == pileSpec.putFirst);
         String result = firstOK ? 'first card OK' : 'first card FAILED';
+        if (pileSpec.putRule == PutRule.ifEmptyAnyCard) {
+          // PileType.freecell can accept just one card.
+          print('Freecell empty? ${_cards.isEmpty} cards to put $cardsToBePut');
+          return (firstOK && (cardsToBePut.length == 1));
+        }
         print('$message $result');
         return firstOK;
       } else {
@@ -427,11 +433,10 @@ class Pile extends PositionComponent with HasWorldReference<PatWorld> {
           case PutRule.wholeSuit:
              // Leading card's rank must be King (Simple Simon game) or Ace(?).
              return card.rank == pileSpec.putFirst;
-          case PutRule.ifEmptyAnyCard:
-            // PileType.freecell can accept just one card.
-            return _cards.isEmpty;
           case PutRule.putNotAllowed:
             return false; // Cannot put card on this Foundation Pile.
+          default:
+            return true; // Redundant: PutRule.ifEmptyAnyCard was checked above.
         }
         if ((card.rank != (_cards.last.rank + delta)) ||
             (card.suit != pileSuit)) {
