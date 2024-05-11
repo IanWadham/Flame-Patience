@@ -14,7 +14,7 @@ typedef CardMove = ({
   int fromPile, // Starting PileIndex.
   int toPile, // Finishing PileIndex.
   int nCards, // Number of Card(s) to move.
-  Extra extra, // See enum definition above.
+  Extra extra, // See enum definition in specs/pat_enums.dart.
   int strength, // Reserved for use in Solver, default = 0.
   int leadCard, // For DEBUG: index number of first card (if known).
 });
@@ -23,10 +23,11 @@ typedef CardMove = ({
 // add it/them to the end of another pile, working within the rules of the
 // current game and remembering any card flips that were required. All moves
 // can be undone or redone any number of times. The validity of each Move is
-// checked just once, during the Tap or DragAndDrop callback that accepted
-// and created the Move.
+// checked just once, during the Tap or DragAndDrop callback that accepted,
+// created and stored the Move.
 
-// There is also a Move to turn over the whole Stock or Waste Pile.
+// There is also a special Move to turn over the whole Stock or Waste Pile and
+// another to record a Redeal in a Grandfather Game.
 
 class CardMoves {
   CardMoves(this._cards, this._piles, this._tableaus, this._stockPileIndex);
@@ -73,31 +74,31 @@ class CardMoves {
     );
     _playerMoves.add(move);
     _redoIndex = _playerMoves.length;
-    // print('MOVE LIST after storeMove() index $_redoIndex:'); printMoves();
+    print('MOVE LIST after storeMove() index $_redoIndex:'); printMoves();
     print('Move: ${from.pileIndex} ${from.pileType} to ${to.pileIndex} '
         '${to.pileType} $nCards cards ${_cards[leadCard]} $extra');
   }
 
-  void undoMove() {
+  UndoRedoResult undoMove() {
     if (_redoIndex < 1) {
-      return;
+      return UndoRedoResult.atStart;
     }
     // print('MOVE LIST before undoMove() index $_redoIndex:'); printMoves();
-    moveBack(_playerMoves[--_redoIndex]);
+    return moveBack(_playerMoves[--_redoIndex]);
     // print('MOVE LIST after undoMove() index $_redoIndex:'); printMoves();
   }
 
-  void redoMove() {
+  UndoRedoResult redoMove() {
     // Same as makeMove(), except storeMove() clears the tail of the redo List.
     if (_redoIndex >= _playerMoves.length) {
-      return;
+      return UndoRedoResult.atEnd;
     }
     // print('MOVE LIST before redoMove() index $_redoIndex:'); printMoves();
-    makeMove(_playerMoves[_redoIndex++]);
+    return makeMove(_playerMoves[_redoIndex++]);
     // print('MOVE LIST after redoMove() index $_redoIndex:'); printMoves();
   }
 
-  void makeMove(CardMove move) {
+  UndoRedoResult makeMove(CardMove move) {
     // This is a "redo" of a stored Move. The original Move was validated and
     // executed after a Tap or Drag fron the player, then stored. We just "go
     // through the motions" this time around.
@@ -106,13 +107,14 @@ class CardMoves {
     Pile from = _piles[move.fromPile];
     Pile to = _piles[move.toPile];
     print(
-        'Redo: ${move.fromPile} ${from.pileType} to ${move.toPile} '
-       '${to.pileType} redo $_redoIndex list ${_playerMoves.length}');
+        '\n\n\n\nREDO: ${move.fromPile} ${from.pileType} to ${move.toPile} '
+       '${to.pileType} redo $_redoIndex list ${_playerMoves.length} '
+       '${move.nCards})');
 
     // SPECIAL CASE: Turn Waste Pile over, back onto Stock (tap on empty Stock).
     if ((from.pileType == PileType.waste) && (to.pileType == PileType.stock)) {
       from.turnPileOver(to); // Do/redo turn over of Waste Pile to Stock.
-      return;
+      return UndoRedoResult.done;
     }
     switch (move.extra) {
       case Extra.none:
@@ -149,20 +151,26 @@ class CardMoves {
         assert (stock.nCards >= 1);
         from.dropCards(stock.grabCards(1));
         from.setTopFaceUp(true);
+      case Extra.redeal:
+        // Redo Grandfather Redeal: set the Tableaus to their post-redeal state.
+        switchTableauStates(move.nCards);
+        return UndoRedoResult.redidRedeal;
     }
+    return UndoRedoResult.done;
   }
 
-  void moveBack(CardMove move) {
+  UndoRedoResult moveBack(CardMove move) {
     // This the reverse (or "undo") of a previously stored Move. For comments
     // on the switch() cases, see makeMove() above.
     Pile from = _piles[move.fromPile];
     Pile to = _piles[move.toPile];
-    print('Back: ${move.fromPile} ${from.pileType} to ${move.toPile} '
-        '${to.pileType} redo $_redoIndex list ${_playerMoves.length}');
+    print('\n\n\n\nUNDO: ${move.fromPile} ${from.pileType} to ${move.toPile} '
+        '${to.pileType} redo $_redoIndex list ${_playerMoves.length} '
+        'nCards ${move.nCards}');
 
     if ((from.pileType == PileType.waste) && (to.pileType == PileType.stock)) {
       to.turnPileOver(from); // Undo (return cards to Waste Pile from Stock).
-      return;
+      return UndoRedoResult.done;
     }
     switch (move.extra) {
       case Extra.none:
@@ -192,13 +200,34 @@ class CardMoves {
         from.setTopFaceUp(false);
         stock.dropCards(from.grabCards(1));
         from.dropCards(to.grabCards(1));
+      case Extra.redeal:
+        // Undo Grandfather Redeal: set the Tableaus to how they were before.
+        switchTableauStates(move.nCards);
+        return UndoRedoResult.undidRedeal;
     }
+    return UndoRedoResult.done;
   }
 
   List<CardMove> getPossibleMoves() {
     // TODO - Implement getPossibleMoves().
     List<CardMove> possibleMoves = [];
     return possibleMoves;
+  }
+
+  void switchTableauStates(int redealNumber) {
+    List<List<int>> tableauStates = [];
+    _tableaus[1].dump();
+    for (final tableau in _tableaus) {
+      tableauStates.add(tableau.restoreState(redealNumber));
+    }
+    _tableaus[1].dump();
+    int n = 0;
+    for (final tableau in _tableaus) {
+      tableau.showPileState(tableauStates[n]);
+      n++;
+    }
+    _tableaus[1].dump();
+    tableauStates.clear();
   }
 
   void dump() {

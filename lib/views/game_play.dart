@@ -27,8 +27,6 @@ class Gameplay {
   late PatGameID _gameID;
   late GameSpec _gameSpec; // TODO - Clean up interfaces to Dealer.
 
-  var _redoIndex = 0;
-
   bool get hasStockPile => _stockPileIndex >= 0;
   bool get hasWastePile => _wastePileIndex >= 0;
 
@@ -42,7 +40,9 @@ class Gameplay {
   // Most Game do not have these features: Mod 3 has both of the first two.
   int _excludedRank = 0; // Rank of excluded cards (e.g. Aces in Mod 3).
   bool _redealEmptyTableau = false; // Automatically redeal an empty Tableau?
-  int _grandfatherRedeals = 2; // Allowed number of redeals in Grandfather Game.
+
+  final _grandfatherRedeals = 2; // Max number of redeals in Grandfather Game.
+  int _redealCount = 0;
 
   void begin(GameSpec gameSpec, int randomSeed) {
     _gameSpec = gameSpec; // TODO - Clean up interfaces to Dealer.
@@ -93,11 +93,22 @@ class Gameplay {
   }
 
   void undoMove() {
-    _cardMoves.undoMove();
+    UndoRedoResult result = _cardMoves.undoMove();
+    print('UNDO MOVE GameID $_gameID RESULT $result');
+    if ((_gameID == PatGameID.grandfather) &&
+        (result == UndoRedoResult.undidRedeal)) {
+      _redealCount--;
+      print('UNDID GRANDFATHER REDEAL $result _redealCount $_redealCount');
+    }
   }
 
   void redoMove() {
-    _cardMoves.redoMove();
+    UndoRedoResult result = _cardMoves.redoMove();
+    if ((_gameID == PatGameID.grandfather) &&
+        (result == UndoRedoResult.redidRedeal)) {
+      _redealCount++;
+      print('REDID GRANDFATHER REDEAL $result _redealCount $_redealCount');
+    }
   }
 
   bool tapMove(CardView card) {
@@ -325,7 +336,6 @@ class Gameplay {
     );
     // TODO - What if there is no Stock left to deal? Skip receiveMovingCards()?
     List<CardView> stockCards = stock.grabCards(1);
-    // if (stockCards.isNotEmpty) { } ???????
     pileToReplenish.receiveMovingCards(
       stockCards,
       speed: 10.0,
@@ -358,6 +368,22 @@ class Gameplay {
     if (tapResult == MoveResult.pileEmpty) {
       if (fromPile.pileSpec.tapEmptyRule == TapEmptyRule.tapNotAllowed) {
         print('${fromPile.pileType} TAP ON EMPTY PILE WAS IGNORED');
+        return false;
+      }
+
+      if (_gameID == PatGameID.grandfather) {
+        print('REDEAL GRANDFATHER GAME _redealCount $_redealCount');
+        if (_redealGrandfatherGame()) {
+          _cardMoves.storeMove( // Record a successful Grandfather Redeal Move.
+            from: fromPile,
+            to: _tableaus[0], // Not used in Undo/Redo.
+            nCards: _redealCount, // Which state of each Tableau to Undo.
+            extra: Extra.redeal,
+            leadCard: 0, // No particular card.
+            strength: 0,
+          );
+          return true;
+        }
         return false;
       }
 
@@ -449,30 +475,40 @@ class Gameplay {
       );
       return true;
     }
-    else if ((_gameID == PatGameID.grandfather) && (_grandfatherRedeals > 0)) {
-      print('REDEAL GRANDFATHER GAME');
-      // Collect cards from the Grandfather Tableaus.
-      for (Pile pile in _tableaus.reversed) { // Right-hand Tableau first...
-        List<CardView> cardsToRedeal = pile.grabCards(pile.nCards);
-        for (CardView card in cardsToRedeal) {
-          if (card.isFaceUpView) {
-            card.flipView();
-          }
-        }
-        _piles[_stockPileIndex].dropCards(cardsToRedeal);
-      }
-      _piles[_stockPileIndex].dump();
-
-      final cardDealer = Dealer(_cards, _piles, _stockPileIndex,
-          _gameSpec, -1, _replenishTableauFromStock, _cardMoves,);
-
-      // Do the redeal for the Grandfather game.
-      cardDealer.grandfatherDeal(_piles[_stockPileIndex], _tableaus);
-
-      _grandfatherRedeals--;
-      return true;
-    }
     return false;
+  }
+
+  bool _redealGrandfatherGame() {
+    print('ENTERED _redealGrandfatherGame() redeals $_grandfatherRedeals');
+    if (_redealCount >= _grandfatherRedeals) {
+      print('RETURN REDEAL false _redealCount $_redealCount');
+      return false;
+    }
+
+    // Collect cards from the Grandfather Tableaus.
+    final Pile stockPile = _piles[_stockPileIndex];
+    for (Pile pile in _tableaus.reversed) { // Right-hand Tableau first...
+      pile.saveState(_redealCount); // For Undo of Redeal Move.
+      List<CardView> cardsToRedeal = pile.grabCards(pile.nCards);
+      for (CardView card in cardsToRedeal) {
+        if (card.isFaceUpView) {
+          card.flipView();
+        }
+      }
+      stockPile.dropCards(cardsToRedeal);
+    }
+    int nCardsToBeDealt = stockPile.nCards;
+    stockPile.dump();
+
+    final cardDealer = Dealer(_cards, _piles, _stockPileIndex,
+        _gameSpec, -1, _replenishTableauFromStock, _cardMoves,);
+
+    // Do the redeal for the Grandfather game.
+    cardDealer.grandfatherDeal(stockPile, _tableaus);
+
+    _redealCount++;
+    print('REDEAL SUCCESSFUL _redealCount $_redealCount');
+    return true;
   }
 
   bool _tapOnFilledStockPile(Pile fromPile) {

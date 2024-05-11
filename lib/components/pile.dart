@@ -280,7 +280,6 @@ class Pile extends PositionComponent with HasWorldReference<PatWorld> {
       tailPosition = card.isMoving ? card.newPosition : card.position;
       // bool tailFaceUp = card.isMoving ? card.newFaceUp : card.isFaceUpView;
       tailPosition += card.isFaceUpView ? _fanOutFaceUp : _fanOutFaceDown;
-      // ?? tailPosition +=  tailFaceUp ? _fanOutFaceUp : _fanOutFaceDown;
       // print('INCOMING $movingCards nPrevCards $nPrevCardsInPile last $card moving? ${card.isMoving} newPos ${card.newPosition} oldPos ${card.position} isFaceUpView? ${card.isFaceUpView} fanOutFaceUp $_fanOutFaceUp tailFaceUp? ${card.isFaceUpView} tailPosition $tailPosition');
     }
 
@@ -597,6 +596,48 @@ class Pile extends PositionComponent with HasWorldReference<PatWorld> {
       width = (deltaX >= 0.0) ? baseWidth + deltaX : baseWidth - deltaX;
       height = (deltaY >= 0.0) ? baseHeight + deltaY : baseHeight - deltaY;
     }
+  }
+
+  final List<List<int>> savedState = [[], []];
+
+  void saveState(int stateNumber) {
+    // Used before Redeal in Grandfather Game, to support Undo of that move.
+    // final redealNumber = 2 - grandfatherRedeals;
+    print('SAVE STATE $stateNumber pile $pileIndex $pileType cards $_cards');
+    savedState[stateNumber].clear();
+    for (CardView card in _cards) {
+      int cardID = card.indexOfCard;
+      cardID = card.isFaceDownView ? -cardID : cardID;
+      savedState[stateNumber].add(cardID);
+    }
+  }
+
+  List<int> restoreState(int redealNumber) {
+    // Used during Undo of a Redeal Move in a GrandFather Game.
+    print('UNDO/REDO REDEAL $redealNumber pile $pileIndex $pileType');
+    print('  Saved Values ${savedState[redealNumber - 1]}');
+    final restoredCards = List<int>.from(savedState[redealNumber -1]);
+    print('  _cards $_cards');
+    print('  Cards to Restore $restoredCards');
+    saveState(redealNumber - 1); // Save the previous State, for Undo or Redo.
+    return restoredCards;
+  }
+
+  void showPileState(List<int> pileState) {
+    print('  showPileState $pileState');
+    print('  current _cards $_cards');
+    _cards.clear();
+    print('  _cards $_cards');
+    for (int cardID in pileState) {
+      bool faceDown = (cardID < 0);
+      final cardIndex = faceDown ? -cardID : cardID;
+      CardView card = world.cards[cardIndex]; // Must have positive cardIndex.
+      if (faceDown != card.isFaceDownView) {
+        card.flipView();
+      }
+      put(card);
+    }
+    print('  _cards $_cards');
   }
 
   static final Paint pileOutlinePaint = Paint()
