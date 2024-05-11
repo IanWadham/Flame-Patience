@@ -90,4 +90,15 @@ enum Extra {
   toCardUp, // The card turns Face Up as it arrives (e.g. Stock-to-Waste).
   stockToTableaus, // Cards are moved successively from Stock to Tableau Piles.
   replaceExcluded, // An excluded card leaving a Tableau is replaced from Stock.
+  redeal, // Redeal Move in Grandfather Game.
+}
+
+enum UndoRedoResult {
+  done, // Undo/Redo succeeded.
+  atStart, // There are no more Moves to Undo.
+  atEnd, // There are no more Moves to Redo.
+  cantUndo, // There is no code to Undo this Move.
+  cantRedo, // There is no code to Redo this Move.
+  undidRedeal, // CardMoves undid a Grandfather Redeal.
+  redidRedeal, // CardMoves redid a Grandfather Redeal.
 }

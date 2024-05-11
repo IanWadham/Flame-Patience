@@ -665,7 +665,7 @@ class PatData {
     fanOutX: 0.0,
     fanOutY: 0.25,
     growthCols: 0,
-    growthRows: 3,
+    growthRows: 2,
   );
 
   static const PileSpec fortyAndEightTableau = (
