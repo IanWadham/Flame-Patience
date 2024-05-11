@@ -43,9 +43,9 @@ class PatGame extends FlameGame<PatBaseWorld> {
   void changeGame() => world = PatMenuWorld(); // Show the menu-world screen.
 
   // Color settings for the playing area, board layout and action-buttons.
-  // static final Color screenBackground = Colors.amber.shade100;
-  // static final Color screenBackground = Color(0xfff4d340); // Colors.amber.shade300;
-  static final Color screenBackground = Color(0xffeeca34); // Colors.amber.shade300;
+  // The Screen Background is amber.shade300, but darkened manually. That is
+  // not the same as shade400, etc. of Flutter's amber swatch.
+  static final Color screenBackground = Color(0xffe7c31d);
   static final Color pileBackground = Colors.amberAccent.shade100;
   static final Color pileOutline = Colors.brown.shade800;
   static const Color buttonHighlight = Colors.red;
