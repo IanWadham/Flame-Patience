@@ -100,7 +100,8 @@ class CardView extends PositionComponent
   }
 
   @override
-  String toString() => isBaseCard ? 'BC' : PatWorld.ranks[rank] + PatWorld.suits[suit];
+  String toString() => isBaseCard ? 'BC' :
+      (_viewFaceUp ? '+' : '-') + PatWorld.ranks[rank] + PatWorld.suits[suit];
 
   // THE ERGONOMICS OF CARD MOVES:
   //
