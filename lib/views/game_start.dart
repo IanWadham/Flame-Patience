@@ -134,19 +134,18 @@ class GameLayout {
 class Dealer extends Component with HasWorldReference<PatWorld> {
 // This Class shuffles and deals into the layout at the start of a Game and
 // makes changes after the deal (e.g. in Mod 3, remove Aces, refill Tableaus).
+
   Dealer(this._cards, this._piles, this._stockPileIndex,
-      this._gameSpec, this._excludedCardsPileIndex,
-      this._replenishTableauFromStock, this._cardMoves,
+      this._gameSpec, this._excludedCardsPileIndex, this._cardMoves,
   );
 
-  // The following data and function-parameter are needed by the deal() and
-  // completeTheDeal() methods and are provided by the GamePlay.start() method.
+  // The following data items are needed by the deal() and completeTheDeal()
+  // methods and are provided by the GamePlay.start() method.
   final List<CardView> _cards;
   final List<Pile> _piles;
   final int _stockPileIndex;
   final GameSpec _gameSpec;
   final int _excludedCardsPileIndex;
-  final Function(Pile) _replenishTableauFromStock;
   final CardMoves _cardMoves;
 
   int _excludedRank = 0;
@@ -296,7 +295,10 @@ class Dealer extends Component with HasWorldReference<PatWorld> {
       } else if (pile.pileType == PileType.tableau) {
         if (pile.hasNoCards ||
             (_cards[pile.topCardIndex].rank == _excludedRank)) {
-          _replenishTableauFromStock(pile);
+          pile.replenishTableauFromStock(
+            _stockPileIndex,
+            _excludedCardsPileIndex
+          );
         }
       }
     }

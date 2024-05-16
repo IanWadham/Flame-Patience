@@ -79,7 +79,7 @@ class Gameplay {
     // for the deal (first three parameters) and a completeTheDeal() procedure
     // needed in a few games (last four parameters).
     final cardDealer = Dealer(_cards, _piles, _stockPileIndex,
-        gameSpec, _excludedCardsPileIndex, _replenishTableauFromStock,
+        gameSpec, _excludedCardsPileIndex, // ?????? _replenishTableauFromStock,
         _cardMoves,
     );
 
@@ -90,6 +90,18 @@ class Gameplay {
     cardDealer.deal(gameSpec.dealSequence, randomSeed,
         whenDone: moreToDo ? cardDealer.completeTheDeal : null,
     );
+  }
+
+  void storeMove({
+    required Pile from,
+    required Pile to,
+    required int nCards,
+    required Extra extra,
+    int leadCard = 0,
+    int strength = 0,
+  }) {
+    _cardMoves.storeMove(from: from, to: to, nCards: nCards, extra: extra,
+        leadCard: leadCard, strength: strength,); 
   }
 
   void undoMove() {
@@ -186,7 +198,10 @@ class Gameplay {
               (start.pileType == PileType.tableau)) {
             // TODO - Will we always come back from this synchronously and
             //        eventually get back to CardView without data problems?
-            _replenishTableauFromStock(start);
+            start.replenishTableauFromStock(
+              _stockPileIndex,
+              _excludedCardsPileIndex,
+            );
           }
           return;
         }
@@ -199,12 +214,12 @@ class Gameplay {
       flipTime: 0.0, // No flip.
     );
   }
-
+/*
   // TODO - This method and _replaceTableauCard() should DEFINITELY become
   //        part of the Pile class. The Dealer operates asynchronously on
   //        more than one Pile at a time, which works as long as there are
   //        not too many Aces on the Stock Pile. If there are Aces, you can
-  //        get an Ace stating on a Pile and a five of Spades going to the
+  //        get an Ace staying on a Pile and a five of Spades going to the
   //        Aces Pile. Happened on Mod 3 deal with seed 1567865991.
 
   void _replenishTableauFromStock(Pile pile) {
@@ -359,6 +374,7 @@ class Gameplay {
       strength: 0,
     );
   }
+*/
 
   bool _tapOnStockPile(CardView card, Pile fromPile, MoveResult tapResult) {
     // Check and perform three different kinds of Stock Pile move.
@@ -442,7 +458,10 @@ class Gameplay {
         if (_redealEmptyTableau && fromPile.hasNoCards &&
             (fromPile.pileType == PileType.tableau)) {
           print('CARD $card GOES OUT: replenish ${fromPile.toString()}');
-          _replenishTableauFromStock(fromPile);
+          fromPile.replenishTableauFromStock(
+            _stockPileIndex,
+            _excludedCardsPileIndex,
+          );
         }
         return true;
       }
@@ -501,7 +520,7 @@ class Gameplay {
     stockPile.dump();
 
     final cardDealer = Dealer(_cards, _piles, _stockPileIndex,
-        _gameSpec, -1, _replenishTableauFromStock, _cardMoves,);
+        _gameSpec, -1, /* ???????_replenishTableauFromStock,*/ _cardMoves,);
 
     // Do the redeal for the Grandfather game.
     cardDealer.grandfatherDeal(stockPile, _tableaus);
@@ -607,7 +626,10 @@ class Gameplay {
             (_cards[pile.topCardIndex].rank == _excludedRank)) {
           // TODO - Will we always come back from this synchronously and
           //        eventually get back to CardView without data problems?
-          _replenishTableauFromStock(pile);
+          pile.replenishTableauFromStock(
+            _stockPileIndex,
+            _excludedCardsPileIndex,
+          );
         }
       }
     }
