@@ -155,7 +155,7 @@ class Dealer extends Component with HasWorldReference<PatWorld> {
   var nDealtCards = 0;
   var nCardsArrived = 0;
 
-  void deal(DealSequence dealSequence, int seed, {VoidCallback? whenDone,}) {
+  void deal(DealSequence dealSequence, int seed, bool moreToDo) {
     final cardsToDeal = List<CardView>.of(_cards);
     assert(_stockPileIndex >= 0);
     final Pile stockPile = _piles[_stockPileIndex];
@@ -246,8 +246,8 @@ class Dealer extends Component with HasWorldReference<PatWorld> {
               intervalTime: cardDealTime,
               onComplete: () {
                 nCardsArrived++;
-                if (nCardsArrived == nDealtCards) {
-                  whenDone?.call();
+                if ((nCardsArrived == nDealtCards) && moreToDo) {
+                  completeTheDeal();
                 }
               }
             );
