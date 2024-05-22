@@ -75,7 +75,7 @@ class Gameplay {
     // Create a (temporary) Dealer and give it access to data needed for the
     // for the deal and a completeTheDeal() procedure needed in some games.
     final cardDealer = Dealer(_cards, _piles, _stockPileIndex,
-        gameSpec, _excludedCardsPileIndex, _cardMoves,
+        gameSpec, _excludedCardsPileIndex,
     );
 
     // Decide whether a second Dealer phase is needed.
@@ -85,16 +85,21 @@ class Gameplay {
     cardDealer.deal(gameSpec.dealSequence, randomSeed, moreToDo);
   }
 
-  void storeMove({
-    required Pile from,
-    required Pile to,
-    required int nCards,
-    required Extra extra,
-    int leadCard = 0,
-    int strength = 0,
-  }) {
-    _cardMoves.storeMove(from: from, to: to, nCards: nCards, extra: extra,
-        leadCard: leadCard, strength: strength,); 
+  void storeReplenishmentMove(Pile tableau, Extra moveType, int cardIndex) {
+    if ((_excludedCardsPileIndex < 0) || (_stockPileIndex < 0)) {
+      throw StateError('Gameplay.storeReplenishmentMove() must be called via '
+          'Pile.replenishTableauFromStock() and Pile._replaceTableauCard()');
+    }
+    Pile stock = _piles[_stockPileIndex];
+    Pile rejects = _piles[_excludedCardsPileIndex];
+    _cardMoves.storeMove(
+      from: (moveType == Extra.toCardUp) ? stock : tableau,
+      to: (moveType == Extra.toCardUp) ? tableau : rejects,
+      nCards: 1,
+      extra: moveType,
+      leadCard: cardIndex,
+      strength: 0,
+    );
   }
 
   void undoMove() {
@@ -120,6 +125,7 @@ class Gameplay {
     Pile fromPile = card.pile;
     MoveResult tapResult = fromPile.isTapMoveValid(card);
     print('Tap seen ${fromPile.pileType} result: $tapResult');
+    fromPile.dump();
     if (tapResult == MoveResult.notValid) {
       return false;
     }
@@ -349,8 +355,7 @@ class Gameplay {
     int nCardsToBeDealt = stockPile.nCards;
     stockPile.dump();
 
-    final cardDealer = Dealer(_cards, _piles, _stockPileIndex,
-        _gameSpec, -1, _cardMoves,);
+    final cardDealer = Dealer(_cards, _piles, _stockPileIndex, _gameSpec, -1);
 
     // Do the redeal for the Grandfather game.
     cardDealer.grandfatherDeal(stockPile, _tableaus);

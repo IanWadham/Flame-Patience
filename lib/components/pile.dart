@@ -434,8 +434,9 @@ class Pile extends PositionComponent with HasWorldReference<PatWorld> {
              return card.rank == pileSpec.putFirst;
           case PutRule.putNotAllowed:
             return false; // Cannot put card on this Foundation Pile.
-          default:
-            return true; // Redundant: PutRule.ifEmptyAnyCard was checked above.
+          case PutRule.ifEmptyAnyCard:
+            // Pile is not empty, so PileType.freecell cannot accept a card.
+            return false;
         }
         if ((card.rank != (_cards.last.rank + delta)) ||
             (card.suit != pileSuit)) {
@@ -494,14 +495,12 @@ class Pile extends PositionComponent with HasWorldReference<PatWorld> {
     dropCards(tail);
   }
 
-  // TODO - This method and _replaceTableauCard() should DEFINITELY become
-  //        part of the Pile class. The Dealer operates asynchronously on
-  //        more than one Pile at a time, which works as long as there are
-  //        not too many Aces on the Stock Pile. If there are Aces, you can
-  //        get an Ace staying on a Pile and a five of Spades going to the
-  //        Aces Pile. Happened on Mod 3 deal with seed 1567865991.
+  var _excludedCardsPileIndex = -1;
+  var _storing = true; // Only the  deal before play begins sets this to false.
+  final List<CardView> _cardsToDeal = []; // Stock that must Move to this Pile.
 
-  void replenishTableauFromStock(int stockPileIndex, int excludedCardsPileIndex)
+  void replenishTableauFromStock(int stockPileIndex, int excludedCardsPileIndex,
+      {bool storing = true})
   {
     // Auto-refill an empty Tableau Pile, auto-remove excluded cards or both.
     final excludedRank = world.gameSpec.excludedRank;
@@ -525,141 +524,95 @@ class Pile extends PositionComponent with HasWorldReference<PatWorld> {
     }
 
     Pile stock = world.piles[stockPileIndex];
-    Pile rejects = world.piles[excludedCardsPileIndex];
-    _stockPileIndex = stockPileIndex;
     _excludedCardsPileIndex = excludedCardsPileIndex;
+    _storing = storing;
 
     bool excludedCardOnTop = false;
     if (nCards > 0) {
       excludedCardOnTop = (_cards.last.rank == excludedRank);
     }
-    // TODO - ??? At this point we could loop to grab one card at a time
-    //            from the Stock Pile until we see one that is not an Ace.
-    //            We could send any successive Aces off to the Aces Pile
-    //            and then receive the first GOOD card here. It might look
-    //            strange because subsequent Aces would seem to fly direct
-    //            from Stock Pile to Aces pile. OTOH we could set up a PSEUDO
-    //            Stock Pile or "queue" of all the cards that SHOULD be dealt
-    //            onto this Tableau. Then the cards could take the correct
-    //            one-leg or two-leg flights and the NEXT Tableau could be
-    //            dealt asynchronously and perhaps replenished (if there is
-    //            yet another Ace in Stock). At the worst, one or two cards
-    //            might appear to fly from below the top of the Stock Pile,
-    //            but no Pile would receive the WRONG cards.
     print('\n\n\n>>>>>>>> Entered replenishTableauFromStock $pileIndex '
-        'Ace on top $excludedCardOnTop');
+        '$nCards cards, Ace on top $excludedCardOnTop');
+    assert(_cards.isEmpty || (_cards.last.rank == excludedRank));
 
-      // TODO - Sometimes the excluded cards Pile creates a gap in the FanOut
-      //        and the last excluded card overlaps the Stock Pile area, Why?	
-      if (excludedCardOnTop && (stock.hasNoCards || (nCards > 1))) {
-        // Normal move of excluded card out of Pile.
-        print('replenishTableau normal move: excluded card out of Pile.');
-        List<CardView> excludedCards = grabCards(1);
-        print('Pile ${toString()} excludedCards $excludedCards Extra.none');
-        rejects.receiveMovingCards(
-          excludedCards,
-          speed: 10.0,
-          flipTime: 0.0, // No flip.
-        );
-        world.gameplay.storeMove( // ??????? _cardMoves.storeMove(
-          from: this,
-          to: rejects,
-          nCards: 1,
-          extra: Extra.none,
-          leadCard: rejects.topCardIndex,
-          strength: 0,
-        );
-      } else if (stock.hasNoCards) {
-        // break;
-        print('STOCK HAS RUN OUT OF CARDS IN replenishTableau...()');
-      } else if (excludedCardOnTop) {
-        // Compound move of excluded card out and Stock card in.
-        print('replenishTableau compound move: excluded out, Stock card in.');
-        // ??????? _tableauIndex = pileIndex;
-        // Loop to replace this excluded card and any others that arrive.
-        _replaceTableauCard();
+    if (excludedCardOnTop && (nCards > 1)) {
+      _replaceTableauCard(); // Just reject the top card: no need to replenish.
+      return;
+    }
+
+    // Queue a card to replenish the Tableau, preceded by rejects (if any).
+    bool foundSuitableCard = false;
+    while (! foundSuitableCard) {
+      List<CardView> stockTop = stock.grabCards(1);
+      if (stockTop.isEmpty) {
+        break; // No more cards in the Stock Pile.
       }
-      else {
-        // Normal move of Stock card to pile face-up.
-        assert((pileType == PileType.tableau) && hasNoCards,
-            'Tableau Pile $pileIndex is expected to be empty at this point');
-        print('replenishTableau normal move: Stock card in.');
-        // ??????? _tableauIndex = pileIndex;
-        List<CardView> stockCards = stock.grabCards(1);
-        // TODO - Will we always come back from this synchronously and
-        //        eventually get back to CardView without data problems?
-        receiveMovingCards(
-          stockCards,
-          speed: 10.0,
-          flipTime: 0.3, // Flip card.
-          onComplete: () {
-            // TODO - "pile" might have changed before callback... Maybe we
-            //        should move all Replenish Pile logic to the Pile class.
-            if (_cards[topCardIndex].rank == excludedRank) {
-              _replaceTableauCard();
-            }
-          },
-        );
-        world.gameplay.storeMove( // ??????? _cardMoves.storeMove(
-          from: stock,
-          to: this,
-          nCards: 1,
-          extra: Extra.toCardUp,
-          leadCard: topCardIndex,
-          strength: 0,
-        );
+      _cardsToDeal.add(stockTop.first);
+      if (stockTop.first.rank != excludedRank) {
+        foundSuitableCard = true; // Found a card that is not excluded.
       }
-      if (nCards > 0) {
-        excludedCardOnTop = (world.cards[topCardIndex].rank == excludedRank);
-      }
+    }
+    _replaceTableauCard();
+    return;
   }
-
-  // ??????? var _tableauIndex = -1;
-  var _stockPileIndex = -1;
-  var _excludedCardsPileIndex = -1;
 
   // This "loop" replaces any number of excluded cards that happen to be dealt,
   // in succession, most commonly just the one that has arrived already. The
-  // function send the excluded card to its Pile, with no callback, then it
-  // requests another card from the Stock Pile using itself as a callback.
+  // function sends the excluded card to its Pile, with no callback, then it
+  // requests another card from the Stock Pile - using itself as a callback.
   //
   void _replaceTableauCard() {
-    final pileToReplenish = this; // ??????? _piles[_tableauIndex];
-    final stock = world.piles[_stockPileIndex];
+    final excludedRank = world.gameSpec.excludedRank;
     final rejects = world.piles[_excludedCardsPileIndex];
+    var moveType = Extra.none; // Default: just move top card to Rejects.
 
-    print('_replaceTableauCard() compound move: excluded out, Stock card in.');
-    List<CardView> excludedCards = pileToReplenish.grabCards(1);
-    print('Pile ${rejects.toString()} excludedCards $excludedCards Extra.replaceExcluded');
-    rejects.receiveMovingCards(
-      excludedCards,
-      speed: 10.0,
-      flipTime: 0.0, // No flip.
-    );
-    // TODO - What if there is no Stock left to deal? Skip receiveMovingCards()?
-    List<CardView> stockCards = stock.grabCards(1);
-    receiveMovingCards(
-      stockCards,
-      speed: 10.0,
-      flipTime: 0.3, // Flip card.
-      onComplete: () {
-        print('Replacement card arrived');
-        print('Pile $pileIndex: indexOfCard ${topCardIndex} card ${_cards.last} arrived...');
-        dump();
-        stock.dump();
-        if (_cards.last.rank == world.gameSpec.excludedRank) {
-          _replaceTableauCard();
-        }
-      },
-    );
-    world.gameplay.storeMove( // ??????? _cardMoves.storeMove(
-      from: this,
-      to: rejects,
-      nCards: 1,
-      extra: Extra.replaceExcluded,
-      leadCard: rejects.topCardIndex,
-      strength: 0,
-    );
+    if (_cards.isEmpty && _cardsToDeal.isEmpty) {
+      return; // Do nothing: Tableau remains empty.
+    }
+    if (_cards.isEmpty && _cardsToDeal.isNotEmpty) {
+      moveType = Extra.toCardUp; // Deal a card from Stock.
+    } else if (_cards.isNotEmpty && _cardsToDeal.isNotEmpty && (nCards == 1) &&
+        (_cards.first.rank == excludedRank)) {
+      moveType = Extra.replaceExcluded;
+    }
+
+    if ((moveType == Extra.none) || (moveType == Extra.replaceExcluded)) {
+      // Do normal animated Tableau-to-Reject move, no callback.
+      final excludedCard = grabCards(1);
+      rejects.receiveMovingCards(
+        excludedCard,
+        speed: 10.0,
+        flipTime: 0.0, // No flip.
+      );
+      if (_storing && (moveType == Extra.none)) {
+        int cardIndex = excludedCard.first.indexOfCard;
+        world.gameplay.storeReplenishmentMove(this, moveType, cardIndex);
+        return;
+      }
+    }
+    if ((moveType == Extra.toCardUp) || (moveType == Extra.replaceExcluded)) {
+      // Do deal from Stock or compound move from Stock, with callback.
+      CardView nextCard = _cardsToDeal.removeAt(0);
+      receiveMovingCards(
+        [nextCard],
+        speed: 10.0,
+        flipTime: 0.3, // Flip card.
+        onComplete: () {
+          print('Replacement card arrived');
+          print('Pile $pileIndex: indexOfCard ${topCardIndex} '
+              'card ${_cards.last} arrived...');
+          dump();
+          print('Cards to deal $_cardsToDeal');
+          if (_cards.last.rank == world.gameSpec.excludedRank) {
+            _replaceTableauCard();
+          }
+        },
+      );
+      if (_storing) {
+        world.gameplay.storeReplenishmentMove(this, moveType,
+            nextCard.indexOfCard);
+      }
+    }
   }
 
   void _fanOutPileCards() {

@@ -136,7 +136,7 @@ class Dealer extends Component with HasWorldReference<PatWorld> {
 // makes changes after the deal (e.g. in Mod 3, remove Aces, refill Tableaus).
 
   Dealer(this._cards, this._piles, this._stockPileIndex,
-      this._gameSpec, this._excludedCardsPileIndex, this._cardMoves,
+      this._gameSpec, this._excludedCardsPileIndex,
   );
 
   // The following data items are needed by the deal() and completeTheDeal()
@@ -146,7 +146,6 @@ class Dealer extends Component with HasWorldReference<PatWorld> {
   final int _stockPileIndex;
   final GameSpec _gameSpec;
   final int _excludedCardsPileIndex;
-  final CardMoves _cardMoves;
 
   int _excludedRank = 0;
 
@@ -267,8 +266,6 @@ class Dealer extends Component with HasWorldReference<PatWorld> {
   void completeTheDeal() {
     // Last step of the deal - but only if the Game excludes some cards or needs
     // to deal a new Card to a Tableau that is empty or becomes empty.
-    //
-    // It depends on data and a function passed to the Dealer constructor.
     assert ((_gameSpec.excludedRank > 0) || _gameSpec.redealEmptyTableau);
     assert (_gameSpec.excludedRank <= 13);
 
@@ -297,12 +294,12 @@ class Dealer extends Component with HasWorldReference<PatWorld> {
             (_cards[pile.topCardIndex].rank == _excludedRank)) {
           pile.replenishTableauFromStock(
             _stockPileIndex,
-            _excludedCardsPileIndex
+            _excludedCardsPileIndex,
+            storing: false, // Don't store Moves during the initial deal.
           );
         }
       }
     }
-    _cardMoves.reset(); // Clear any Moves made so far (not part of Gameplay).
   }
 
   void grandfatherDeal(Pile stockPile, List<Pile> dealTargets) {

@@ -40,12 +40,6 @@ class CardMoves {
   var _redoIndex = 0;
   final List<CardMove> _playerMoves = [];
 
-  void reset() {
-    _playerMoves.clear();
-    _redoIndex = 0;
-    print('CardMoves reset: Moves: $_playerMoves redo index $_redoIndex');
-  }
-
   void storeMove({
     // Needs to be called every time a new Move is made by the player, whether
     // the Move is animated or not. Animation mostly follows storeMove() in real
@@ -75,6 +69,8 @@ class CardMoves {
     _playerMoves.add(move);
     _redoIndex = _playerMoves.length;
     print('MOVE LIST after storeMove() index $_redoIndex:'); printMoves();
+    print ('Stored Move: ${move.fromPile} ${move.toPile} n${move.nCards} '
+          '${_cards[move.leadCard]} e${move.extra.index}');
     print('Move: ${from.pileIndex} ${from.pileType} to ${to.pileIndex} '
         '${to.pileType} $nCards cards ${_cards[leadCard]} $extra');
   }
