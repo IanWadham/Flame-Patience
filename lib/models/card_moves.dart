@@ -161,7 +161,7 @@ class CardMoves {
     Pile from = _piles[move.fromPile];
     Pile to = _piles[move.toPile];
     print('\n\n\n\nUNDO: ${move.fromPile} ${from.pileType} to ${move.toPile} '
-        '${to.pileType} redo $_redoIndex list ${_playerMoves.length} '
+        '${to.pileType} undo $_redoIndex list ${_playerMoves.length} '
         'nCards ${move.nCards}');
 
     if ((from.pileType == PileType.waste) && (to.pileType == PileType.stock)) {
@@ -178,18 +178,15 @@ class CardMoves {
         to.setTopFaceUp(false);
         from.dropCards(to.grabCards(move.nCards));
       case Extra.stockToTableaus:
-        var n = 0;
         final nMax = move.nCards;
-        final List<Pile> piles =  _tableaus.reversed.toList();
-        print('Reversed Tableaus: $piles');
-        from.dump();
-        for (final pile in _tableaus.reversed.toList()) {
+        for (int n = nMax - 1; n >= 0; n--) {
+          // A card is removed from each of the first nMax Tableaus
+          // (in reverse order) and returned to the Stock Pile.
+          final pile = _tableaus[n];
           assert (pile.nCards >= 1);
           pile.setTopFaceUp(false);
           from.dropCards(pile.grabCards(1));
-          if (++n >= nMax) break;
         }
-        from.dump();
       case Extra.replaceExcluded:
         assert(_stockPileIndex >= 0);
         Pile stock = _piles[_stockPileIndex];
