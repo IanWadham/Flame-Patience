@@ -37,7 +37,7 @@ class Gameplay {
   final List<Pile> _tableaus = [];
   final List<Pile> _freecells = [];
 
-  // Most Game do not have these features: Mod 3 has both of the first two.
+  // Most Games do not have these features: Mod 3 has both of the first two.
   int _excludedRank = 0; // Rank of excluded cards (e.g. Aces in Mod 3).
   bool _redealEmptyTableau = false; // Automatically redeal an empty Tableau?
 
@@ -85,7 +85,8 @@ class Gameplay {
     cardDealer.deal(gameSpec.dealSequence, randomSeed, moreToDo);
   }
 
-  void storeReplenishmentMove(Pile tableau, Extra moveType, int cardIndex) {
+  void storeReplenishmentMove(Pile tableau, Pile target, Extra moveType,
+      int cardIndex) {
     if ((_excludedCardsPileIndex < 0) || (_stockPileIndex < 0)) {
       throw StateError('Gameplay.storeReplenishmentMove() must be called via '
           'Pile.replenishTableauFromStock() and Pile._replaceTableauCard()');
@@ -94,7 +95,7 @@ class Gameplay {
     Pile rejects = _piles[_excludedCardsPileIndex];
     _cardMoves.storeMove(
       from: (moveType == Extra.toCardUp) ? stock : tableau,
-      to: (moveType == Extra.toCardUp) ? tableau : rejects,
+      to: (moveType == Extra.toCardUp) ? tableau : target,
       nCards: 1,
       extra: moveType,
       leadCard: cardIndex,
@@ -151,7 +152,7 @@ class Gameplay {
     }
     if (targets.isNotEmpty) {
       final target = targets.first;
-      if (target.checkPut(movingCards)) {
+      if ((target != fromPile) && target.checkPut(movingCards)) {
         int nCards = movingCards.length;
         bool dropOK = true;
         if (target.pileType == PileType.foundation) {
@@ -176,13 +177,27 @@ class Gameplay {
           }
         }
         if (dropOK) {
+          // A compound move is needed for ANY one-card move that would empty
+          // a Tableau: go-out, remove Ace or whatever.
+          if (_redealEmptyTableau && (fromPile.nCards == 1) &&
+              (fromPile.pileType == PileType.tableau)) {
+            if ((_stockPileIndex >= 0) && (_piles[_stockPileIndex].nCards > 0))
+            { // Deal a card to a Tableau that will be empty after this Move.
+              fromPile.replenishTableauFromStock(
+                _stockPileIndex,
+                _excludedCardsPileIndex,
+                destinationPileIndex: target.pileIndex,
+              );
+              return;
+            }
+          }
           target.receiveMovingCards(
             movingCards,
             speed: 15.0,
             flipTime: 0.0, // No flip.
           );
           // Need to know whether to flip (as in Klondike) or not (as in
-          // Fort & Eight). The decision and animation is in a Pile method.
+          // Forty & Eight). The decision and animation is in a Pile method.
           Extra flip = fromPile.neededToFlipTopCard() ?
               Extra.fromCardUp : Extra.none;
           _cardMoves.storeMove(
@@ -193,13 +208,6 @@ class Gameplay {
             leadCard: movingCards[0].indexOfCard,
             strength: 0,
           );
-          if (_redealEmptyTableau && fromPile.hasNoCards &&
-              (fromPile.pileType == PileType.tableau)) {
-            fromPile.replenishTableauFromStock(
-              _stockPileIndex,
-              _excludedCardsPileIndex,
-            );
-          }
           return;
         }
       }
@@ -272,6 +280,19 @@ class Gameplay {
       putOK = target.checkPut([card]);
       print('Try Pile ${target.pileIndex} ${target.pileType}: putOK $putOK');
       if (putOK) { // The card goes out.
+        if (_redealEmptyTableau && (fromPile.nCards == 1) &&
+            (fromPile.pileType == PileType.tableau)) {
+          if ((_stockPileIndex >= 0) && (_piles[_stockPileIndex].nCards > 0))
+          { // Deal a card to a Tableau that will be empty after this Move.
+            print('CARD $card GOES OUT: replenish ${fromPile.toString()}');
+            fromPile.replenishTableauFromStock(
+              _stockPileIndex,
+              _excludedCardsPileIndex,
+              destinationPileIndex: target.pileIndex,
+            );
+            return true;
+          }
+        }
         List<CardView> movingCards = fromPile.grabCards(1);
         target.receiveMovingCards(
           movingCards,
@@ -290,15 +311,6 @@ class Gameplay {
           leadCard: card.indexOfCard,
           strength: 0,
         );
-
-        if (_redealEmptyTableau && fromPile.hasNoCards &&
-            (fromPile.pileType == PileType.tableau)) {
-          print('CARD $card GOES OUT: replenish ${fromPile.toString()}');
-          fromPile.replenishTableauFromStock(
-            _stockPileIndex,
-            _excludedCardsPileIndex,
-          );
-        }
         return true;
       }
     } // End of Foundation Pile search.
@@ -474,14 +486,17 @@ class Gameplay {
   // three cards into them, one card at a time, and leave them there. Then you
   // can move a fourth into another Tableau and put the other three on top of
   // it, if all the cards satisfy the rule for that pile. In the Freecell Game,
-  // empty cells also affect the number you can move.
+  // empty cells multiply the number of cards you can move (see formula below).
   //
   // All this is automated in actual play and is not animated (because that is
-  // tedious to watch). So, in an actual Game, you can move 1-2 cards if you
-  // have one empty Tableau, 1-4 if you have two empty Tableaus, and so on.
-  // The method is used to build up long sequences (e.g. in Forty and Eight).
+  // tedious to watch). So, in a Forty and Eight Game, you can move 1-2 cards
+  // if you have one empty Tableau, 1-4 if you have two empty Tableaus, and so
+  // on. The method is used to build up long sequences until they can go out.
 
   bool _notEnoughSpaceToMove(int nCards, Pile fromPile, Pile target) {
+    if (target == fromPile) {
+      return false; // No Move required: the drop is on the fromPile.
+    }
     var emptyPiles = 0;
     var emptyCells = 0;
     for (Pile pile in _piles) {
@@ -494,6 +509,7 @@ class Gameplay {
       }
     }
     if ((target.pileType == PileType.tableau) && target.hasNoCards) {
+      // Target != fromPile: so emptyPiles cannot go -'ve and cause a crash.
       emptyPiles--;
     }
 

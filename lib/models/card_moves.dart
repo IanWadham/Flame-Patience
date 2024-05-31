@@ -127,7 +127,7 @@ class CardMoves {
         to.dropCards(from.grabCards(move.nCards));
         to.setTopFaceUp(true);
       case Extra.stockToTableaus:
-        // One card from Stock to each Tableau, OR until nCards is exhausted.
+        // One card from Stock to each Tableau, OR until Stock is exhausted.
         var n = 0;
         final nMax = move.nCards;
         assert (from.nCards >= nMax);
@@ -139,8 +139,8 @@ class CardMoves {
           if (++n >= nMax) break;
         }
         from.dump();
-      case Extra.replaceExcluded:
-        // From Tableau to Excluded, PLUS from Stock to Tableau (replacement).
+      case Extra.autoDealTableau:
+        // From Tableau to Foundation or Excluded + new card dealt from Stock.
         to.dropCards(from.grabCards(1));
         assert(_stockPileIndex >= 0);
         Pile stock = _piles[_stockPileIndex];
@@ -157,7 +157,7 @@ class CardMoves {
 
   UndoRedoResult moveBack(CardMove move) {
     // This the reverse (or "undo") of a previously stored Move. For comments
-    // on the switch() cases, see makeMove() above.
+    // on the meanings of the switch() cases, see makeMove() above.
     Pile from = _piles[move.fromPile];
     Pile to = _piles[move.toPile];
     print('\n\n\n\nUNDO: ${move.fromPile} ${from.pileType} to ${move.toPile} '
@@ -180,15 +180,16 @@ class CardMoves {
       case Extra.stockToTableaus:
         final nMax = move.nCards;
         for (int n = nMax - 1; n >= 0; n--) {
-          // A card is removed from each of the first nMax Tableaus
-          // (in reverse order) and returned to the Stock Pile.
+          // A card is removed from each of the first nMax Tableaus (in reverse
+          // order) and put into the Stock Pile: can get nMax < 8 in final deal.
           final pile = _tableaus[n];
           assert (pile.nCards >= 1);
           pile.setTopFaceUp(false);
           from.dropCards(pile.grabCards(1));
         }
-      case Extra.replaceExcluded:
+      case Extra.autoDealTableau:
         assert(_stockPileIndex >= 0);
+        // NOTE: TWO moves are Undone.
         Pile stock = _piles[_stockPileIndex];
         from.setTopFaceUp(false);
         stock.dropCards(from.grabCards(1));

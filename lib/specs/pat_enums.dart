@@ -89,7 +89,7 @@ enum Extra {
   fromCardUp, // The last card of the "from" pile turns Face Up at the finish.
   toCardUp, // The card turns Face Up as it arrives (e.g. Stock-to-Waste).
   stockToTableaus, // Cards are moved successively from Stock to Tableau Piles.
-  replaceExcluded, // An excluded card leaving a Tableau is replaced from Stock.
+  autoDealTableau, // The last card to leave a Tableau is replaced from Stock.
   redeal, // Redeal Move in Grandfather Game.
 }
 
