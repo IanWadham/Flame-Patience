@@ -56,11 +56,21 @@ class PatMenuWorld extends PatBaseWorld with HasGameReference<PatGame> {
               menuSize * 0.5;
           String gameImageData = digits[gameIndex] + '.png';
           final gameImage = await game.loadSprite(gameImageData);
+          // final gameImage = await Image.asset(gameImageData, color: null);
+          // final gameSprite = await Sprite(gameImage);
           final caption = PatData.gameList[gameIndex].gameName;
           add(MenuItem(gameIndex, gameImage, caption, fontHeight,
+          // add(MenuItem(gameIndex, gameSprite, caption, fontHeight,
               size: cellSize, position: cellPosition));
           print('Game $gameIndex goes at row $m col $n in $nRows x $nCols');
           print('Size $cellSize Position $cellPosition');
+          GameSpec spec = PatData.gameList[gameIndex];
+          print('Dimensions: ${spec.gameName} Cells ${spec.nCellsWide} '
+                '${spec.nCellsHigh} pad ${spec.cardPadX} ${spec.cardPadY}');
+          final cSize = Vector2(900.0 + spec.cardPadX, 1200.0 + spec.cardPadY);
+          final bSize = Vector2(cSize.x * spec.nCellsWide, 600.0 +
+              cSize.y * spec.nCellsHigh);
+          print('    cSize $cSize bSize $bSize AR ${bSize.x / bSize.y}');
           gameIndex++;
         }
       }
