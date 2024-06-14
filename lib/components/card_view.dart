@@ -152,8 +152,8 @@ class CardView extends PositionComponent
       return; // Ignore taps while moving, otherwise it's a sure way to crash...
     }
     bool success = world.gameplay.tapMove(this);
-    // print('CardView: Returned from tap on $name, pile ${pile.pileIndex} '
-        // '${pile.pileType} success $success');
+    print('CardView: Returned from tap on $name, pile ${pile.pileIndex} '
+        '${pile.pileType} success $success');
     return;
   }
 
@@ -173,7 +173,7 @@ class CardView extends PositionComponent
     _isDragging = false;
     _startPosition = position.clone();
     _fromPileIndex = pile.pileIndex;
-    print('Card $this Pile index ${pile.pileIndex}');
+    print('\n\nflutter: Drag Card $this from Pile ${pile.pileIndex}');
 
     // The rules for this pile in this game might allow a multi-card move. The
     // cards to be moved, including one or none, are returned in movingCards.

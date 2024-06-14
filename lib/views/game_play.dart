@@ -66,7 +66,7 @@ class Gameplay {
       _redealEmptyTableau = gameSpec.redealEmptyTableau;
     }
 
-    // Get Game ID (late) - needed in Klondike Draw 3.
+    // Get Game ID (late) - needed in Klondike Draw 3 and Grandfather Games.
     _gameID = gameSpec.gameID;
 
     // Create Move storage and Undo/Redo facility (late).
@@ -125,8 +125,9 @@ class Gameplay {
   bool tapMove(CardView card) {
     Pile fromPile = card.pile;
     MoveResult tapResult = fromPile.isTapMoveValid(card);
-    print('Tap seen ${fromPile.pileType} result: $tapResult');
-    fromPile.dump();
+    print('\n\nflutter: Tap Pile ${fromPile.pileIndex}, '
+        '${fromPile.pileType}: seen, result $tapResult');
+    // ??????? fromPile.dump();
     if (tapResult == MoveResult.notValid) {
       return false;
     }
@@ -146,7 +147,7 @@ class Gameplay {
       fromPile.dropCards(movingCards); // Short drop: return card(s) to start.
       if (cardCount == 1) {
         // Only one card has moved a short distance. Treat that as a tap move.
-        tapMove(movingCards.first);
+        movingCards.first.handleTap();
       }
       return;
     }
@@ -179,14 +180,17 @@ class Gameplay {
         if (dropOK) {
           // A compound move is needed for ANY one-card move that would empty
           // a Tableau: go-out, remove Ace or whatever.
-          if (_redealEmptyTableau && (fromPile.nCards == 1) &&
+          // if (_redealEmptyTableau && (fromPile.nCards == 1) && ???????
+          if (_redealEmptyTableau && (fromPile.nCards == 0) &&
               (fromPile.pileType == PileType.tableau)) {
+            // TODO - Top card has already left the Pile and dropped elsewhere.
             if ((_stockPileIndex >= 0) && (_piles[_stockPileIndex].nCards > 0))
             { // Deal a card to a Tableau that will be empty after this Move.
               fromPile.replenishTableauFromStock(
                 _stockPileIndex,
                 _excludedCardsPileIndex,
                 destinationPileIndex: target.pileIndex,
+                droppedCards: movingCards,
               );
               return;
             }
@@ -220,14 +224,14 @@ class Gameplay {
     );
   }
 
-  bool _tapOnStockPile(CardView card, Pile fromPile, MoveResult tapResult) {
+  bool _tapOnStockPile(CardView card, Pile stockPile, MoveResult tapResult) {
     // Check and perform three different kinds of Stock Pile move.
-    // fromPile.dump();
-    print('Tap Stock Pile: $tapResult Waste Pile present $hasWastePile\n');
+    print('Tap Stock Pile: $tapResult Waste Pile present $hasWastePile');
+    stockPile.dump();
 
     if (tapResult == MoveResult.pileEmpty) {
-      if (fromPile.pileSpec.tapEmptyRule == TapEmptyRule.tapNotAllowed) {
-        print('${fromPile.pileType} TAP ON EMPTY PILE WAS IGNORED');
+      if (stockPile.pileSpec.tapEmptyRule == TapEmptyRule.tapNotAllowed) {
+        print('${stockPile.pileType} TAP ON EMPTY PILE WAS IGNORED');
         return false;
       }
 
@@ -235,7 +239,7 @@ class Gameplay {
         print('REDEAL GRANDFATHER GAME _redealCount $_redealCount');
         if (_redealGrandfatherGame()) {
           _cardMoves.storeMove( // Record a successful Grandfather Redeal Move.
-            from: fromPile,
+            from: stockPile,
             to: _tableaus[0], // Not used in Undo/Redo.
             nCards: _redealCount, // Which state of each Tableau to Undo.
             extra: Extra.redeal,
@@ -248,17 +252,17 @@ class Gameplay {
       }
 
       // Turn over the Waste Pile and refill the Stock Pile.
-      return _tapOnEmptyStockPile(fromPile);
+      return _tapEmptyStockPile(stockPile);
 
     } else if (hasWastePile) {
 
       // Turn one or more Stock Pile cards face-up onto the Waste Pile.
-      return _tapOnFilledStockPile(fromPile);
+      return _tapNonEmptyStockPile(stockPile);
 
     } else {
 
       // Deal one Stock Pile card face-up onto each of several Tableau Piles.
-      return _dealToTableausFromStockPile(fromPile);
+      return _dealToTableausFromStockPile(stockPile);
     }
   }
 
@@ -318,7 +322,7 @@ class Gameplay {
     return false; // The card is not ready to go out yet.
   }
 
-  bool _tapOnEmptyStockPile(Pile fromPile) {
+  bool _tapEmptyStockPile(Pile stockPile) {
     // Tapped on an empty Stock Pile: if the Game has a Waste Pile and it is
     // not empty and not blocked, the Waste Pile is turned over and refills
     // the Stock Pile. Some Games (e.g. Forty and Eight) limit the number of
@@ -327,14 +331,14 @@ class Gameplay {
     if (hasWastePile) {
       // Turn over the Waste Pile, if the Game's rules allow it.
       final waste = _piles[_wastePileIndex];
-      int n = waste.turnPileOver(fromPile);
+      int n = waste.turnPileOver(stockPile);
       if (n == 0) {
         return false; // Not able to turn over the Waste Pile any more.
       }
 
       _cardMoves.storeMove( // Record a successful Waste Pile turnover Move.
         from: waste,
-        to: fromPile,
+        to: stockPile,
         nCards: 1,
         extra: Extra.none,
         leadCard: 0,
@@ -377,46 +381,37 @@ class Gameplay {
     return true;
   }
 
-  bool _tapOnFilledStockPile(Pile fromPile) {
+  bool _tapNonEmptyStockPile(Pile stockPile) {
     // Deal one or more cards from the Stock Pile to the Waste Pile.
     final waste = _piles[_wastePileIndex];
-    fromPile.dump();
     List<CardView> dealtCards = [];
-    int nCards = (_gameID == PatGameID.klondikeDraw3) ? 3 : 1;
+    int nCards = waste.isKlondikeDraw3Waste ? 3 : 1;
+    double flipIntervalTime = waste.isKlondikeDraw3Waste ? 0.2 : 0.0;
 
-    // In Klondike Draw 3, the LAST card drawn goes on TOP of the Waste Pile.
-    // This means the dealtCards[] must be drawn one-at-a-time and the last
-    // of the 3, 2 or 1 cards goes on top. The other cards go under (if avail).
-    for (int n = 0; n < nCards; n++) {
-      dealtCards.add(fromPile.grabCards(1).first);
-      if (fromPile.hasNoCards) {
-        nCards = n + 1;
-        break;
-      }
-    }
+    // In Klondike Draw 3, the LAST card drawn goes on top of the Waste Pile.
+    dealtCards = stockPile.grabCards(nCards, reverseAndFlip: true);
     waste.receiveMovingCards(
       dealtCards,
       speed: 15.0,
       flipTime: 0.3, // Flip the card as it moves.
       startTime: 0.0,
-      intervalTime: 0.2,
+      intervalTime: flipIntervalTime,
     );
-    fromPile.dump();
     _cardMoves.storeMove(
-      from: fromPile,
+      from: stockPile,
       to: waste,
-      nCards: nCards,
+      nCards: dealtCards.length,
       extra: Extra.toCardUp,
-      leadCard: dealtCards.first.indexOfCard,
+      leadCard: dealtCards.last.indexOfCard,
       strength: 0,
     );
     return true;
   }
 
-  bool _dealToTableausFromStockPile(Pile fromPile) {
+  bool _dealToTableausFromStockPile(Pile stockPile) {
     // Deal a card from the Stock Pile to each Tableau Pile.
-    assert(fromPile.pileType == PileType.stock);
-    if (fromPile.hasNoCards) {
+    assert(stockPile.pileType == PileType.stock);
+    if (stockPile.hasNoCards) {
       print('NO MORE STOCK CARDS - _dealToTableausFromStockPile NOT ATTEMPTED');
       return false;
     }
@@ -426,12 +421,12 @@ class Gameplay {
     bool foundExcludedCard = false;
 
     for (Pile pile in _tableaus) {
-      if (fromPile.hasNoCards) {
+      if (stockPile.hasNoCards) {
         print('NO MORE STOCK CARDS - _dealToTableausFromStockPile '
             'TERMINATED EARLY');
         break; // No more Stock cards.
       }
-      List<CardView> dealtCards = fromPile.grabCards(1);
+      List<CardView> dealtCards = stockPile.grabCards(1);
       if (dealtCards.first.rank == _excludedRank) {
         print('EXCLUDED CARD: ${dealtCards.first} going to $pile');
         foundExcludedCard = true;
@@ -442,7 +437,9 @@ class Gameplay {
         speed: 15.0,
         flipTime: 0.3, // Flip the card as it moves.
         onComplete: () {
-          print('Pile $pile: card $dealtCards index ${dealtCards.first.indexOfCard} arrived...');
+          // TODO - Check this logic vs. the onComplete logic in the Pile class.
+          print('Pile $pile: card $dealtCards '
+              'index ${dealtCards.first.indexOfCard} arrived...');
           nCardsArrived++;
           if ((nCardsArrived == nDealtCards) && foundExcludedCard) {
             _adjustDealToTableausFromStockPile();
@@ -454,8 +451,8 @@ class Gameplay {
 
     if (nDealtCards > 0) {
       _cardMoves.storeMove(
-        from: fromPile,
-        to: fromPile, // Not used in Undo/Redo.
+        from: stockPile,
+        to: stockPile, // Not used in Undo/Redo.
         nCards: nDealtCards,
         extra: Extra.stockToTableaus,
         leadCard: 0, // No particular card.

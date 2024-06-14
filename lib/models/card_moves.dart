@@ -123,9 +123,8 @@ class CardMoves {
         from.setTopFaceUp(true);
       case Extra.toCardUp:
         // Normal Tap or Drag from one pile to another, but "to" pile flips
-        // its new card to face-up (e.g. move card from Stock to Waste).
-        to.dropCards(from.grabCards(move.nCards));
-        to.setTopFaceUp(true);
+        // its new card(s) to face-up (e.g. move card(s) from Stock to Waste).
+        to.dropCards(from.grabCards(move.nCards, reverseAndFlip: true));
       case Extra.stockToTableaus:
         // One card from Stock to each Tableau, OR until Stock is exhausted.
         var n = 0;
@@ -134,8 +133,7 @@ class CardMoves {
         print('Tableau Indices: $_tableaus');
         from.dump();
         for (final pile in _tableaus) {
-          pile.dropCards(from.grabCards(1));
-          pile.setTopFaceUp(true);
+          pile.dropCards(from.grabCards(1, reverseAndFlip: true));
           if (++n >= nMax) break;
         }
         from.dump();
@@ -145,8 +143,7 @@ class CardMoves {
         assert(_stockPileIndex >= 0);
         Pile stock = _piles[_stockPileIndex];
         assert (stock.nCards >= 1);
-        from.dropCards(stock.grabCards(1));
-        from.setTopFaceUp(true);
+        from.dropCards(stock.grabCards(1, reverseAndFlip: true));
       case Extra.redeal:
         // Redo Grandfather Redeal: set the Tableaus to their post-redeal state.
         switchTableauStates(move.nCards);
@@ -175,8 +172,7 @@ class CardMoves {
         from.setTopFaceUp(false);
         from.dropCards(to.grabCards(move.nCards));
       case Extra.toCardUp:
-        to.setTopFaceUp(false);
-        from.dropCards(to.grabCards(move.nCards));
+        from.dropCards(to.grabCards(move.nCards, reverseAndFlip: true));
       case Extra.stockToTableaus:
         final nMax = move.nCards;
         for (int n = nMax - 1; n >= 0; n--) {
@@ -184,15 +180,13 @@ class CardMoves {
           // order) and put into the Stock Pile: can get nMax < 8 in final deal.
           final pile = _tableaus[n];
           assert (pile.nCards >= 1);
-          pile.setTopFaceUp(false);
-          from.dropCards(pile.grabCards(1));
+          from.dropCards(pile.grabCards(1, reverseAndFlip: true));
         }
       case Extra.autoDealTableau:
         assert(_stockPileIndex >= 0);
         // NOTE: TWO moves are Undone.
         Pile stock = _piles[_stockPileIndex];
-        from.setTopFaceUp(false);
-        stock.dropCards(from.grabCards(1));
+        stock.dropCards(from.grabCards(1, reverseAndFlip: true));
         from.dropCards(to.grabCards(1));
       case Extra.redeal:
         // Undo Grandfather Redeal: set the Tableaus to how they were before.

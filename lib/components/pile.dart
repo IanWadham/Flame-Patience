@@ -48,6 +48,9 @@ class Pile extends PositionComponent with HasWorldReference<PatWorld> {
 
   bool get hasNoCards => pileType == PileType.stock ?
       _cards.length == 1 : _cards.isEmpty;
+  bool get isKlondikeDraw3Waste =>
+      ((world.gameSpec.gameID == PatGameID.klondikeDraw3) &&
+        (pileType == PileType.waste));
 
   // These properties are calculated in the constructor from the Pile Spec.
   final bool _hasFanOut;
@@ -59,6 +62,7 @@ class Pile extends PositionComponent with HasWorldReference<PatWorld> {
 
   // @override
   final debugMode = false;
+  // final debugMode = true;
 
   void dump() {
     print('DUMP Pile $pileIndex, $pileType: nCards ${_cards.length} $_cards');
@@ -75,6 +79,7 @@ class Pile extends PositionComponent with HasWorldReference<PatWorld> {
     dragList.clear();
 
     String message = 'Drag Pile $pileIndex, $pileType:';
+    print('$message seen');
     if (_cards.isEmpty) {
       print('$message _cards is Empty');
       return MoveResult.pileEmpty;
@@ -187,23 +192,29 @@ class Pile extends PositionComponent with HasWorldReference<PatWorld> {
     }
   }
 
-  List<CardView> grabCards(int nRequired) {
+  List<CardView> grabCards(int nRequired, {bool reverseAndFlip = false}) {
     // Grab up to nRequired cards from end of Pile, incl. none if Pile isEmpty.
     List<CardView> tailCards = [];
     int nAvailable = (nCards >= nRequired) ? nRequired : nCards;
     int index = _cards.length - nAvailable;
     if (nAvailable > 0) {
-      tailCards.addAll(_cards.getRange(index, _cards.length));
+      List<CardView> temp = _cards.getRange(index, _cards.length).toList();
       _cards.removeRange(index, _cards.length);
+      if (reverseAndFlip && temp.isNotEmpty) {
+        // Reverse the order of the cards and flip them, as in Klondike 3 Draw.
+        temp = temp.reversed.toList();
+        for (final tempCard in temp) {
+          tempCard.flipView();
+        }
+      }
+      tailCards.addAll(temp);
     }
-    // print('Grab $tailCards from $pileType index $pileIndex, '
-        // 'contents $_cards');
     print('Grab $tailCards from $pileType index $pileIndex');
-    if (_checkFanOut(_cards, tailCards, adding: false)) {
-      // If Fan Out changed, reposition any cards remaining in the Pile.
+    if (_checkFanOut(_cards, tailCards, adding:false) || isKlondikeDraw3Waste) {
+      // If Fan Out changed or Klondike 3 Draw, reposition any cards remaining.
       _fanOutPileCards();
-      _setPileHitArea();
     }
+    _setPileHitArea();
     return tailCards;
   }
 
@@ -212,7 +223,7 @@ class Pile extends PositionComponent with HasWorldReference<PatWorld> {
     print('Drop $tailCards on $pileType index $pileIndex, contents $_cards');
     if (_checkFanOut(_cards, tailCards, adding: true) && _cards.isNotEmpty) {
       // If Fan Out changed, reposition all cards currently in the Pile.
-      _fanOutPileCards();
+      // ??????? _fanOutPileCards();
     }
 
     for (final card in tailCards) {
@@ -231,13 +242,9 @@ class Pile extends PositionComponent with HasWorldReference<PatWorld> {
       card.pile = this;
       card.priority = _cards.length;
     }
+    _fanOutPileCards(); // ???????
     _setPileHitArea();
   }
-
-  // TODO - If we click too fast on full then empty Stock, cards can get frozen
-  //        and become unplayable, making it impossible to finish the game.
-  // TODO - Also, cards in the 48 Waste can get misplaced if you click too
-  //        fast, but they come good when you drag the tail of the pile a bit..
 
   void receiveMovingCards(
     List<CardView> movingCards, {
@@ -247,66 +254,61 @@ class Pile extends PositionComponent with HasWorldReference<PatWorld> {
     double intervalTime = 0.0,
     VoidCallback? onComplete,
   }) {
-    // Receive animated cards onto this pile.
-    // The idea is that only the receiving Pile can calculate exactly where the
-    // cards have to go, so that we can have smooth animation and landing.
+    // Receive animated cards onto this pile, calculating exactly where cards
+    // have to go, thus providing smooth animation and fan-out.
     final nCardsToMove = movingCards.length;
     final nPrevCardsInPile = _cards.length;
-    final newFaceUp = movingCards.first.isFaceUpView ^ (flipTime > 0.0);
-    print('RECV $movingCards on $pileType index $pileIndex, contents $_cards');
+    final newFaceUp = movingCards.first.isFaceUpView || (flipTime > 0.0);
+    print('NEW RECV $movingCards on $pileType index $pileIndex, '
+        'position $position contents $_cards');
     print('Flip? ${flipTime > 0.0} '
         'last FaceUp? ${movingCards.last.isFaceUpView} newFaceUp $newFaceUp');
 
+    double distancePerFrame = /*speed * */9.0 * movingCards.first.size.x / 60.0;
+    bool noFanOutChange = true;
     if (_hasFanOut) {
-      if (_checkFanOut(_cards, movingCards, adding: true)) {
-        // FanOut must change: reposition all the cards currently in the Pile.
-        print('FAN OUT HAS CHANGED...');
-        for (int n = 1; n < nPrevCardsInPile; n++) {
-          final diff =
-              _cards[n - 1].isFaceUpView ?  _fanOutFaceUp : _fanOutFaceDown;
-          if ( _cards[n].isMoving) {
-            _cards[n].newPosition = _cards[n - 1].newPosition + diff;
-          } else {
-            _cards[n].position = _cards[n - 1].position + diff;
-          }
-        }
-      }
+      noFanOutChange = !_checkFanOut(_cards, movingCards, adding: true);
     }
-
-    // Incoming cards go after previous cards, except in klondikeDraw3 Waste.
-    Vector2 tailPosition = position;
-    if ((nPrevCardsInPile > 0) && !((world.gameSpec.gameID == PatGameID.klondikeDraw3) && (pileType == PileType.waste))) {
-      CardView card = _cards.last;
-      tailPosition = card.isMoving ? card.newPosition : card.position;
-      // bool tailFaceUp = card.isMoving ? card.newFaceUp : card.isFaceUpView;
-      tailPosition += card.isFaceUpView ? _fanOutFaceUp : _fanOutFaceDown;
-      // print('INCOMING $movingCards nPrevCards $nPrevCardsInPile last $card moving? ${card.isMoving} newPos ${card.newPosition} oldPos ${card.position} isFaceUpView? ${card.isFaceUpView} fanOutFaceUp $_fanOutFaceUp tailFaceUp? ${card.isFaceUpView} tailPosition $tailPosition');
-    }
-
     double startAt = startTime;
     int movePriority = CardView.movingPriority + _transitCount;
-
-    // TODO - Need ways to right-adjust Klondike 3 Waste Pile top-cards when
-    //        a card is moved out or the tail of the Stock deals <3 cards.
 
     for (final card in movingCards) {
       _cards.add(card);
       card.pile = this;
       card.newPriority = _cards.length;
-      // Set up the animated moves the new cards should make.
-      // print('_hasFanOut $_hasFanOut, _cards.length ${_cards.length}');
-      if (!_hasFanOut || _cards.length == 1) {
-        // The card will be aligned with the Pile's position.
-        card.newPosition = position;
-        tailPosition += newFaceUp ? _fanOutFaceUp : _fanOutFaceDown;
-        print('FIRST CARD IN PILE: ${card.name} pos ${card.newPosition}');
-        print('newFaceUp $newFaceUp FanOuts $_fanOutFaceUp $_fanOutFaceDown');
-      } else {
-        // Fan out the second and subsequent cards.
-        card.newPosition = tailPosition;
-        print('SUBSEQUENT POSITION: $tailPosition');
-        print('newFaceUp $newFaceUp FanOuts $_fanOutFaceUp $_fanOutFaceDown');
-        tailPosition += newFaceUp ? _fanOutFaceUp : _fanOutFaceDown;
+    }
+    List<Vector2>newPositions =
+        _calculatePositions(_cards, nAdd: nCardsToMove, faceUp: newFaceUp);
+
+    int index = -1;
+    for (final card in _cards) {
+      index++;
+      // print('Index $index card ${card.name} pri ${card.priority} moving '
+          // '${card.isMoving}');
+      if (noFanOutChange && (index < nPrevCardsInPile) && !isKlondikeDraw3Waste)
+      {
+        continue;
+      }
+      // If Klondike Draw 3 Waste or fan-out change, may re-position prev cards.
+      card.newPosition = newPositions[index];
+
+      if (card.position == newPositions[index]) {
+        // This card does not need to move.
+        card.priority = index + 1;
+        continue;
+      }
+      Vector2 delta = card.position - newPositions[index];
+      double manhattanDistance = delta.x.abs() + delta.y.abs();
+      // TODO - Is the next line correct?
+      // ??????? if ((manhattanDistance < distancePerFrame) || ((index < nPrevCardsInPile) && (newPositions[index] == position))) {
+      if ((manhattanDistance < distancePerFrame) || (index < nPrevCardsInPile))
+      {
+        // Not far to go, skip doing the animation.
+        // print('Card $card goes small distance $manhattanDistance');
+        card.position = card.newPosition;
+        card.priority = index + 1;
+        // TODO - Might we MISS a CALLBACK?
+        continue;
       }
 
       // Make the card start moving. Later cards fly higher.
@@ -319,26 +321,29 @@ class Pile extends PositionComponent with HasWorldReference<PatWorld> {
         start: startAt,
         startPriority: movePriority,
         whenDone: () {
-          print('Arriving: pile $pileIndex $pileType card ${card.name} '
+          print('ARRIVING: pile $pileIndex $pileType card ${card.name} '
               'pri ${card.priority} '
               'new pri ${card.newPriority} count $_transitCount');
           card.priority = card.newPriority;
           _transitCount--;
-          if (_transitCount == 0) {
-            if (card.position != card.newPosition) {
-              card.position = card.newPosition;
-            }
-            _setPileHitArea(); // TODO - Can do this before callback?
+          if (card.position != card.newPosition) {
+            card.position = card.newPosition;
           }
-          onComplete?.call(); // Optional callback for receiveMovingCards().
+          // N.B. _transitCount can apply to SEVERAL receives of cards.
+          if (_transitCount == 0) {
+            onComplete?.call(); // Optional callback for receiveMovingCards().
+          }
         }
       );
       startAt += intervalTime;
       movePriority++;
       _transitCount++;
     }
+    _setPileHitArea();
   }
 
+  // TODO - Do we need this procedure? Used by Undo/Redo to flip last card of
+  //        of a Tableau after dragging or tapping cards that were on top of it.
   void setTopFaceUp(bool goFaceUp) {
     // Used by Undo and Redo to maintain flipped state of Cards.
     // In storeMove() only the "extra:" parameter indicates what is happening.
@@ -501,7 +506,8 @@ class Pile extends PositionComponent with HasWorldReference<PatWorld> {
   final List<CardView> _cardsToDeal = []; // Stock that must Move to this Pile.
 
   void replenishTableauFromStock(int stockPileIndex, int excludedCardsPileIndex,
-      {int destinationPileIndex = -1, bool storing = true,})
+      {int destinationPileIndex = -1, List<CardView> droppedCards = const [],
+      bool storing = true,})
   {
     // Auto-refill a Tableau Pile that is empty or has its last card about to
     // be played. Auto-remove excluded cards (eg. Aces), repeatedly if required.
@@ -537,7 +543,8 @@ class Pile extends PositionComponent with HasWorldReference<PatWorld> {
     }
     print('\n\n\n>>>>>>>> Entered replenishTableauFromStock $pileIndex '
         '$nCards cards, Ace on top $excludedCardOnTop');
-    assert((nCards == 1) || (_cards.last.rank == excludedRank));
+    assert((nCards == 1) || (_cards.last.rank == excludedRank) ||
+        droppedCards.isNotEmpty);
 
     if (excludedCardOnTop && (nCards > 1)) {
       _replaceTableauCard(); // Just reject the top card: no need to replenish.
@@ -586,6 +593,7 @@ class Pile extends PositionComponent with HasWorldReference<PatWorld> {
 
     if ((moveType == Extra.none) || (moveType == Extra.autoDealTableau)) {
       // Do normal animated Tableau-to-Reject move, no callback.
+      // TODO - Need to pick a card EITHER from this Pile OR from droppedCards.
       final excludedCard = grabCards(1);
       target.receiveMovingCards(
         excludedCard,
@@ -623,14 +631,46 @@ class Pile extends PositionComponent with HasWorldReference<PatWorld> {
     }
   }
 
+  List<Vector2> _calculatePositions(
+      List<CardView> cards, { // List of all cards to be positioned.
+      int nAdd = 0, // The number of animated cards to be received (if any).
+      bool faceUp = false, // Whether the incoming cards will go face-up.
+  }) {
+    List<Vector2> positions = [];
+    if (cards.isNotEmpty) {
+      // Calculate where each card should sit in the Pile.
+      int fanOutStart = 1;
+      int cardCount = cards.length;
+      if (isKlondikeDraw3Waste) {
+        fanOutStart = (cardCount < 3) ? 1 : cardCount - 2;
+      }
+      if (!_hasFanOut) {
+        fanOutStart = cardCount; // All cards go at Pile position.
+      }
+      print('Calc Positions, Pile $pileIndex $pileType: '
+          '$cardCount cards, fan out start $fanOutStart');
+      for (int n = 0; n < cardCount; n++) {
+        if (n < fanOutStart) {
+          positions.add(Vector2(position.x, position.y));
+        } else {
+          bool up = (n < cardCount - nAdd + 1) ?
+              cards[n - 1].isFaceUpView : faceUp;
+          final diff = up ? _fanOutFaceUp : _fanOutFaceDown;
+          positions.add(positions[n - 1] + diff);
+        }
+      }
+    }
+    return positions;
+  }
+
   void _fanOutPileCards() {
-    if (_cards.isNotEmpty) {
-      // Reposition the cards in the Pile.
-      _cards.first.position = position;
-      for (int n = 1; n < _cards.length; n++) {
-        final diff = _cards[n - 1].isFaceUpView ?
-            _fanOutFaceUp : _fanOutFaceDown;
-        _cards[n].position = _cards[n - 1].position + diff;
+    // Instantaneous fan out of whole Pile: used by grab, put and Undo/Redo.
+    List<Vector2> positions = _calculatePositions(_cards);
+    if (positions.isNotEmpty) {
+      int n = 0;
+      for (final CardView card in _cards) {
+        card.position = positions[n];
+        n++;
       }
     }
   }
@@ -653,8 +693,14 @@ class Pile extends PositionComponent with HasWorldReference<PatWorld> {
       // Set the initial FanOuts (not allowed in Dart's constructor initialize).
       _fanOutFaceUp = _baseFanOut;
       _fanOutFaceDown = _baseFanOut * faceDownFanOutFactor;
-      // print('INITIALIZE FanOut... adding: $adding');
+      // print('INITIALIZE FanOut... adding: $adding, '
+          // '$_fanOutFaceUp $_fanOutFaceDown');
       return true; // FanOut changed.
+    }
+    if (isKlondikeDraw3Waste) {
+      // Initialize Klondike Draw 3 Waste Pile fan out: no need to change it.
+      // print('NO FanOut change: Pile is Klondike Draw 3 Waste');
+      return false;
     }
     var tail = pileCards.isEmpty ? position : pileCards.last.pilePosition;
     final newFaceUp = movingCards.first.isFaceUpView;
@@ -720,10 +766,13 @@ class Pile extends PositionComponent with HasWorldReference<PatWorld> {
 
   void _setPileHitArea() {
     if ((pileType == PileType.tableau) || (pileType == PileType.foundation)) {
-      double deltaX = (_cards.length < 2 ? 0.0 : _cards.last.x - x);
-      double deltaY = (_cards.length < 2 ? 0.0 : _cards.last.y - y);
-      width = (deltaX >= 0.0) ? baseWidth + deltaX : baseWidth - deltaX;
-      height = (deltaY >= 0.0) ? baseHeight + deltaY : baseHeight - deltaY;
+      Vector2 delta = Vector2(0.0, 0.0);
+      if (_cards.length > 1) {
+        CardView card = _cards.last;
+        Vector2 end = card.isMoving ? card.newPosition : card.position;
+        delta = Vector2((end.x - position.x).abs(), (end.y - position.y).abs());
+      }
+      size = Vector2(baseWidth + delta.x, baseHeight + delta.y);
     }
   }
 
