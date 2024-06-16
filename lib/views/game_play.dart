@@ -178,22 +178,20 @@ class Gameplay {
           }
         }
         if (dropOK) {
-          // A compound move is needed for ANY one-card move that would empty
-          // a Tableau: go-out, remove Ace or whatever.
-          // if (_redealEmptyTableau && (fromPile.nCards == 1) && ???????
           if (_redealEmptyTableau && (fromPile.nCards == 0) &&
-              (fromPile.pileType == PileType.tableau)) {
-            // TODO - Top card has already left the Pile and dropped elsewhere.
-            if ((_stockPileIndex >= 0) && (_piles[_stockPileIndex].nCards > 0))
-            { // Deal a card to a Tableau that will be empty after this Move.
-              fromPile.replenishTableauFromStock(
-                _stockPileIndex,
-                _excludedCardsPileIndex,
-                destinationPileIndex: target.pileIndex,
-                droppedCards: movingCards,
-              );
-              return;
-            }
+              (fromPile.pileType == PileType.tableau) &&
+              (_stockPileIndex >= 0) && (_piles[_stockPileIndex].nCards > 0)) {
+            // A compound move is needed for ANY one-card move that would empty
+            // a Tableau (go-out, remove Ace or whatever) in this Game Type.
+            // Deal a card to a Tableau that will be empty after this Move. The
+            // top card has already left the Pile and dropped elsewhere.
+            fromPile.replenishTableauFromStock(
+              _stockPileIndex,
+              _excludedCardsPileIndex,
+              destinationPileIndex: target.pileIndex,
+              droppedCards: movingCards,
+            );
+            return;
           }
           target.receiveMovingCards(
             movingCards,

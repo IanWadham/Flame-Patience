@@ -543,8 +543,12 @@ class Pile extends PositionComponent with HasWorldReference<PatWorld> {
     }
     print('\n\n\n>>>>>>>> Entered replenishTableauFromStock $pileIndex '
         '$nCards cards, Ace on top $excludedCardOnTop');
-    assert((nCards == 1) || (_cards.last.rank == excludedRank) ||
-        droppedCards.isNotEmpty);
+
+    // Option 1: One card in Pile (poss. excluded), it leaves and is replaced.
+    //        2: Last of >1 cards is excluded: it leaves and is not replaced.
+    //        3: No cards in Pile, but a card has been dragged out and dropped.
+    assert((nCards == 1) || ((nCards > 1) && (_cards.last.rank == excludedRank))
+        || droppedCards.isNotEmpty);
 
     if (excludedCardOnTop && (nCards > 1)) {
       _replaceTableauCard(); // Just reject the top card: no need to replenish.
@@ -563,7 +567,7 @@ class Pile extends PositionComponent with HasWorldReference<PatWorld> {
         foundSuitableCard = true; // Found a card that is not excluded.
       }
     }
-    _replaceTableauCard();
+    _replaceTableauCard(droppedCards: droppedCards);
     return;
   }
 
@@ -574,26 +578,33 @@ class Pile extends PositionComponent with HasWorldReference<PatWorld> {
   // The function sends the outgoing card to its Pile, with no callback, then
   // it requests another card from the Stock Pile - using itself as a callback.
   //
-  void _replaceTableauCard() {
+  void _replaceTableauCard({List<CardView>droppedCards = const []}) {
     final excludedRank = world.gameSpec.excludedRank;
     final rejects = world.piles[_excludedCardsPileIndex];
     final target = (_destinationPileIndex == -1) ? rejects :
         world.piles[_destinationPileIndex];
     _destinationPileIndex = -1; // Destination Pile can be used only once.
 
+    if (droppedCards.isNotEmpty) {
+      // Add dropped card back to empty Pile temporarily, but with no changes
+      // of its position or other state. This ensures that the final card in a
+      // Tableau can always be moved by the code below, no matter whether it
+      // has been tapped or dragged away somewhere and dropped.
+      _cards.add(droppedCards.first);
+      droppedCards.clear();
+    }
     if (_cards.isEmpty && _cardsToDeal.isEmpty) {
       return; // Do nothing: Tableau remains empty.
     }
     var moveType = Extra.none; // Default: just move top card to Rejects.
-    if (_cards.isEmpty && _cardsToDeal.isNotEmpty) {
+    if (_cards.isEmpty && droppedCards.isEmpty && _cardsToDeal.isNotEmpty) {
       moveType = Extra.toCardUp; // Deal a card from Stock.
-    } else if (_cards.isNotEmpty && _cardsToDeal.isNotEmpty && (nCards == 1)) {
+    } else if (_cards.isNotEmpty && _cardsToDeal.isNotEmpty && (nCards <= 1)) {
       moveType = Extra.autoDealTableau;
     }
 
     if ((moveType == Extra.none) || (moveType == Extra.autoDealTableau)) {
       // Do normal animated Tableau-to-Reject move, no callback.
-      // TODO - Need to pick a card EITHER from this Pile OR from droppedCards.
       final excludedCard = grabCards(1);
       target.receiveMovingCards(
         excludedCard,
