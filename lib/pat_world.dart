@@ -108,7 +108,7 @@ class PatWorld extends PatBaseWorld with HasGameReference<PatGame> {
     final playAreaSize = topLeft + Vector2(playAreaWidth, playAreaHeight);
 
     final buttonWidth = playAreaWidth / 8;
-// /*
+
     addButton('Show rules', 0.5 * buttonWidth, buttonWidth, Action.showRules);
     addButton('Show moves', 1.5 * buttonWidth, buttonWidth, Action.showMoves);
     addButton('Undo move', 3.0 * buttonWidth, buttonWidth, Action.undo);
@@ -116,7 +116,6 @@ class PatWorld extends PatBaseWorld with HasGameReference<PatGame> {
     addButton('New deal', 5.5 * buttonWidth, buttonWidth, Action.newDeal);
     addButton('Same deal', 6.5 * buttonWidth, buttonWidth, Action.sameDeal);
     addButton('New game', 7.5 * buttonWidth, buttonWidth, Action.newGame);
-// */
 
     final camera = game.camera;
     camera.viewfinder.visibleGameSize = playAreaSize;
