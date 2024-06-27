@@ -45,6 +45,7 @@ class Pile extends PositionComponent with HasWorldReference<PatWorld> {
   int get nCards => pileType == PileType.stock ?
       _cards.length - 1: _cards.length;
   int get topCardIndex => hasNoCards ? -1 : _cards.last.indexOfCard;
+  List<CardView> getCards() => List.of(_cards);
 
   bool get hasNoCards => pileType == PileType.stock ?
       _cards.length == 1 : _cards.isEmpty;
@@ -73,7 +74,8 @@ class Pile extends PositionComponent with HasWorldReference<PatWorld> {
     return '$pileIndex';
   }
 
-  MoveResult isDragMoveValid(CardView card, List<CardView> dragList) {
+  MoveResult isDragMoveValid(CardView card, List<CardView> dragList,
+      {bool grabbing = false}) {
     final dragRule = pileSpec.dragRule;
     final multiCardsRule = pileSpec.multiCardsRule;
     dragList.clear();
@@ -137,9 +139,15 @@ class Pile extends PositionComponent with HasWorldReference<PatWorld> {
       }
     }
 
-    // The dragged cards leave the Pile and it adjusts its FanOut and hitArea.
-    dragList.addAll(grabCards(nCards));
-    print('$message nCards $nCards dragList $dragList');
+    if (grabbing) {
+      // The dragged cards leave the Pile and it adjusts its FanOut and hitArea.
+      dragList.addAll(grabCards(nCards));
+      print('$message nCards $nCards dragList $dragList');
+    } else {
+      // Get a copy of the cards that could be dragged, as a possible move.
+      int index = _cards.length - nCards;
+      dragList.addAll(_cards.getRange(index, _cards.length).toList());
+    }
     return MoveResult.valid;
   }
 
@@ -395,72 +403,107 @@ class Pile extends PositionComponent with HasWorldReference<PatWorld> {
     return _cards.isNotEmpty ? (card == _cards.last) : false;
   }
 
-  bool checkPut(List<CardView> cardsToBePut) {
+  bool checkPut(List<CardView> cardsToBePut, {Pile? from}) {
+    CardView leadCard = cardsToBePut.first;
+    String message = 'Check Put: ${leadCard} Pile $pileIndex, $pileType:';
     // Player can put cards onto Foundation, Tableau or Freecell Piles only.
-    CardView card = cardsToBePut.first;
-    String message = 'Check Put: ${card.name} Pile $pileIndex, $pileType:';
-    if ((pileType == PileType.foundation) || (pileType == PileType.tableau) ||
-        (pileType == PileType.freecell)) {
-      if (_cards.isEmpty) {
-        final firstOK =
-            (pileSpec.putFirst == 0) || (card.rank == pileSpec.putFirst);
-        String result = firstOK ? 'first card OK' : 'first card FAILED';
-        if (pileSpec.putRule == PutRule.ifEmptyAnyCard) {
-          // PileType.freecell can accept just one card.
-          print('Freecell empty? ${_cards.isEmpty} cards to put $cardsToBePut');
-          return (firstOK && (cardsToBePut.length == 1));
-        }
-        print('$message $result');
-        return firstOK;
-      } else {
-        print('$message ${pileSpec.putRule}');
-        int pileSuit = _cards.last.suit;
-        int delta = 1;
-        switch (pileSpec.putRule) {
-          case PutRule.ascendingSameSuitBy1:
-            delta = 1;
-          case PutRule.ascendingSameSuitBy3:
-            delta = 3;
-          case PutRule.descendingSameSuitBy1:
-            delta = -1;
-          case PutRule.descendingAnySuitBy1:
-            return (card.rank == _cards.last.rank - 1);
-          case PutRule.descendingAlternateColorsBy1:
-            final isCardOK = (card.isRed == !_cards.last.isRed) &&
-                (card.rank == _cards.last.rank - 1);
-            // print('$message ${isCardOK ? "card OK" : "card FAILED"}');
-            return isCardOK;
-          case PutRule.sameRank:
-            print('$message sameRank? card ${card.rank} '
-                'pile ${_cards.last.rank}');
-            return card.rank == _cards.last.rank;
-          case PutRule.wholeSuit:
-             // Leading card's rank must be King (Simple Simon game) or Ace(?).
-             return card.rank == pileSpec.putFirst;
-          case PutRule.putNotAllowed:
-            return false; // Cannot put card on this Foundation Pile.
-          case PutRule.ifEmptyAnyCard:
-            // Pile is not empty, so PileType.freecell cannot accept a card.
-            return false;
-        }
-        if ((card.rank != (_cards.last.rank + delta)) ||
-            (card.suit != pileSuit)) {
-          // print('$message checkPut FAIL');
-          return false;
-        }
-        if ((pileType == PileType.foundation) &&
-            (_cards.first.rank != pileSpec.putFirst)) {
-          // Base card of pile has wrong rank. Can happen if the deal has put
-          // random cards on the Foundation Pile (e.g. as in Mod 3).
-          print('$message wrong first rank ${_cards.first.name}');
-          return false;
-        }
+    if ((pileType != PileType.foundation) && (pileType != PileType.tableau) &&
+        (pileType != PileType.freecell)) {
+      // print('$message cannot put on Stock, Waste or Excluded Piles.');
+      return false;
+    }
+    // print('Put $cardsToBePut from $from');
+
+    int nCardsToBePut = cardsToBePut.length;
+    if (pileType == PileType.foundation) {
+      // Foundations usually accept just 1 card: Simple Simon accepts 13.
+      if (nCardsToBePut != ((pileSpec.putRule == PutRule.wholeSuit) ? 13 : 1)) {
+        // print('$message Foundation cannot accept $nCardsToBePut cards');
+        return false;
       }
-      // print('$message checkPut OK');
-      return true;
-    } // End of Tableau or Foundation Pile check.
-    print('$message cannot put on Stock or Waste Piles.');
-    return false;
+    }
+
+    bool result = false;
+    bool calculate = false;
+    int pileSuit = 0;
+    int delta = 1;
+
+    if (_cards.isEmpty) {
+      final firstOK =
+          (pileSpec.putFirst == 0) || (leadCard.rank == pileSpec.putFirst);
+      // String resultString = firstOK ? 'first card OK' : 'first card FAILED';
+      // print('$message $resultString');
+      result = firstOK;
+      if (pileSpec.putRule == PutRule.ifEmptyAnyCard) {
+        // PileType.freecell can accept just one card.
+        //print('Freecell empty? ${_cards.isEmpty} cards to put $cardsToBePut');
+        result = (firstOK && (nCardsToBePut == 1));
+      }
+      calculate = false;
+
+    } else { // Pile is not empty.
+      // print('$message ${pileSpec.putRule}');
+      pileSuit = _cards.last.suit;
+      switch (pileSpec.putRule) {
+        case PutRule.ascendingSameSuitBy1:
+          delta = 1;
+          calculate = true;
+        case PutRule.ascendingSameSuitBy3:
+          delta = 3;
+          calculate = true;
+        case PutRule.descendingSameSuitBy1:
+          delta = -1;
+          calculate = true;
+        case PutRule.descendingAnySuitBy1:
+          result = (leadCard.rank == _cards.last.rank - 1);
+        case PutRule.descendingAlternateColorsBy1:
+          final isCardOK = (leadCard.isRed == !_cards.last.isRed) &&
+              (leadCard.rank == _cards.last.rank - 1);
+          // print('$message ${isCardOK ? "card OK" : "card FAILED"}');
+          result = isCardOK;
+        case PutRule.sameRank:
+          // print('$message sameRank? card ${leadCard.rank} '
+              // 'pile ${_cards.last.rank}');
+          result = (leadCard.rank == _cards.last.rank);
+        case PutRule.wholeSuit:
+          // Leading card's rank must be King (Simple Simon game) or Ace(?).
+          result = (leadCard.rank == pileSpec.putFirst);
+        case PutRule.putNotAllowed:
+          return false; // Cannot put card on this Pile.
+        case PutRule.ifEmptyAnyCard:
+          // Pile is not empty, so PileType.freecell cannot accept a card.
+          return false;
+      }
+    }
+
+    // print('Calc $calculate result $result delta $delta ${pileSpec.putRule}');
+    if ((calculate == false) && (result == false)) {
+      // print('$message checkPut FAILED non-calculation PutRule');
+      return false;
+    }
+    if (calculate && ((leadCard.rank != (_cards.last.rank + delta)) ||
+        (leadCard.suit != pileSuit))) {
+      // print('$message checkPut FAILED calculation with delta $delta');
+      return false;
+    }
+    if ((pileType == PileType.foundation) && _cards.isNotEmpty &&
+        (_cards.first.rank != pileSpec.putFirst)) {
+      // Base card of pile has wrong rank. Can happen if the deal has put
+      // random cards on the Foundation Pile (e.g. as in Mod 3).
+      // print('$message wrong first rank ${_cards.first.name}');
+      return false;
+    }
+
+    // Check if there are enough empty Tableaus and/or freecells to do the move.
+    if ((nCardsToBePut > 1) && (from != null) &&
+        (pileSpec.dragRule == DragRule.fromAnywhereViaEmptySpace)) {
+      if (world.gameplay.notEnoughSpaceToMove(nCardsToBePut, from, this)) {
+        // print('$message not enough space to move $nCardsToBePut cards');
+        return false;
+      }
+    }
+    // print('$message checkPut() OK');
+    return true;
   }
 
   int turnPileOver(Pile to) {

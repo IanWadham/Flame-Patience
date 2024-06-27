@@ -179,7 +179,8 @@ class CardView extends PositionComponent
     // cards to be moved, including one or none, are returned in movingCards.
     // Alternatively, dragging a Stock card or Base Card is treated as a tap.
 
-    if (pile.isDragMoveValid(this, _movingCards) == MoveResult.valid) {
+    if (pile.isDragMoveValid(this, _movingCards, grabbing: true)
+        == MoveResult.valid) {
       _isDragging = true;
       _isMoving = true;
       var cardPriority = movingPriority;

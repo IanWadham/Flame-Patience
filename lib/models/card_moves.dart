@@ -196,10 +196,49 @@ class CardMoves {
     return UndoRedoResult.done;
   }
 
-  List<CardMove> getPossibleMoves() {
-    // TODO - Implement getPossibleMoves().
-    List<CardMove> possibleMoves = [];
-    return possibleMoves;
+  List<CardView> getPossibleMoves() {
+    // TODO - If Game has a Stock Pile and is solving, get draw-moves.
+    // TODO - Find first empty Tableau, if any (e.g. for dropping a King).
+    // TODO - Mod3 selects a card that has gone out but can move to another
+    //        Foundation Pile (in the same row) and go out again.
+    // TODO - Show the player cards that can move, by highlighting.
+
+    List<CardView> possibleCardsToMove = [];
+    for (Pile fromPile in _piles) {
+      if (((fromPile.pileType == PileType.foundation) &&
+          (fromPile.pileSpec.pileName != 'mod3Foundation')) ||
+          (fromPile.pileType == PileType.stock) ||
+          (fromPile.pileType == PileType.excludedCards)) {
+        continue;
+      }
+      final cards = fromPile.getCards();
+      print('Moves in ${fromPile.pileIndex} ${fromPile.pileType} cards $cards');
+      for (CardView card in cards) {
+        final List<CardView> dragList = [];
+        if (fromPile.isDragMoveValid(card, dragList, grabbing: false) ==
+            MoveResult.valid) {
+          print('Try card $dragList from ${fromPile.pileIndex}');
+          for (Pile toPile in _piles) {
+            if ((toPile == fromPile) ||
+                (toPile.pileType == PileType.freecell)) {
+              continue;
+            }
+            if (toPile.checkPut(dragList, from: fromPile)) {
+              print('Card $card can move to ${toPile.pileIndex}');
+              if (toPile.hasNoCards && (dragList.length == cards.length)) {
+                // All cards in a Pile go to an empty Pile: ignore this move.
+                // It does not affect the overall position of the Game.
+                continue;
+              }
+              possibleCardsToMove.add(card);
+              break;
+            }
+          } // End for Pile toPile
+        } // End isDragMoveValid()
+      } // End for CardView card
+    } // End for Pile fromPile
+    print('Possible cards to move $possibleCardsToMove');
+    return possibleCardsToMove;
   }
 
   void switchTableauStates(int redealNumber) {

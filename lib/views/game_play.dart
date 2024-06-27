@@ -37,6 +37,8 @@ class Gameplay {
   final List<Pile> _tableaus = [];
   final List<Pile> _freecells = [];
 
+  List<CardView> getPossibleMoves() => _cardMoves.getPossibleMoves();
+
   // Most Games do not have these features: Mod 3 has both of the first two.
   int _excludedRank = 0; // Rank of excluded cards (e.g. Aces in Mod 3).
   bool _redealEmptyTableau = false; // Automatically redeal an empty Tableau?
@@ -153,69 +155,49 @@ class Gameplay {
     }
     if (targets.isNotEmpty) {
       final target = targets.first;
-      if ((target != fromPile) && target.checkPut(movingCards)) {
+      if ((target != fromPile) &&
+          target.checkPut(movingCards, from: fromPile)) {
         int nCards = movingCards.length;
-        bool dropOK = true;
-        if (target.pileType == PileType.foundation) {
-          // Tableaus can accept more than one card - but not in all games.
-          // Foundations usually accept just 1 card: Simple Simon accepts 13.
-          if (nCards != ((target.pileSpec.putRule == PutRule.wholeSuit) ?
-                13 : 1)) {
-            dropOK = false;
-            print('Return movingCards to start: target cannot accept card(s).');
-          }
-        }
-        else if (nCards > 1 &&
-            target.pileSpec.dragRule == DragRule.fromAnywhereViaEmptySpace) {
-          // The move is OK, but is there enough space to do it?
-          //
-          // Some games require empty Tableaus or free cells to do a multi-card
-          // move, notably Free Cell and Forty & Eight. Others (e.g. Klondike)
-          // allow any number of cards to be moved - if there is a valid target.
-          if (_notEnoughSpaceToMove(nCards, fromPile, target)) {
-            print('Return movingCards to start: need more space to move.');
-            dropOK = false;
-          }
-        }
-        if (dropOK) {
-          if (_redealEmptyTableau && (fromPile.nCards == 0) &&
-              (fromPile.pileType == PileType.tableau) &&
-              (_stockPileIndex >= 0) && (_piles[_stockPileIndex].nCards > 0)) {
-            // A compound move is needed for ANY one-card move that would empty
-            // a Tableau (go-out, remove Ace or whatever) in this Game Type.
-            // Deal a card to a Tableau that will be empty after this Move. The
-            // top card has already left the Pile and dropped elsewhere.
-            fromPile.replenishTableauFromStock(
-              _stockPileIndex,
-              _excludedCardsPileIndex,
-              destinationPileIndex: target.pileIndex,
-              droppedCards: movingCards,
-            );
-            return;
-          }
-          target.receiveMovingCards(
-            movingCards,
-            speed: 15.0,
-            flipTime: 0.0, // No flip.
-          );
-          // Need to know whether to flip (as in Klondike) or not (as in
-          // Forty & Eight). The decision and animation is in a Pile method.
-          Extra flip = fromPile.neededToFlipTopCard() ?
-              Extra.fromCardUp : Extra.none;
-          _cardMoves.storeMove(
-            from: fromPile,
-            to: target,
-            nCards: cardCount,
-            extra: flip,
-            leadCard: movingCards[0].indexOfCard,
-            strength: 0,
+
+        if (_redealEmptyTableau && (fromPile.nCards == 0) &&
+            (fromPile.pileType == PileType.tableau) &&
+            (_stockPileIndex >= 0) && (_piles[_stockPileIndex].nCards > 0)) {
+          // A compound move is needed for ANY one-card move that would empty
+          // a Tableau (go-out, remove Ace or whatever) in this Game Type.
+          // Deal a card to a Tableau that will be empty after this Move. The
+          // top card has already left the Pile and dropped elsewhere.
+          fromPile.replenishTableauFromStock(
+            _stockPileIndex,
+            _excludedCardsPileIndex,
+            destinationPileIndex: target.pileIndex,
+            droppedCards: movingCards,
           );
           return;
         }
-      }
-    }
-    print('Return movingCards to start');
-    fromPile.receiveMovingCards( // Return cards to starting Pile.
+
+        target.receiveMovingCards(
+          movingCards,
+          speed: 15.0,
+          flipTime: 0.0, // No flip.
+        );
+        // Need to know whether to flip (as in Klondike) or not (as in
+        // Forty & Eight). The decision and animation is in a Pile method.
+        Extra flip = fromPile.neededToFlipTopCard() ?
+            Extra.fromCardUp : Extra.none;
+        _cardMoves.storeMove(
+          from: fromPile,
+          to: target,
+          nCards: cardCount,
+          extra: flip,
+          leadCard: movingCards[0].indexOfCard,
+          strength: 0,
+        );
+        return;
+      } // End valid drop on target Pile.
+    } // End (if targets.isNotEmpty).
+
+    // Failed drop: return cards to starting Pile.
+    fromPile.receiveMovingCards(
       movingCards,
       speed: 15.0,
       flipTime: 0.0, // No flip.
@@ -488,7 +470,7 @@ class Gameplay {
   // if you have one empty Tableau, 1-4 if you have two empty Tableaus, and so
   // on. The method is used to build up long sequences until they can go out.
 
-  bool _notEnoughSpaceToMove(int nCards, Pile fromPile, Pile target) {
+  bool notEnoughSpaceToMove(int nCards, Pile fromPile, Pile target) {
     if (target == fromPile) {
       return false; // No Move required: the drop is on the fromPile.
     }
