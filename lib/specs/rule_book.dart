@@ -72,12 +72,12 @@ class RuleBook {
     'Mod 3 uses two packs of 52 cards, excluding Aces. Cards are dealt in 4 '
     'rows of 8 cards each. The first three rows are Foundations and the fourth '
     'has 8 Tableau piles. The deal removes Aces from the Foundations, leaving '
-    'spaces, and replaces them in the Tableaus.'
+    'spaces, but it replaces them in the Tableaus.'
     ,
     'Your goal is to fill the 24 Foundations with cards of the same Suit that '
     'go up in steps of 3. Row 1 accepts 2-5-8-J, row 2 3-6-9-Q and row 3 '
     '4-7-10-K. Sequences can start in any empty space. Invalid cards on the '
-    'Foundations (e.g. an 8, 3 or 10 in row 1) must go out onto another '
+    'Foundations (e.g. an 8, 6 or K in row 1) must go out onto another '
     'Foundation, to create space to play valid cards.'
     ,
     'In the main game, tap or drag single cards that can go out. Tap on'
@@ -86,7 +86,7 @@ class RuleBook {
     'try to avoid covering a 2, 3 or 4 and blocking it.'
     ,
     'When the Stock pile is empty, try to empty 2 or 3 Tableaus. If a card is '
-    'is blocking other cards, you can drag it into an empty Tableau. Think '
+    'blocking other cards, you can now drag it into an empty Tableau. Think '
     'about the exact order of moves to get every card out and win.'
     ,
   ];
