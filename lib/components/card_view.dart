@@ -48,6 +48,7 @@ class CardView extends PositionComponent
 
   bool _isMoving = false;
   bool _isAnimatedFlip = false;
+  bool _isHighlighted = false;
 
   // Packs are numbered 0-1, suits 0-3, ranks 1-13.
   int get pack => (indexOfCard - 1) ~/ 52;
@@ -56,6 +57,8 @@ class CardView extends PositionComponent
   bool get isRed => suit < 2;
   bool get isBlack => suit >= 2;
   String get name => toString();
+
+  void set isHighlighted(bool highlight) => _isHighlighted = highlight;
 
   // bool get isBaseCard => (indexOfCard == 0);
 
@@ -80,6 +83,10 @@ class CardView extends PositionComponent
     ..style = PaintingStyle.stroke
     ..strokeWidth = 20;
 
+  static final Paint highlightPaint = Paint()
+    ..color = const Color(0x22444444) // A pale grey shadow.
+    ..style = PaintingStyle.fill;
+
   @override
   void render(Canvas canvas) {
     if (_viewFaceUp) {
@@ -87,6 +94,9 @@ class CardView extends PositionComponent
         canvas,
         size: PatWorld.cardSize,
       );
+      if (_isHighlighted) {
+        canvas.drawRRect(PatWorld.cardRect, highlightPaint);
+      }
     } else if (!isBaseCard) {
       back.render(
         canvas,
@@ -233,21 +243,24 @@ class CardView extends PositionComponent
   void doMoveAndFlip(
     Vector2 to, {
     double speed = 15.0,
+    double time = 0.0,
     double flipTime = 0.3,
     double start = 0.0,
     int startPriority = movingPriority,
     Curve curve = Curves.easeOutQuad,
     VoidCallback? whenDone,
   }) {
-    final dt = speed > 0.0 ? (to - position).length / (speed * size.x) : 0.0;
-    assert((((speed > 0.0) && (dt > 0.0)) || (flipTime > 0.0)),
-        'Speed and distance must be > 0.0 OR flipTime must be > 0.0');
+    double dt = time;
+    if (dt == 0.0) {
+      dt = speed > 0.0 ? (to - position).length / (speed * size.x) : 0.0;
+    }
+    assert(((dt > 0.0) || (flipTime > 0.0)),
+        'Must have speed and distance > 0.0 OR time > 0.0 OR flipTime > 0.0');
+
+    bool flipOnly = ((flipTime > 0.0) && (dt <= 0.0));
+    _isMoving = true; // Maybe it was set EARLIER - but no harm to set it again.
     final moveTime = dt > flipTime ? dt : flipTime; // Use the larger time.
-    // print('START new move+flip: $to $this speed $speed flip $flipTime '
-        // 'pri $startPriority');
-    // Maybe _isMoving was set EARLIER - but it won't hurt to set it again.
-    _isMoving = true;
-    bool flipOnly = ((flipTime > 0.0) && (speed <= 0.0));
+
     if (dt > 0.0) { // The card will change position.
       add(
         CardMoveEffect(
@@ -263,7 +276,7 @@ class CardView extends PositionComponent
         ),
       );
     }
-    if (flipTime > 0.0) {
+    if (flipTime > 0.0) { // The card will flip.
       // NOTE: Animated flips are to FaceUp only. Reverse flips occur in Undo
       //       and when turning the Waste Pile over to Stock: they are always
       //       instantaneous.
