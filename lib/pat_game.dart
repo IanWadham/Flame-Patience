@@ -33,8 +33,11 @@ class PatGame extends FlameGame<PatBaseWorld> {
 
   int testSeed = 0; // The Game starts with a randomly-generated seed.
   // int testSeed = 1567865991; // Mod 3 deal: 3 Aces in Tableaus 26 and 27.
+  // int testSeed = 3922659694; // Yukon deal: hard but solvable.
   // int testSeed = 3528308832; // Freecell deal: hard, blk 4s red 5s same pile.
-                             // 48 deal: 5 Aces buried, v. hard but solvable.
+  //  "    "  "   =    "  "     // 48 deal: 5 Aces buried, v. hard but solvable.
+  // int testSeed = 3116355471; // Yukon deal: fairly easy, 2 Sp appears late.
+  // int testSeed = 2868337660; // Mod3 deal: fairly easy, despite only 1 space.
 
   // The gameIndex is used to select a GameSpec from PatData.gameList in file
   // specs/pat_specs. GameSpecs are structures of const data which, together
@@ -50,6 +53,7 @@ class PatGame extends FlameGame<PatBaseWorld> {
   static final Color screenBackground = Color(0xffe7c31d);
   static final Color pileBackground = Colors.amberAccent.shade100;
   static final Color pileOutline = Colors.brown.shade800;
+  static final Color faintOutline = Colors.brown.shade300;
   static const Color buttonHighlight = Colors.red;
   static const Color stockPileHighlight = Colors.red;
 
