@@ -34,8 +34,9 @@ class PatMenuWorld extends PatBaseWorld with HasGameReference<PatGame> {
 
     final cellHeight = 300.0;
     final cellWidth = 450.0;
+    final padding = Vector2(50, 50);
     final cellSize = Vector2(cellWidth, cellHeight);
-    final menuSize = Vector2(cellWidth * nCols, cellHeight * nRows);
+    final menuSize = Vector2(cellWidth * nCols, cellHeight * nRows) + padding;
 
     final camera = game.camera;
     camera.viewfinder.anchor = Anchor.center;
@@ -51,7 +52,7 @@ class PatMenuWorld extends PatBaseWorld with HasGameReference<PatGame> {
         // at the corresponding row and column position, then bump gameIndex.
         if (cells[m * nRows + n] == 'x') {
           final cellPosition = Vector2(cellWidth * n, cellHeight * m)
-              - menuSize * 0.5;
+              - menuSize * 0.5 + padding * 0.5;
           String gameImageData = digits[gameIndex] + '.png';
           final gameImage = await game.loadSprite(gameImageData);
           final caption = PatData.gameList[gameIndex].gameName;
