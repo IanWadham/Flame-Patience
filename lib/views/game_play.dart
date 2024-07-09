@@ -1,25 +1,24 @@
-// Taps
-// Drags and drops
-// Multiple moves of cards
-// Handle Undo/Redo?
-// Simple moves are done by Pile (grabCards, dropCards and receiveMovingCards)
-// Highlight possible Moves (computed by models CardMoves)
+// Handle actions affecting several Cards or Piles: Game layout, dealing, taps
+// and drags, validating moves, undoing and redoing moves and detecting a win. 
 
 import 'dart:core';
 import 'dart:typed_data';
 
 import 'package:flame/components.dart' show Vector2;
 
+import '../pat_game.dart';
 import '../components/card_view.dart';
 import '../components/pile.dart';
 import '../models/card_moves.dart';
 import '../specs/pat_enums.dart';
 import '../specs/pat_specs.dart';
 import 'game_start.dart';
+import 'game_end.dart';
 
 class Gameplay {
-  Gameplay(this._cards, this._piles);
+  Gameplay(this.game, this._cards, this._piles);
 
+  final PatGame game;
   final List<CardView> _cards;
   final List<Pile> _piles;
 
@@ -63,6 +62,7 @@ class Gameplay {
         case PileType.freecell:
           _freecells.add(pile);
       }
+
       // Set game-wide rules for the gameplay in this Game.
       _excludedRank = gameSpec.excludedRank;
       _redealEmptyTableau = gameSpec.redealEmptyTableau;
@@ -85,6 +85,10 @@ class Gameplay {
 
     // Do the main deal, followed by a callback to completeTheDeal() if needed.
     cardDealer.deal(gameSpec.dealSequence, randomSeed, moreToDo);
+
+    // Test the letsCelebrate() procedure (instead of dealing the cards).
+    // final gameEnd = GameEnd(game, _cards, _piles);
+    // gameEnd.test();
   }
 
   void storeReplenishmentMove(Pile tableau, Pile target, Extra moveType,
@@ -129,7 +133,6 @@ class Gameplay {
     MoveResult tapResult = fromPile.isTapMoveValid(card);
     print('\n\nflutter: Tap Pile ${fromPile.pileIndex}, '
         '${fromPile.pileType}: seen, result $tapResult');
-    // ??????? fromPile.dump();
     if (tapResult == MoveResult.notValid) {
       return false;
     }
@@ -202,6 +205,16 @@ class Gameplay {
       speed: 15.0,
       flipTime: 0.0, // No flip.
     );
+  }
+
+  bool checkForAWin() {
+    for (Pile pile in _foundations) {
+      if (pile.isFullFoundationPile) {
+        continue;
+      }
+      return false;
+    }
+    return true;
   }
 
   bool _tapOnStockPile(CardView card, Pile stockPile, MoveResult tapResult) {

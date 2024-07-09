@@ -41,6 +41,7 @@ class PatWorld extends PatBaseWorld with HasGameReference<PatGame> {
 
   static final Vector2 cardSize = Vector2(cardWidth, cardHeight);
   static final topLeft = Vector2(0.0, topMargin);
+  static var playAreaSize = Vector2(0.0, 0.0); // To be calculated in onLoad().
 
   /// Constant used to decide when a short drag is treated as a TapUp event.
   static const double dragTolerance = cardWidth / 5;
@@ -105,7 +106,7 @@ class PatWorld extends PatBaseWorld with HasGameReference<PatGame> {
 
     final playAreaWidth = gameSpec.nCellsWide * cellSize.x;
     final playAreaHeight = gameSpec.nCellsHigh * cellSize.y;
-    final playAreaSize = topLeft + Vector2(playAreaWidth, playAreaHeight);
+    playAreaSize = topLeft + Vector2(playAreaWidth, playAreaHeight);
 
     final buttonWidth = playAreaWidth / 8;
 
@@ -129,7 +130,7 @@ class PatWorld extends PatBaseWorld with HasGameReference<PatGame> {
 
     // The gameplay object is not a Component, but it IS "owned" by PatWorld,
     // in case it is needed in the future (e.g. for saving/reloading a Game).
-    gameplay = Gameplay(cards, piles);
+    gameplay = Gameplay(game, cards, piles);
 
     // Start the Game with a random seed or a test-seed for debugging purposes.
     // Otherwise, use the same seed again and get a replay of the previous deal.
@@ -168,8 +169,10 @@ class PatWorld extends PatBaseWorld with HasGameReference<PatGame> {
             // If sameDeal, keep same Random seed.
             game.world = PatWorld();
           case Action.showRules:
-            add(RulesAndTips());
+            final rules = RulesAndTips();
+            add(rules);
           case Action.showMoves:
+            gameplay.getPossibleMoves();
             break;
         }
       },
@@ -178,26 +181,28 @@ class PatWorld extends PatBaseWorld with HasGameReference<PatGame> {
   }
 }
 
-
 class RulesAndTips extends PositionComponent
     with TapCallbacks, HasGameReference<PatGame> {
 
   @override
   Future<void> onLoad() async {
+    // Rules and Tips cover the whole Game area.
     super.size = game.camera.viewfinder.visibleGameSize!;
     super.priority = 1000;
     final gameSpec = PatData.gameList[game.gameIndex];
-    final rulesText = gameSpec.gameRules;
-    final tipsText = gameSpec.gameTips;
     final panelWidth = size.x / 2;
     final panelHeight = size.y;
-    print('ZOOM: ${game.camera.viewfinder.zoom}');
+    double lineHeight = panelWidth / 100.0;
+    print('ZOOM: ${game.camera.viewfinder.zoom} lineHeight $lineHeight '
+        'panelHeight $panelHeight panelWidth $panelWidth');
     final textStyle = InlineTextStyle(
       color: PatGame.pileOutline,
-      fontScale: 1.0/game.camera.viewfinder.zoom,
+      fontScale: 1.1 / game.camera.viewfinder.zoom,
+      // ??????? fontSize: lineHeight,
+      fontSize: 2.0,
     );
     final style = DocumentStyle(
-      padding: const EdgeInsets.symmetric(vertical: 100, horizontal: 140),
+      padding: const EdgeInsets.symmetric(vertical: 100, horizontal: 100),
       background: BackgroundStyle(
         color: PatGame.screenBackground,
         borderColor: PatGame.pileOutline,
@@ -207,21 +212,22 @@ class RulesAndTips extends PositionComponent
         text: textStyle,
       ),
       paragraph: BlockStyle(
-        padding: const EdgeInsets.symmetric(vertical: 120, horizontal: 160),
+        padding: const EdgeInsets.symmetric(vertical: 50, horizontal: 50),
         text: textStyle,
       ),
     );
 
     final rules = getContents('Rules', gameSpec.gameName, gameSpec.gameRules);
-    add(
-      TextElementComponent.fromDocument(
-        document: DocumentRoot(rules),
-        style: style,
-        position: Vector2(0, 0),
-        size: Vector2(panelWidth, panelHeight),
-        priority: 1000,
-      ),
+    final rulesText = TextElementComponent.fromDocument(
+      document: DocumentRoot(rules),
+      style: style,
+      position: Vector2(0, 0),
+      size: Vector2(panelWidth, panelHeight),
+      priority: 1000,
     );
+    add(rulesText);
+    print('Panel height $panelHeight, text height ${rulesText.height} '
+        'font size ${textStyle.fontSize} game h ${game.size}');
     final digits = '0123456789ABCDEF';
     final gameImage = Sprite(
         Flame.images.fromCache(digits[game.gameIndex] + '.png'));

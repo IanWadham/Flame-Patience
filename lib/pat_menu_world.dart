@@ -17,8 +17,6 @@ class PatMenuWorld extends PatBaseWorld with HasGameReference<PatGame> {
 
   @override
   Future<void> onLoad() async {
-    print('Game Index is ${game.gameIndex} '
-        'name ${PatData.gameList[game.gameIndex].gameName}');
     final gameSpecs = PatData.gameList;
     final nGames = gameSpecs.length;
     assert(nGames > 0 && nGames <= 9);
@@ -45,41 +43,38 @@ class PatMenuWorld extends PatBaseWorld with HasGameReference<PatGame> {
     camera.viewfinder.visibleGameSize = menuSize;
 
     final fontHeight = cellHeight * 0.1;
-    print('Font $fontHeight');
+
     int gameIndex = 0;
     for (int m = 0; m < nRows; m++) {
       for (int n = 0; n < nCols; n++) {
         // If a cell contains an x, allocate a game to it and create a MenuItem
         // at the corresponding row and column position, then bump gameIndex.
         if (cells[m * nRows + n] == 'x') {
-          final cellPosition = Vector2(cellWidth * n, cellHeight * m) -
-              menuSize * 0.5;
+          final cellPosition = Vector2(cellWidth * n, cellHeight * m)
+              - menuSize * 0.5;
           String gameImageData = digits[gameIndex] + '.png';
           final gameImage = await game.loadSprite(gameImageData);
-          // final gameImage = await Image.asset(gameImageData, color: null);
-          // final gameSprite = await Sprite(gameImage);
           final caption = PatData.gameList[gameIndex].gameName;
           add(MenuItem(gameIndex, gameImage, caption, fontHeight,
-          // add(MenuItem(gameIndex, gameSprite, caption, fontHeight,
               size: cellSize, position: cellPosition));
+          add(RectangleComponent(size: cellSize, position: cellPosition,
+              paint: menuItemOutlinePaint,)); 
           print('Game $gameIndex goes at row $m col $n in $nRows x $nCols');
           print('Size $cellSize Position $cellPosition');
-          GameSpec spec = PatData.gameList[gameIndex];
-          print('Dimensions: ${spec.gameName} Cells ${spec.nCellsWide} '
-                '${spec.nCellsHigh} pad ${spec.cardPadX} ${spec.cardPadY}');
-          final cSize = Vector2(900.0 + spec.cardPadX, 1200.0 + spec.cardPadY);
-          final bSize = Vector2(cSize.x * spec.nCellsWide, 600.0 +
-              cSize.y * spec.nCellsHigh);
-          print('    cSize $cSize bSize $bSize AR ${bSize.x / bSize.y}');
-          gameIndex++;
         }
-      }
-    }
-  }
+        gameIndex++;
+      } // End column.
+    } // End row.
+  } // End onLoad().
 }
 
+final menuItemOutlinePaint = Paint()
+    ..color = PatGame.faintOutline
+    ..style = PaintingStyle.stroke
+    ..strokeWidth = 1;
+
 final spriteOutlinePaint = Paint()
-    ..color = PatGame.pileOutline
+    ..color = PatGame.screenBackground
     ..style = PaintingStyle.stroke
     ..strokeWidth = 1.5;
 
@@ -98,21 +93,21 @@ class MenuItem extends PositionComponent
             color: PatGame.pileOutline,
           ),
         ),
-        position: Vector2(size!.x * 0.075, size!.y - 30),
+        position: Vector2(size!.x * 0.05, size!.y * 0.90),
         priority: 10,
         anchor: Anchor.centerLeft,
       ),
       SpriteComponent(
         sprite: gameImage,
         position: size * 0.025,
-        size: size * 0.95,
+        size: size * 0.95, // 0.95,
         priority: 1,
       ),
       RectangleComponent(
         paint: spriteOutlinePaint,
         position: size * 0.025,
-        size: size * 0.95,
-        priority: 5,
+        size: size * 0.95, // 0.95,
+        priority: 20,
       ),
     ],
   );

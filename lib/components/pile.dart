@@ -8,6 +8,7 @@ import '../pat_world.dart';
 import '../specs/pat_enums.dart';
 import '../specs/pat_specs.dart';
 import 'card_view.dart';
+import '../views/game_end.dart';
 
 class Pile extends PositionComponent with HasWorldReference<PatWorld> {
   Pile(this.pileSpec, this.pileIndex, this.baseWidth, this.baseHeight,
@@ -52,6 +53,8 @@ class Pile extends PositionComponent with HasWorldReference<PatWorld> {
   bool get isKlondikeDraw3Waste =>
       ((world.gameSpec.gameID == PatGameID.klondikeDraw3) &&
         (pileType == PileType.waste));
+  bool get isFullFoundationPile => (pileType == PileType.foundation) &&
+    (_cards.length == ((world.gameSpec.gameID == PatGameID.mod3) ? 4 : 13));
 
   // These properties are calculated in the constructor from the Pile Spec.
   final bool _hasFanOut;
@@ -135,10 +138,12 @@ class Pile extends PositionComponent with HasWorldReference<PatWorld> {
     for (int n = 1; n <= nCards; n++) {
       print('$message nCards is card $n moving? ${_cards[_cards.length - n]}');
       if (_cards[_cards.length - n].isMoving) {
+        print('Card ${_cards[_cards.length - n]} IS MOVING!!!!!');
         return MoveResult.notValid;
       }
     }
 
+    print('Grabbing $grabbing');
     if (grabbing) {
       // The dragged cards leave the Pile and it adjusts its FanOut and hitArea.
       dragList.addAll(grabCards(nCards));
@@ -217,7 +222,7 @@ class Pile extends PositionComponent with HasWorldReference<PatWorld> {
       }
       tailCards.addAll(temp);
     }
-    print('Grab $tailCards from $pileType index $pileIndex');
+    // print('Grab $tailCards from $pileType index $pileIndex');
     if (_checkFanOut(_cards, tailCards, adding:false) || isKlondikeDraw3Waste) {
       // If Fan Out changed or Klondike 3 Draw, reposition any cards remaining.
       _fanOutPileCards();
@@ -228,7 +233,7 @@ class Pile extends PositionComponent with HasWorldReference<PatWorld> {
 
   void dropCards(List<CardView> tailCards) {
     // Instantaneously drop and display cards on this pile (used in Undo/Redo).
-    print('Drop $tailCards on $pileType index $pileIndex, contents $_cards');
+    // print('Drop $tailCards on $pileType index $pileIndex, contents $_cards');
     if (_checkFanOut(_cards, tailCards, adding: true) && _cards.isNotEmpty) {
       // If Fan Out changed, reposition all cards currently in the Pile.
       // ??????? _fanOutPileCards();
@@ -329,6 +334,8 @@ class Pile extends PositionComponent with HasWorldReference<PatWorld> {
         start: startAt,
         startPriority: movePriority,
         whenDone: () {
+          // TODO - If this Pile is a Foundation, check if it is now full, then
+          //        check if the Game has been won and initiate Game End.
           print('ARRIVING: pile $pileIndex $pileType card ${card.name} '
               'pri ${card.priority} '
               'new pri ${card.newPriority} count $_transitCount');
@@ -339,7 +346,13 @@ class Pile extends PositionComponent with HasWorldReference<PatWorld> {
           }
           // N.B. _transitCount can apply to SEVERAL receives of cards.
           if (_transitCount == 0) {
-            onComplete?.call(); // Optional callback for receiveMovingCards().
+            if (isFullFoundationPile && world.gameplay.checkForAWin()) {
+              print("Let's celebrate!!!");
+              final gameEnd = GameEnd(world.game, world.cards, world.piles);
+              gameEnd.letsCelebrate();
+            } else {
+              onComplete?.call(); // Optional callback for receiveMovingCards().
+            }
           }
         }
       );
@@ -701,8 +714,8 @@ class Pile extends PositionComponent with HasWorldReference<PatWorld> {
       if (!_hasFanOut) {
         fanOutStart = cardCount; // All cards go at Pile position.
       }
-      print('Calc Positions, Pile $pileIndex $pileType: '
-          '$cardCount cards, fan out start $fanOutStart');
+      // print('Calc Positions, Pile $pileIndex $pileType: '
+          // '$cardCount cards, fan out start $fanOutStart');
       for (int n = 0; n < cardCount; n++) {
         if (n < fanOutStart) {
           positions.add(Vector2(position.x, position.y));
