@@ -58,6 +58,9 @@ class CardMoves {
       // print('MOVE LIST after PRUNING, index $_redoIndex:'); printMoves();
     }
     assert(nCards > 0, 'storeMove(): BAD VALUE OF nCards = $nCards.');
+    for (CardView card in _cards) {
+      card.isHighlighted = false;
+    }
     CardMove move = (
       fromPile: from.pileIndex,
       toPile: to.pileIndex,
@@ -225,12 +228,18 @@ class CardMoves {
             }
             if (toPile.checkPut(dragList, from: fromPile)) {
               print('Card $card can move to ${toPile.pileIndex}');
-              if (toPile.hasNoCards && (dragList.length == cards.length)) {
-                // All cards in a Pile go to an empty Pile: ignore this move.
-                // It does not affect the overall position of the Game.
+              if (toPile.hasNoCards && (dragList.length == cards.length) &&
+                  (toPile.pileType == fromPile.pileType)) {
+// TODO - In Mod3, a dealt card that is illegally placed (e.g. a 2 in row 3) is
+//        not seen as a possible card to Move.
+// TODO - In 48, undesired moves are shown if there are empty Tableaus or if
+//        there are Foundations to the R that can receive a card from the L.
+                // All cards in a Pile go to an empty Pile of the same type.
+                // Ignore this move: the overall Game's position is unchanged.
                 continue;
               }
               possibleCardsToMove.add(card);
+              card.isHighlighted = true;
               break;
             }
           } // End for Pile toPile
