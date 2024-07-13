@@ -37,6 +37,7 @@ class PatGame extends FlameGame<PatBaseWorld> {
   //   "     "  "   =    "  "     // 48 deal: 5 Aces buried, hard but solvable.
   // final testSeed = 3116355471; // Yukon deal: fairly easy, 2 Sp appears late.
   // final testSeed = 2868337660; // Mod3 deal: easy, despite only 1 space.
+  // final testSeed = 1480193452; // 48 deal: hard, C D H blocks, 1 Ace buried.
 
   // The gameIndex is used to select a GameSpec from PatData.gameList in file
   // specs/pat_specs. GameSpecs are structures of const data which, together
