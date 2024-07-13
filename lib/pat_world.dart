@@ -56,8 +56,8 @@ class PatWorld extends PatBaseWorld {
 
   @override
   Future<void> onLoad() async {
-    // print('Game Index is ${game.gameIndex} '
-        // 'name ${PatData.gameList[game.gameIndex].gameName}');
+    print('Game Index ${game.gameIndex} ${game.action} '
+        '${PatData.gameList[game.gameIndex].gameName}');
     gameSpec = PatData.gameList[game.gameIndex]; // Late.
     final cellSize = Vector2(cardWidth + gameSpec.cardPadX,
         cardHeight + gameSpec.cardPadY);
@@ -121,14 +121,12 @@ class PatWorld extends PatBaseWorld {
 
     // Start the Game with a random seed or a test-seed for debugging purposes.
     // Otherwise, use the same seed again and get a replay of the previous deal.
-    // print('GAME ACTION ${game.action}');
     if (game.action != Action.sameDeal) {
       // New deal: change the Random Number Generator's seed.
-      // print((game.testSeed == 0) ? 'NEW SEED!!!' : 'TEST SEED!!!');
       game.seed = (game.testSeed == 0) ?  Random().nextInt(PatGame.maxInt) :
           game.testSeed;
     }
-    // print('GAME SEED ${game.seed}');
+    print('${(game.testSeed == 0) ? "NEW SEED" : "TEST SEED"} ${game.seed}\n');
 
     // Shuffle and deal the cards.
     gameplay.begin(gameSpec, game.seed);
