@@ -34,7 +34,7 @@ class CardMoves {
 
   final List<CardView> _cards;
   final List<Pile> _piles;
-  final _stockPileIndex; // -1 means "no Stock Pile": not all Games have one.
+  final int _stockPileIndex; // -1 = "no Stock Pile": not all Games have one.
   final List<Pile> _tableaus;
 
   var _redoIndex = 0;
@@ -71,11 +71,11 @@ class CardMoves {
     );
     _playerMoves.add(move);
     _redoIndex = _playerMoves.length;
-    print('MOVE LIST after storeMove() index $_redoIndex:'); printMoves();
-    print ('Stored Move: ${move.fromPile} ${move.toPile} n${move.nCards} '
-          '${_cards[move.leadCard]} e${move.extra.index}');
-    print('Move: ${from.pileIndex} ${from.pileType} to ${to.pileIndex} '
-        '${to.pileType} $nCards cards ${_cards[leadCard]} $extra');
+    // print('MOVE LIST after storeMove() index $_redoIndex:'); printMoves();
+    // print ('Stored Move: ${move.fromPile} ${move.toPile} n${move.nCards} '
+          // '${_cards[move.leadCard]} e${move.extra.index}');
+    // print('Move: ${from.pileIndex} ${from.pileType} to ${to.pileIndex} '
+        // '${to.pileType} $nCards cards ${_cards[leadCard]} $extra');
   }
 
   UndoRedoResult undoMove() {
@@ -101,14 +101,14 @@ class CardMoves {
     // This is a "redo" of a stored Move. The original Move was validated and
     // executed after a Tap or Drag fron the player, then stored. We just "go
     // through the motions" this time around.
-    print('Redo Index $_redoIndex $move');
+    // print('Redo Index $_redoIndex $move');
     assert((_redoIndex >= 0) && (_redoIndex <= _playerMoves.length));
     Pile from = _piles[move.fromPile];
     Pile to = _piles[move.toPile];
-    print(
-        '\n\n\n\nREDO: ${move.fromPile} ${from.pileType} to ${move.toPile} '
-       '${to.pileType} redo $_redoIndex list ${_playerMoves.length} '
-       '${move.nCards})');
+    // print(
+        // '\n\n\n\nREDO: ${move.fromPile} ${from.pileType} to ${move.toPile} '
+       // '${to.pileType} redo $_redoIndex list ${_playerMoves.length} '
+       // '${move.nCards})');
 
     // SPECIAL CASE: Turn Waste Pile over, back onto Stock (tap on empty Stock).
     if ((from.pileType == PileType.waste) && (to.pileType == PileType.stock)) {
@@ -133,7 +133,7 @@ class CardMoves {
         var n = 0;
         final nMax = move.nCards;
         assert (from.nCards >= nMax);
-        print('Tableau Indices: $_tableaus');
+        // print('Tableau Indices: $_tableaus');
         from.dump();
         for (final pile in _tableaus) {
           pile.dropCards(from.grabCards(1, reverseAndFlip: true));
@@ -160,9 +160,9 @@ class CardMoves {
     // on the meanings of the switch() cases, see makeMove() above.
     Pile from = _piles[move.fromPile];
     Pile to = _piles[move.toPile];
-    print('\n\n\n\nUNDO: ${move.fromPile} ${from.pileType} to ${move.toPile} '
-        '${to.pileType} undo $_redoIndex list ${_playerMoves.length} '
-        'nCards ${move.nCards}');
+    // print('\n\n\nUNDO: ${move.fromPile} ${from.pileType} to ${move.toPile} '
+        // '${to.pileType} undo $_redoIndex list ${_playerMoves.length} '
+        // 'nCards ${move.nCards}');
 
     if ((from.pileType == PileType.waste) && (to.pileType == PileType.stock)) {
       to.turnPileOver(from); // Undo (return cards to Waste Pile from Stock).
@@ -215,19 +215,19 @@ class CardMoves {
         continue;
       }
       final cards = fromPile.getCards();
-      print('Moves in ${fromPile.pileIndex} ${fromPile.pileType} cards $cards');
+      // print('Moves in ${fromPile.pileIndex} ${fromPile.pileType} cards $cards');
       for (CardView card in cards) {
         final List<CardView> dragList = [];
         if (fromPile.isDragMoveValid(card, dragList, grabbing: false) ==
             MoveResult.valid) {
-          print('Try card $dragList from ${fromPile.pileIndex}');
+          // print('Try card $dragList from ${fromPile.pileIndex}');
           for (Pile toPile in _piles) {
             if ((toPile == fromPile) ||
                 (toPile.pileType == PileType.freecell)) {
               continue;
             }
             if (toPile.checkPut(dragList, from: fromPile)) {
-              print('Card $card can move to ${toPile.pileIndex}');
+              // print('Card $card can move to ${toPile.pileIndex}');
               if (toPile.hasNoCards && (dragList.length == cards.length) &&
                   (toPile.pileType == fromPile.pileType)) {
 // TODO - In Mod3, a dealt card that is illegally placed (e.g. a 2 in row 3) is
@@ -246,7 +246,7 @@ class CardMoves {
         } // End isDragMoveValid()
       } // End for CardView card
     } // End for Pile fromPile
-    print('Possible cards to move $possibleCardsToMove');
+    // print('Possible cards to move $possibleCardsToMove');
     return possibleCardsToMove;
   }
 
@@ -267,7 +267,7 @@ class CardMoves {
   }
 
   void dump() {
-    print('DUMP ${_playerMoves.length} MOVES: redo index $_redoIndex');
+    // print('DUMP ${_playerMoves.length} MOVES: redo index $_redoIndex');
   }
 
   void printMoves() {
@@ -276,7 +276,7 @@ class CardMoves {
       moves.add('${move.fromPile} ${move.toPile} n${move.nCards} '
           '${_cards[move.leadCard]} e${move.extra.index}');
     }
-    print(moves);
+    // print(moves);
   }
 }
 

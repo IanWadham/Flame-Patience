@@ -12,18 +12,14 @@ import 'components/pile.dart';
 import 'components/card_view.dart';
 import 'components/flat_button.dart';
 
-import 'models/card_moves.dart';
-
 import 'pat_game.dart';
-import 'pat_menu_world.dart';
-import 'specs/pat_enums.dart';
 import 'specs/pat_specs.dart';
 import 'specs/card_image_specs.dart';
 
 import 'views/game_play.dart';
 import 'views/game_start.dart';
 
-class PatWorld extends PatBaseWorld with HasGameReference<PatGame> {
+class PatWorld extends PatBaseWorld {
   static const cardDeckName = 'Ancient_Egyptians'; // TODO - Setting needed.
   static const cardWidth = 900.0;
   static const cardHeight = 1200.0;
@@ -51,27 +47,17 @@ class PatWorld extends PatBaseWorld with HasGameReference<PatGame> {
 
   late GameSpec gameSpec;
 
-  // final bool debugMode = true;
-
   final List<CardView> cards = [];
   final List<Pile> piles = [];
 
-  // Don't need foundations, tableaus and cardMoves in the World any more?
-  final List<Pile> foundations = [];
-  final List<Pile> tableaus = [];
-
   late Gameplay gameplay;
-
-  int _stockPileIndex = -1; // No Stock Pile yet: not all games have one.
-  int _wastePileIndex = -1; // No Waste Pile yet: not all games have one.
-  int _excludedCardsPileIndex = -1; // Games with excluded Cards might use this.
 
   var lastWastePile = false; // Set if no more Stock Pile turnovers are allowed.
 
   @override
   Future<void> onLoad() async {
-    print('Game Index is ${game.gameIndex} '
-        'name ${PatData.gameList[game.gameIndex].gameName}');
+    // print('Game Index is ${game.gameIndex} '
+        // 'name ${PatData.gameList[game.gameIndex].gameName}');
     gameSpec = PatData.gameList[game.gameIndex]; // Late.
     final cellSize = Vector2(cardWidth + gameSpec.cardPadX,
         cardHeight + gameSpec.cardPadY);
@@ -98,7 +84,7 @@ class PatWorld extends PatBaseWorld with HasGameReference<PatGame> {
     final layout = GameLayout();
     layout.generatePiles(gameSpec, cellSize, piles);
 
-    print('Viewport size: ${game.camera.viewport.size}');
+    // print('Viewport size: ${game.camera.viewport.size}');
 
     // Set up the FlameGame's World and Camera.
     addAll(cards);
@@ -122,11 +108,12 @@ class PatWorld extends PatBaseWorld with HasGameReference<PatGame> {
     camera.viewfinder.visibleGameSize = playAreaSize;
     camera.viewfinder.position = Vector2(playAreaSize.x / 2.0, 0.0);
     camera.viewfinder.anchor = Anchor.topCenter;
-    print('WORLD SIZE ${game.size} play area size $playAreaSize');
-    print('Viewport AR = ${game.size.x/game.size.y}, play AR ${playAreaSize.x/playAreaSize.y}');
-    print('\n');
+    // print('WORLD SIZE ${game.size} play area size $playAreaSize');
+    // print('Viewport AR = ${game.size.x/game.size.y}, '
+    //     'play AR ${playAreaSize.x/playAreaSize.y}');
+    // print('\n');
 
-    print('GAME DATA DIMENSIONS: cards ${cards.length} piles ${piles.length}');
+    // print('GAME DATA: cards ${cards.length} piles ${piles.length}');
 
     // The gameplay object is not a Component, but it IS "owned" by PatWorld,
     // in case it is needed in the future (e.g. for saving/reloading a Game).
@@ -134,14 +121,14 @@ class PatWorld extends PatBaseWorld with HasGameReference<PatGame> {
 
     // Start the Game with a random seed or a test-seed for debugging purposes.
     // Otherwise, use the same seed again and get a replay of the previous deal.
-    print('GAME ACTION ${game.action}');
+    // print('GAME ACTION ${game.action}');
     if (game.action != Action.sameDeal) {
       // New deal: change the Random Number Generator's seed.
-      print((game.testSeed == 0) ? 'NEW SEED!!!' : 'TEST SEED!!!');
+      // print((game.testSeed == 0) ? 'NEW SEED!!!' : 'TEST SEED!!!');
       game.seed = (game.testSeed == 0) ?  Random().nextInt(PatGame.maxInt) :
           game.testSeed;
     }
-    print('GAME SEED ${game.seed}');
+    // print('GAME SEED ${game.seed}');
 
     // Shuffle and deal the cards.
     gameplay.begin(gameSpec, game.seed);
@@ -192,9 +179,9 @@ class RulesAndTips extends PositionComponent
     final gameSpec = PatData.gameList[game.gameIndex];
     final panelWidth = size.x / 2;
     final panelHeight = size.y;
-    double lineHeight = panelWidth / 100.0;
-    print('ZOOM: ${game.camera.viewfinder.zoom} lineHeight $lineHeight '
-        'panelHeight $panelHeight panelWidth $panelWidth');
+    // double lineHeight = panelWidth / 100.0;
+    // print('ZOOM: ${game.camera.viewfinder.zoom} lineHeight $lineHeight '
+        // 'panelHeight $panelHeight panelWidth $panelWidth');
     final textStyle = InlineTextStyle(
       color: PatGame.pileOutline,
       fontScale: 1.1 / game.camera.viewfinder.zoom,
@@ -226,11 +213,11 @@ class RulesAndTips extends PositionComponent
       priority: 1000,
     );
     add(rulesText);
-    print('Panel height $panelHeight, text height ${rulesText.height} '
-        'font size ${textStyle.fontSize} game h ${game.size}');
-    final digits = '0123456789ABCDEF';
+    // print('Panel height $panelHeight, text height ${rulesText.height} '
+        // 'font size ${textStyle.fontSize} game h ${game.size}');
+    const digits = '0123456789ABCDEF';
     final gameImage = Sprite(
-        Flame.images.fromCache(digits[game.gameIndex] + '.png'));
+        Flame.images.fromCache('${digits[game.gameIndex]}.png'));
     add(
       SpriteComponent(
         sprite: gameImage,

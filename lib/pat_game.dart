@@ -3,8 +3,6 @@ import 'package:flame/components.dart';
 import 'package:flutter/material.dart' show Colors, Color;
 
 import 'pat_menu_world.dart';
-import 'pat_world.dart';
-import 'specs/pat_specs.dart';
 
 enum Action { newDeal, sameDeal, newGame, undo, redo, showRules, showMoves }
 
@@ -27,17 +25,18 @@ class PatGame extends FlameGame<PatBaseWorld> {
   // same cards as before. The actual seed is computed in PatWorld, but is held
   // here in case the player chooses Action.sameDeal.
 
-  int gameIndex = 0;
-  int seed = 0;
-  Action action = Action.newDeal;
+  var gameIndex = 0;
+  var seed = 0;
+  var action = Action.newDeal;
 
-  int testSeed = 0; // The Game starts with a randomly-generated seed.
-  // int testSeed = 1567865991; // Mod 3 deal: 3 Aces in Tableaus 26 and 27.
-  // int testSeed = 3922659694; // Yukon deal: hard but solvable.
-  // int testSeed = 3528308832; // Freecell deal: hard, blk 4s red 5s same pile.
-  //  "    "  "   =    "  "     // 48 deal: 5 Aces buried, v. hard but solvable.
-  // int testSeed = 3116355471; // Yukon deal: fairly easy, 2 Sp appears late.
-  // int testSeed = 2868337660; // Mod3 deal: fairly easy, despite only 1 space.
+  final testSeed = 0; // The Game starts with a randomly-generated seed.
+
+  // final testSeed = 1567865991; // Mod 3 deal: 3 Aces in Tableaus 26 and 27.
+  // final testSeed = 3922659694; // Yukon deal: hard but solvable.
+  // final testSeed = 3528308832; // Freecell deal: hard, bl 4s rd 5s same pile.
+  //   "     "  "   =    "  "     // 48 deal: 5 Aces buried, hard but solvable.
+  // final testSeed = 3116355471; // Yukon deal: fairly easy, 2 Sp appears late.
+  // final testSeed = 2868337660; // Mod3 deal: easy, despite only 1 space.
 
   // The gameIndex is used to select a GameSpec from PatData.gameList in file
   // specs/pat_specs. GameSpecs are structures of const data which, together

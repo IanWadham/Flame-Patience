@@ -7,7 +7,6 @@ import 'package:flutter/animation.dart';
 
 import '../pat_world.dart';
 import '../specs/pat_enums.dart';
-import '../views/game_play.dart';
 
 import 'pile.dart';
 
@@ -58,9 +57,7 @@ class CardView extends PositionComponent
   bool get isBlack => suit >= 2;
   String get name => toString();
 
-  void set isHighlighted(bool highlight) => _isHighlighted = highlight;
-
-  // bool get isBaseCard => (indexOfCard == 0);
+  set isHighlighted(bool highlight) => _isHighlighted = highlight;
 
   bool get isMoving => _isMoving;
 
@@ -161,16 +158,13 @@ class CardView extends PositionComponent
     if (_isMoving) {
       return; // Ignore taps while moving, otherwise it's a sure way to crash...
     }
-    bool success = world.gameplay.tapMove(this);
-    print('CardView: Returned from tap on $name, pile ${pile.pileIndex} '
-        '${pile.pileType} success $success');
+    world.gameplay.tapMove(this);
     return;
   }
 
   // Handle drag-and-drop events
   @override
   void onTapCancel(TapCancelEvent event) {
-    // print('Tap Cancel on ${pile.pileType} at $position');
     if (pile.pileType == PileType.stock) {
       _isDragging = false;
       handleTap();
@@ -183,7 +177,6 @@ class CardView extends PositionComponent
     _isDragging = false;
     _startPosition = position.clone();
     _fromPileIndex = pile.pileIndex;
-    print('\n\nflutter: Drag Card $this from Pile ${pile.pileIndex}');
 
     // The rules for this pile in this game might allow a multi-card move. The
     // cards to be moved, including one or none, are returned in movingCards.
@@ -194,13 +187,10 @@ class CardView extends PositionComponent
       _isDragging = true;
       _isMoving = true;
       var cardPriority = movingPriority;
-      String moving = 'Moving: ';
       for (final movingCard in _movingCards) {
         movingCard.priority = cardPriority;
         cardPriority++;
-        moving += '${movingCard.toString()} ${movingCard.priority}, ';
       }
-      print(moving);
     }
   }
 
@@ -210,7 +200,9 @@ class CardView extends PositionComponent
       return;
     }
     final delta = event.localDelta;
-    _movingCards.forEach((card) => card.position.add(delta));
+    for (CardView card in _movingCards) {
+      card.position += delta;
+    }
   }
 
   @override

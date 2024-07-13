@@ -1,12 +1,9 @@
 import 'dart:math';
-import 'dart:ui';
 
 import 'package:flame/components.dart';
 
 import '../components/card_view.dart';
 import '../components/pile.dart';
-
-import '../models/card_moves.dart';
 
 import '../pat_world.dart';
 import '../specs/pat_enums.dart';
@@ -26,12 +23,9 @@ class GameLayout {
     final List<Pile> foundations = [];
     final List<Pile> tableaus = [];
     final List<Pile> freecells = [];
-    int _stockPileIndex = -1; // No Stock Pile yet: not all games have one.
-    int _wastePileIndex = -1; // No Waste Pile yet: not all games have one.
-    int _excludedCardsPileIndex = -1; // Games with Excluded Cards need this.
+    // Stock, Waste and ExcludedCards Piles also exist, but not in all Games.
     for (GamePileSpec gamePile in gameSpec.gamePilesSpec) {
       final pileSpec = gamePile.pileSpec;
-      final pileType = pileSpec.pileType;
       final nPilesOfThisType = gamePile.nPilesSpec;
       if (nPilesOfThisType != gamePile.pileTrios.length) {
         throw FormatException('${pileSpec.pileType} requires $nPilesOfThisType '
@@ -60,26 +54,22 @@ class GameLayout {
         switch (pile.pileType) {
           case PileType.stock:
             if (!gameSpec.hasStockPile) {
-              throw FormatException(
+              throw const FormatException(
                   'Stock Pile specified but GameSpec hasStockPile is false');
-              pileSpecErrorCount++;
             }
-            _stockPileIndex = pileIndex;
             foundStockSpec = true;
           case PileType.waste:
             if (!gameSpec.hasWastePile) {
-              throw FormatException(
+              throw const FormatException(
                   'Waste Pile specified but GameSpec hasWastePile is false');
-              pileSpecErrorCount++;
             }
-            _wastePileIndex = pileIndex;
             foundWasteSpec = true;
           case PileType.foundation:
             foundations.add(pile);
           case PileType.tableau:
             tableaus.add(pile);
           case PileType.excludedCards:
-            _excludedCardsPileIndex = pileIndex;
+            break;
           case PileType.freecell:
             freecells.add(pile);
             break;
@@ -92,39 +82,34 @@ class GameLayout {
         : 4 * gameSpec.nPacks;
     if (!foundStockSpec) {
       if (gameSpec.hasStockPile) {
-        throw FormatException(
+        throw const FormatException(
             'NO Stock Pile specified but GameSpec hasStockPile is true');
-        pileSpecErrorCount++;
       } else {
         // Create a Stock Pile, but off-screen and just for Dealer usage.
         final pile = createDefaultStockPile(cellSize, piles.length);
-        _stockPileIndex = piles.length;
         piles.add(pile);
       }
     } else if (!foundWasteSpec && gameSpec.hasWastePile) {
-      throw FormatException(
+      throw const FormatException(
           'NO Waste Pile specified but GameSpec hasWastePile is true');
-      pileSpecErrorCount++;
     } else if (foundations.length != foundationsNeeded) {
       throw FormatException(
           '${foundations.length} Foundations found: $foundationsNeeded needed');
-      pileSpecErrorCount++;
     } else if (tableaus.isEmpty) {
-      throw FormatException('NO Tableau Pile specifications found');
-      pileSpecErrorCount++;
+      throw const FormatException('NO Tableau Pile specifications found');
     }
     // If there are errors in the Pile Specs, probably will not get this far.
     return pileSpecErrorCount;
   }
 
   Pile createDefaultStockPile(Vector2 cellSize, int pileIndex) {
-    final pileSpec = PatData.dealerStock;
+    const pileSpec = PatData.dealerStock;
     final pile = Pile(
           pileSpec,
           pileIndex,
           cellSize.x,
           cellSize.y,
-          position: Vector2(0.0, 0.0) - cellSize,
+          position: Vector2(0.0, 0.0) - cellSize, // Off screen at top left.
     );
     return pile;
   }
@@ -135,29 +120,27 @@ class Dealer extends Component with HasWorldReference<PatWorld> {
 // This Class shuffles and deals into the layout at the start of a Game and
 // makes changes after the deal (e.g. in Mod 3, remove Aces, refill Tableaus).
 
-  Dealer(this._cards, this._piles, this._stockPileIndex,
-      this._gameSpec, this._excludedCardsPileIndex,
+  Dealer(this._cards, this._piles, this.stockPileIndex,
+      this._gameSpec, this.excludedCardsPileIndex,
   );
 
   // The following data items are needed by the deal() and completeTheDeal()
   // methods and are provided by the GamePlay.start() method.
   final List<CardView> _cards;
   final List<Pile> _piles;
-  final int _stockPileIndex;
+  final int stockPileIndex;
   final GameSpec _gameSpec;
-  final int _excludedCardsPileIndex;
+  final int excludedCardsPileIndex;
 
-  int _excludedRank = 0;
-
-  bool get hasStockPile => (_stockPileIndex >= 0);
+  bool get hasStockPile => (stockPileIndex >= 0);
 
   var nDealtCards = 0;
   var nCardsArrived = 0;
 
   void deal(DealSequence dealSequence, int seed, bool moreToDo) {
     final cardsToDeal = List<CardView>.of(_cards);
-    assert(_stockPileIndex >= 0);
-    final Pile stockPile = _piles[_stockPileIndex];
+    assert(stockPileIndex >= 0);
+    final Pile stockPile = _piles[stockPileIndex];
     final baseCard = cardsToDeal.removeAt(0);
     stockPile.put(baseCard);
 
@@ -177,7 +160,7 @@ class Dealer extends Component with HasWorldReference<PatWorld> {
       }
     }
 
-    print('BEFORE DEAL');
+    // print('BEFORE DEAL');
     stockPile.dump();
 
     if (_gameSpec.gameID == PatGameID.grandfather) {
@@ -269,32 +252,32 @@ class Dealer extends Component with HasWorldReference<PatWorld> {
     assert ((_gameSpec.excludedRank > 0) || _gameSpec.redealEmptyTableau);
     assert (_gameSpec.excludedRank <= 13);
 
-    final _excludedRank = _gameSpec.excludedRank; // e.g. Aces in Mod 3 Game.
+    final excludedRank = _gameSpec.excludedRank; // e.g. Aces in Mod 3 Game.
 
     List<CardView> excludedCards = [];
     for (Pile pile in _piles) {
       if (pile.pileType == PileType.foundation) {
-        pile.removeExcludedCards(_excludedRank, excludedCards);
+        pile.removeExcludedCards(excludedRank, excludedCards);
         if (excludedCards.isNotEmpty) {
-          print('Pile ${pile.toString()} excludedCards $excludedCards');
-          if (_excludedCardsPileIndex >= 0) {
-            _piles[_excludedCardsPileIndex].receiveMovingCards(
+          // print('Pile ${pile.toString()} excludedCards $excludedCards');
+          if (excludedCardsPileIndex >= 0) {
+            _piles[excludedCardsPileIndex].receiveMovingCards(
               excludedCards,
               speed: 10.0,
               flipTime: 0.0, // No flip.
             );
           } else { // Not implemented yet.
             throw UnimplementedError(
-                'Excluded Rank $_excludedRank has no Excluded Card Pile');
+                'Excluded Rank $excludedRank has no Excluded Card Pile');
           }
           excludedCards.clear();
         }
       } else if (pile.pileType == PileType.tableau) {
         if (pile.hasNoCards ||
-            (_cards[pile.topCardIndex].rank == _excludedRank)) {
+            (_cards[pile.topCardIndex].rank == excludedRank)) {
           pile.replenishTableauFromStock(
-            _stockPileIndex,
-            _excludedCardsPileIndex,
+            stockPileIndex,
+            excludedCardsPileIndex,
             storing: false, // Don't store Moves during the initial deal.
           );
         }
@@ -317,7 +300,7 @@ class Dealer extends Component with HasWorldReference<PatWorld> {
       bool faceUp = true;
       do {
         // Deal a card.
-        print('Row $row n $n ends $start $stop inc $inc');
+        // print('Row $row n $n ends $start $stop inc $inc');
         dealGrandfatherCard(stockPile, dealTargets[n], faceUp: faceUp);
         faceUp = false;
         n += inc;
@@ -349,7 +332,7 @@ class Dealer extends Component with HasWorldReference<PatWorld> {
       onComplete: () {
         nCardsArrived++;
         if (nCardsArrived == nDealtCards) {
-          print('GRANDFATHER DEAL FINISHED'); // whenDone?.call();
+          // print('GRANDFATHER DEAL FINISHED'); // whenDone?.call();
           adjustGrandfatherTopCards();
         }
       }

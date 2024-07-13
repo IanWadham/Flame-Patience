@@ -27,7 +27,7 @@ class GameEnd {
     final cameraZoom = game.camera.viewfinder.zoom;
     final zoomedScreen = game.size / cameraZoom;
     final playAreaSize = PatWorld.playAreaSize;
-    final screenCenter = (playAreaSize - PatWorld.cardSize) / 2;
+    // final screenCenter = (playAreaSize - PatWorld.cardSize) / 2;
     final topLeft = Vector2((playAreaSize.x - zoomedScreen.x) / 2
         - PatWorld.cardWidth / 2, -PatWorld.cardHeight);
 
@@ -70,7 +70,7 @@ class GameEnd {
         if (tail.isEmpty) {
           continue;
         }
-        print('Tail $tail');
+        // print('Tail $tail');
         int nTail = tail.length;
         for (int n = 0; n < nTail; n++) {
           final card = tail[nTail - 1 - n];
@@ -83,7 +83,7 @@ class GameEnd {
           // Start cards a short time apart to give a riffle effect.
           final delay = 0.75 + cardNum * 0.02;
           final destination = offScreenPosition;
-          print('Card $card delay $delay to $destination');
+          // print('Card $card delay $delay to $destination');
           card.doMoveAndFlip(
             destination,
             time: 1.5,

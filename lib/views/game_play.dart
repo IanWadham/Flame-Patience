@@ -1,8 +1,7 @@
-// Handle actions affecting several Cards or Piles: Game layout, dealing, taps
+// Handle actions affecting several Cards or piles: Game layout, dealing, taps
 // and drags, validating moves, undoing and redoing moves and detecting a win. 
 
 import 'dart:core';
-import 'dart:typed_data';
 
 import 'package:flame/components.dart' show Vector2;
 
@@ -13,7 +12,6 @@ import '../models/card_moves.dart';
 import '../specs/pat_enums.dart';
 import '../specs/pat_specs.dart';
 import 'game_start.dart';
-import 'game_end.dart';
 
 class Gameplay {
   Gameplay(this.game, this._cards, this._piles);
@@ -85,10 +83,6 @@ class Gameplay {
 
     // Do the main deal, followed by a callback to completeTheDeal() if needed.
     cardDealer.deal(gameSpec.dealSequence, randomSeed, moreToDo);
-
-    // Test the letsCelebrate() procedure (instead of dealing the cards).
-    // final gameEnd = GameEnd(game, _cards, _piles);
-    // gameEnd.test();
   }
 
   void storeReplenishmentMove(Pile tableau, Pile target, Extra moveType,
@@ -98,7 +92,6 @@ class Gameplay {
           'Pile.replenishTableauFromStock() and Pile._replaceTableauCard()');
     }
     Pile stock = _piles[_stockPileIndex];
-    Pile rejects = _piles[_excludedCardsPileIndex];
     _cardMoves.storeMove(
       from: (moveType == Extra.toCardUp) ? stock : tableau,
       to: (moveType == Extra.toCardUp) ? tableau : target,
@@ -111,11 +104,11 @@ class Gameplay {
 
   void undoMove() {
     UndoRedoResult result = _cardMoves.undoMove();
-    print('UNDO MOVE GameID $_gameID RESULT $result');
+    // print('UNDO MOVE GameID $_gameID RESULT $result');
     if ((_gameID == PatGameID.grandfather) &&
         (result == UndoRedoResult.undidRedeal)) {
       _redealCount--;
-      print('UNDID GRANDFATHER REDEAL $result _redealCount $_redealCount');
+      // print('UNDID GRANDFATHER REDEAL $result _redealCount $_redealCount');
     }
   }
 
@@ -124,15 +117,15 @@ class Gameplay {
     if ((_gameID == PatGameID.grandfather) &&
         (result == UndoRedoResult.redidRedeal)) {
       _redealCount++;
-      print('REDID GRANDFATHER REDEAL $result _redealCount $_redealCount');
+      // print('REDID GRANDFATHER REDEAL $result _redealCount $_redealCount');
     }
   }
 
   bool tapMove(CardView card) {
     Pile fromPile = card.pile;
     MoveResult tapResult = fromPile.isTapMoveValid(card);
-    print('\n\nflutter: Tap Pile ${fromPile.pileIndex}, '
-        '${fromPile.pileType}: seen, result $tapResult');
+    // print('\n\nflutter: Tap Pile ${fromPile.pileIndex}, '
+        // '${fromPile.pileType}: seen, result $tapResult');
     if (tapResult == MoveResult.notValid) {
       return false;
     }
@@ -160,8 +153,6 @@ class Gameplay {
       final target = targets.first;
       if ((target != fromPile) &&
           target.checkPut(movingCards, from: fromPile)) {
-        int nCards = movingCards.length;
-
         if (_redealEmptyTableau && (fromPile.nCards == 0) &&
             (fromPile.pileType == PileType.tableau) &&
             (_stockPileIndex >= 0) && (_piles[_stockPileIndex].nCards > 0)) {
@@ -219,17 +210,17 @@ class Gameplay {
 
   bool _tapOnStockPile(CardView card, Pile stockPile, MoveResult tapResult) {
     // Check and perform three different kinds of Stock Pile move.
-    print('Tap Stock Pile: $tapResult Waste Pile present $hasWastePile');
+    // print('Tap Stock Pile: $tapResult Waste Pile present $hasWastePile');
     stockPile.dump();
 
     if (tapResult == MoveResult.pileEmpty) {
       if (stockPile.pileSpec.tapEmptyRule == TapEmptyRule.tapNotAllowed) {
-        print('${stockPile.pileType} TAP ON EMPTY PILE WAS IGNORED');
+        // print('${stockPile.pileType} TAP ON EMPTY PILE WAS IGNORED');
         return false;
       }
 
       if (_gameID == PatGameID.grandfather) {
-        print('REDEAL GRANDFATHER GAME _redealCount $_redealCount');
+        // print('REDEAL GRANDFATHER GAME _redealCount $_redealCount');
         if (_redealGrandfatherGame()) {
           _cardMoves.storeMove( // Record a successful Grandfather Redeal Move.
             from: stockPile,
@@ -275,13 +266,13 @@ class Gameplay {
         continue;
       }
       putOK = target.checkPut([card]);
-      print('Try Pile ${target.pileIndex} ${target.pileType}: putOK $putOK');
+      // print('Try Pile ${target.pileIndex} ${target.pileType}: putOK $putOK');
       if (putOK) { // The card goes out.
         if (_redealEmptyTableau && (fromPile.nCards == 1) &&
             (fromPile.pileType == PileType.tableau)) {
           if ((_stockPileIndex >= 0) && (_piles[_stockPileIndex].nCards > 0))
           { // Deal a card to a Tableau that will be empty after this Move.
-            print('CARD $card GOES OUT: replenish ${fromPile.toString()}');
+            // print('CARD $card GOES OUT: replenish ${fromPile.toString()}');
             fromPile.replenishTableauFromStock(
               _stockPileIndex,
               _excludedCardsPileIndex,
@@ -343,9 +334,9 @@ class Gameplay {
   }
 
   bool _redealGrandfatherGame() {
-    print('ENTERED _redealGrandfatherGame() redeals $_grandfatherRedeals');
+    // print('ENTERED _redealGrandfatherGame() redeals $_grandfatherRedeals');
     if (_redealCount >= _grandfatherRedeals) {
-      print('RETURN REDEAL false _redealCount $_redealCount');
+      // print('RETURN REDEAL false _redealCount $_redealCount');
       return false;
     }
 
@@ -361,16 +352,12 @@ class Gameplay {
       }
       stockPile.dropCards(cardsToRedeal);
     }
-    int nCardsToBeDealt = stockPile.nCards;
-    stockPile.dump();
-
-    final cardDealer = Dealer(_cards, _piles, _stockPileIndex, _gameSpec, -1);
 
     // Do the redeal for the Grandfather game.
+    final cardDealer = Dealer(_cards, _piles, _stockPileIndex, _gameSpec, -1);
     cardDealer.grandfatherDeal(stockPile, _tableaus);
-
     _redealCount++;
-    print('REDEAL SUCCESSFUL _redealCount $_redealCount');
+    // print('REDEAL SUCCESSFUL _redealCount $_redealCount');
     return true;
   }
 
@@ -405,7 +392,7 @@ class Gameplay {
     // Deal a card from the Stock Pile to each Tableau Pile.
     assert(stockPile.pileType == PileType.stock);
     if (stockPile.hasNoCards) {
-      print('NO MORE STOCK CARDS - _dealToTableausFromStockPile NOT ATTEMPTED');
+      // print('NO MORE STOCK CARDS - _dealToTableausFromStockPile NOT ATTEMPTED');
       return false;
     }
 
@@ -415,13 +402,13 @@ class Gameplay {
 
     for (Pile pile in _tableaus) {
       if (stockPile.hasNoCards) {
-        print('NO MORE STOCK CARDS - _dealToTableausFromStockPile '
-            'TERMINATED EARLY');
+        // print('NO MORE STOCK CARDS - _dealToTableausFromStockPile '
+            // 'TERMINATED EARLY');
         break; // No more Stock cards.
       }
       List<CardView> dealtCards = stockPile.grabCards(1);
       if (dealtCards.first.rank == _excludedRank) {
-        print('EXCLUDED CARD: ${dealtCards.first} going to $pile');
+        // print('EXCLUDED CARD: ${dealtCards.first} going to $pile');
         foundExcludedCard = true;
       }
 
@@ -431,8 +418,8 @@ class Gameplay {
         flipTime: 0.3, // Flip the card as it moves.
         onComplete: () {
           // TODO - Check this logic vs. the onComplete logic in the Pile class.
-          print('Pile $pile: card $dealtCards '
-              'index ${dealtCards.first.indexOfCard} arrived...');
+          // print('Pile $pile: card $dealtCards '
+              // 'index ${dealtCards.first.indexOfCard} arrived...');
           nCardsArrived++;
           if ((nCardsArrived == nDealtCards) && foundExcludedCard) {
             _adjustDealToTableausFromStockPile();
