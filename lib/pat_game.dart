@@ -50,7 +50,7 @@ class PatGame extends FlameGame<PatBaseWorld> {
   // Color settings for the playing area, board layout and action-buttons.
   // The Screen Background is amber.shade300, but darkened manually. That is
   // not the same as shade400, etc. of Flutter's amber swatch.
-  static final Color screenBackground = Color(0xffe7c31d);
+  static const Color screenBackground = Color(0xffe7c31d);
   static final Color pileBackground = Colors.amberAccent.shade100;
   static final Color pileOutline = Colors.brown.shade800;
   static final Color faintOutline = Colors.brown.shade300;
