@@ -312,15 +312,12 @@ class Pile extends PositionComponent with HasWorldReference<PatWorld> {
       }
       Vector2 delta = card.position - newPositions[index];
       double manhattanDistance = delta.x.abs() + delta.y.abs();
-      // TODO - Is the next line correct?
-      // ??????? if ((manhattanDistance < distancePerFrame) || ((index < nPrevCardsInPile) && (newPositions[index] == position))) {
       if ((manhattanDistance < distancePerFrame) || (index < nPrevCardsInPile))
       {
         // Not far to go, skip doing the animation.
         // print('Card $card goes small distance $manhattanDistance');
         card.position = card.newPosition;
         card.priority = index + 1;
-        // TODO - Might we MISS a CALLBACK?
         continue;
       }
 
@@ -334,8 +331,6 @@ class Pile extends PositionComponent with HasWorldReference<PatWorld> {
         start: startAt,
         startPriority: movePriority,
         whenDone: () {
-          // TODO - If this Pile is a Foundation, check if it is now full, then
-          //        check if the Game has been won and initiate Game End.
           // print('ARRIVING: pile $pileIndex $pileType card ${card.name} '
               // 'pri ${card.priority} '
               // 'new pri ${card.newPriority} count $_transitCount');
@@ -363,8 +358,6 @@ class Pile extends PositionComponent with HasWorldReference<PatWorld> {
     _setPileHitArea();
   }
 
-  // TODO - Do we need this procedure? Used by Undo/Redo to flip last card of
-  //        of a Tableau after dragging or tapping cards that were on top of it.
   void setTopFaceUp(bool goFaceUp) {
     // Used by Undo and Redo to maintain flipped state of Cards.
     // In storeMove() only the "extra:" parameter indicates what is happening.

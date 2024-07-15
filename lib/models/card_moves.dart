@@ -4,12 +4,6 @@ import '../components/card_view.dart';
 import '../components/pile.dart';
 import '../specs/pat_enums.dart';
 
-// TODO - Automate Undo/Redo of sequences of moves involving moves of Excluded
-//        cards to/from the ExcludedCards Pile, Combine with Stock-to-Tableaus.
-//        Would need to bring back some values from GamePlay to track these.
-// TODO - Another idea would be to have "Forced" flags for multiple Moves that
-//        have to be undone/redone as one.
-
 typedef CardMove = ({
   int fromPile, // Starting PileIndex.
   int toPile, // Finishing PileIndex.
@@ -204,7 +198,11 @@ class CardMoves {
     // TODO - Find first empty Tableau, if any (e.g. for dropping a King).
     // TODO - Mod3 selects a card that has gone out but can move to another
     //        Foundation Pile (in the same row) and go out again.
-    // TODO - Show the player cards that can move, by highlighting.
+    // TODO - In Mod3, a dealt card that is illegally placed (e.g. a 2 in row 3)
+    //        is not seen as a possible card to Move.
+    // TODO - In 48, undesired moves are shown if there are empty Tableaus or if
+    //        there are Foundations to the R that can receive a card from the L.
+    // TODO - Highlight the Stock if no move is available? Blip the screen?
 
     List<CardView> possibleCardsToMove = [];
     for (Pile fromPile in _piles) {
@@ -230,10 +228,6 @@ class CardMoves {
               // print('Card $card can move to ${toPile.pileIndex}');
               if (toPile.hasNoCards && (dragList.length == cards.length) &&
                   (toPile.pileType == fromPile.pileType)) {
-// TODO - In Mod3, a dealt card that is illegally placed (e.g. a 2 in row 3) is
-//        not seen as a possible card to Move.
-// TODO - In 48, undesired moves are shown if there are empty Tableaus or if
-//        there are Foundations to the R that can receive a card from the L.
                 // All cards in a Pile go to an empty Pile of the same type.
                 // Ignore this move: the overall Game's position is unchanged.
                 continue;

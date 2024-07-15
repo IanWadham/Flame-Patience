@@ -392,7 +392,7 @@ class Gameplay {
     // Deal a card from the Stock Pile to each Tableau Pile.
     assert(stockPile.pileType == PileType.stock);
     if (stockPile.hasNoCards) {
-      // print('NO MORE STOCK CARDS - _dealToTableausFromStockPile NOT ATTEMPTED');
+      // print('NO MORE STOCK CARDS - NO _dealToTableausFromStockPile');
       return false;
     }
 
@@ -417,7 +417,6 @@ class Gameplay {
         speed: 15.0,
         flipTime: 0.3, // Flip the card as it moves.
         onComplete: () {
-          // TODO - Check this logic vs. the onComplete logic in the Pile class.
           // print('Pile $pile: card $dealtCards '
               // 'index ${dealtCards.first.indexOfCard} arrived...');
           nCardsArrived++;

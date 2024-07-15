@@ -228,7 +228,6 @@ class CardView extends PositionComponent
 
   // TODO - Not urgent: experiment with doing the flip within some PART of the
   //        move, instead of spreading it out over the whole move as at present.
-  // TODO - NICE to have: an automatic instantaneous move if time < _minTime...
 
   // The ONLY animation function of Cards. Depending on parameter values, it
   // does a simple Move, a combined Move and Flip, or a Flip with no move.
