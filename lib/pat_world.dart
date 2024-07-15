@@ -20,7 +20,7 @@ import 'views/game_play.dart';
 import 'views/game_start.dart';
 
 class PatWorld extends PatBaseWorld {
-  static const cardDeckName = 'Ancient_Egyptians'; // TODO - Setting needed.
+  static const cardDeckName = 'Ancient_Egyptians'; // Use a Setting?
   static const cardWidth = 900.0;
   static const cardHeight = 1200.0;
   static const shrinkage = 40.0;
@@ -177,15 +177,14 @@ class RulesAndTips extends PositionComponent
     final gameSpec = PatData.gameList[game.gameIndex];
     final panelWidth = size.x / 2;
     final panelHeight = size.y;
-    // double lineHeight = panelWidth / 100.0;
-    // print('ZOOM: ${game.camera.viewfinder.zoom} lineHeight $lineHeight '
-        // 'panelHeight $panelHeight panelWidth $panelWidth');
+    final fudgeFactor = game.size.x / 1050; // Fit text at various screen sizes.
+    // print('ZOOM: ${game.camera.viewfinder.zoom} screen ${game.size} fudge '
+        // 'fac $fudgeFactor panelHeight $panelHeight panelWidth $panelWidth');
     final textStyle = InlineTextStyle(
       color: PatGame.pileOutline,
-      fontScale: 1.1 / game.camera.viewfinder.zoom,
-      // ??????? fontSize: lineHeight,
-      fontSize: 2.0,
+      fontScale: fudgeFactor / game.camera.viewfinder.zoom,
     );
+    // print('FontSize ${textStyle.fontSize} FontScale ${textStyle.fontScale}');
     final style = DocumentStyle(
       padding: const EdgeInsets.symmetric(vertical: 100, horizontal: 100),
       background: BackgroundStyle(
