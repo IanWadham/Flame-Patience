@@ -91,9 +91,6 @@ class CardView extends PositionComponent
         canvas,
         size: PatWorld.cardSize,
       );
-      if (_isHighlighted) {
-        canvas.drawRRect(PatWorld.cardRect, highlightPaint);
-      }
     } else if (!isBaseCard) {
       back.render(
         canvas,
@@ -102,6 +99,10 @@ class CardView extends PositionComponent
     } else {
       // Draw the Base Card, in outline only.
       canvas.drawRRect(PatWorld.baseCardRect, baseBorderPaint);
+    }
+    if (_isHighlighted) {
+      canvas.drawRRect(isBaseCard ? PatWorld.baseCardRect : PatWorld.cardRect,
+          highlightPaint);
     }
     return;
   }
