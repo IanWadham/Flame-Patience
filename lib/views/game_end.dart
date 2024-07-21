@@ -1,6 +1,6 @@
 // Run win-celebration. Kill PatWorld. Start new Game and World of same type.
 
-import 'package:flame/input.dart' show Vector2;
+import 'package:flame/components.dart';
 import 'package:flutter/animation.dart' show Curves;
 
 import '../pat_game.dart';
@@ -65,12 +65,10 @@ class GameEnd {
 
     while (cardNum < nCards) {
       for (Pile pile in _piles) {
-        pile.dump();
         List<CardView> tail = pile.getCards();
         if (tail.isEmpty) {
           continue;
         }
-        // print('Tail $tail');
         int nTail = tail.length;
         for (int n = 0; n < nTail; n++) {
           final card = tail[nTail - 1 - n];
@@ -125,8 +123,6 @@ class GameEnd {
     final gameSpec = PatData.gameList[game.gameIndex];
     final isMod3 = (gameSpec.gameID == PatGameID.mod3);
     final excludedRank = isMod3 ? 1 : 0;
-    // print('Game index ${game.gameIndex} mod3 ${gameSpec.gameID} '
-        // 'isMod3 $isMod3 excl $excludedRank');
     final List<Pile> foundations = [];
     final List<Pile> excluded = [];
     final nCards = _cards.length - 1;
@@ -141,8 +137,6 @@ class GameEnd {
         _cards[0].position = pile.position;
       }
     }
-    // print('$_cards');
-    // print('Excluded $excluded Foundations $foundations');
     int cardIndex = 1;
     int pileIndex = 0;
     int nFoundations = foundations.length;
@@ -151,22 +145,17 @@ class GameEnd {
       if (card.isFaceDownView) {
         card.flipView();
       }
-      // print('Card $card rank ${card.rank} excluded rank $excludedRank');
       if (card.rank == excludedRank) {
         excluded.first.put(card);
-        // print('Exclude $card onto pile ${excluded.first}');
       } else {
         pileIndex = 4 * card.pack + card.suit;
         if (isMod3) {
           int p = card.pack;
           int n = (cardIndex - 1) - 4 * (p + 1);
           pileIndex = ((n ~/ 4) * 8 + card.suit + 4 * p) % nFoundations;
-          // print('$card p $p cardIndex $cardIndex n $n pileIndex $pileIndex');
         }
 	card = _cards[cardIndex];
         foundations[pileIndex].put(card);
-        // print('Pile index $pileIndex, deal $card on '
-            // 'Pile ${foundations[pileIndex]}\n');
         pileIndex = (pileIndex < nFoundations - 1) ? ++pileIndex : 0;
       }
       cardIndex++;

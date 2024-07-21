@@ -1,3 +1,5 @@
+import 'dart:ui';
+
 import 'package:flame/components.dart';
 import 'package:flame/flame.dart';
 
@@ -74,17 +76,13 @@ class ImageSpecs {
     List<SpriteData> spriteData = List.filled(n, fill);
     // print('Parsing "$dataName" data');
     List<String> lines = dataString.split('\n');
-    // print('First line: ${lines.first}|');
-    // print('First line length: ${lines.first.length}');
-    // print('Last line length = ${lines.last.length}');
-    // print('Lines length = ${lines.length}');
     if (lines.last.isEmpty) {
       lines.removeLast();
     }
-    // print('Lines length = ${lines.length}');
     if (lines.length != n) {
-      // print('ERROR: Found ${lines.length} image specifications: should be $n');
-      // print('Last line: ${lines.last}|');
+      final String errorMessage = 'ERROR: Found ${lines.length} image specs: '
+          'should be $n, last line: ${lines.last}|';
+      throw RangeError(errorMessage);
     }
     RegExp spaces = RegExp('\\s+');
     for (String line in lines) {
@@ -99,6 +97,7 @@ class ImageSpecs {
       double y = double.tryParse(fields[3]) ?? -1.0;
       double width = double.tryParse(fields[4]) ?? -1.0;
       double height = double.tryParse(fields[5]) ?? -1.0;
+      // TODO - Throw a RangeError if any Image Spec field fails to parse.
       // print('Rank: $rank Suit: $suit Pos: ($x, $y) W: $width H: $height');
       int index = 4 * (rank - 1) + suit;
       spriteData[index] = (

@@ -4,7 +4,6 @@ import 'package:flame/components.dart';
 
 import '../components/card_view.dart';
 import '../components/pile.dart';
-
 import '../pat_world.dart';
 import '../specs/pat_enums.dart';
 import '../specs/pat_specs.dart';
@@ -38,8 +37,6 @@ class GameLayout {
         double pileX = (col + 0.5) * cellSize.x;
         double pileY = row * cellSize.y;
         final position = PatWorld.topLeft + Vector2(pileX, pileY);
-        // print('New Pile ${pileSpec.pileType} $pileIndex pos $position '
-        //     'row $row col $col');
         final pile = Pile(
           pileSpec,
           pileIndex,
@@ -116,7 +113,7 @@ class GameLayout {
 } // End of GameLayout class.
 
 
-class Dealer extends Component with HasWorldReference<PatWorld> {
+class Dealer {
 // This Class shuffles and deals into the layout at the start of a Game and
 // makes changes after the deal (e.g. in Mod 3, remove Aces, refill Tableaus).
 
@@ -159,9 +156,6 @@ class Dealer extends Component with HasWorldReference<PatWorld> {
         dealTargets.add(pile);
       }
     }
-
-    // print('BEFORE DEAL');
-    stockPile.dump();
 
     if (_gameSpec.gameID == PatGameID.grandfather) {
       // The Grandfather Game has an idiosyncratic deal, which is hand-coded.
@@ -242,9 +236,7 @@ class Dealer extends Component with HasWorldReference<PatWorld> {
             'Dealing from L to R across the Piles is not implemented yet.');
       }
     } // End for Pile target
-
-    stockPile.dump();
-  }
+  } // End deal()
 
   void completeTheDeal() {
     // Last step of the deal - but only if the Game excludes some cards or needs
@@ -259,7 +251,6 @@ class Dealer extends Component with HasWorldReference<PatWorld> {
       if (pile.pileType == PileType.foundation) {
         pile.removeExcludedCards(excludedRank, excludedCards);
         if (excludedCards.isNotEmpty) {
-          // print('Pile ${pile.toString()} excludedCards $excludedCards');
           if (excludedCardsPileIndex >= 0) {
             _piles[excludedCardsPileIndex].receiveMovingCards(
               excludedCards,
@@ -300,7 +291,6 @@ class Dealer extends Component with HasWorldReference<PatWorld> {
       bool faceUp = true;
       do {
         // Deal a card.
-        // print('Row $row n $n ends $start $stop inc $inc');
         dealGrandfatherCard(stockPile, dealTargets[n], faceUp: faceUp);
         faceUp = false;
         n += inc;
@@ -317,9 +307,6 @@ class Dealer extends Component with HasWorldReference<PatWorld> {
       dealGrandfatherCard(stockPile, dealTargets[n + 1], faceUp: true);
       n = (n + 1) % 6;
     }
-    for (int col = 0; col < 7; col++) {
-      // Ensure that the top card of each Tableau is face-up.
-    }
   }
 
   void dealGrandfatherCard(Pile stockPile, Pile pile, {required bool faceUp}) {
@@ -332,7 +319,6 @@ class Dealer extends Component with HasWorldReference<PatWorld> {
       onComplete: () {
         nCardsArrived++;
         if (nCardsArrived == nDealtCards) {
-          // print('GRANDFATHER DEAL FINISHED'); // whenDone?.call();
           adjustGrandfatherTopCards();
         }
       }

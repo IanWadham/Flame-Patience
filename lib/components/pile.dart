@@ -56,7 +56,7 @@ class Pile extends PositionComponent with HasWorldReference<PatWorld> {
   bool get isFullFoundationPile => (pileType == PileType.foundation) &&
     (_cards.length == ((world.gameSpec.gameID == PatGameID.mod3) ? 4 : 13));
 
-  // These properties are calculated in the constructor from the Pile Spec.
+  // These properties are calculated later from the PileSpec data.
   final bool _hasFanOut;
   final Vector2 _baseFanOut;
   var _fanOutFaceUp = Vector2(0.0, 0.0);
@@ -64,23 +64,24 @@ class Pile extends PositionComponent with HasWorldReference<PatWorld> {
 
   var _transitCount = 0; // The number of cards "in transit" to this Pile.
 
+/* For debugging
   // @override
   // final debugMode = false;
   // final debugMode = true;
 
   void dump() {
-    // print('DUMP Pile $pileIndex $pileType: nCards ${_cards.length} $_cards');
+    print('DUMP Pile $pileIndex $pileType: nCards ${_cards.length} $_cards');
   }
 
   @override
   String toString() {
     return '$pileIndex';
   }
+*/
 
   MoveResult isDragMoveValid(CardView card, List<CardView> dragList,
       {bool grabbing = false}) {
     final dragRule = pileSpec.dragRule;
-    // ???????? final multiCardsRule = pileSpec.multiCardsRule;
     dragList.clear();
 
     // String message = 'Drag Pile $pileIndex, $pileType:';
@@ -112,17 +113,14 @@ class Pile extends PositionComponent with HasWorldReference<PatWorld> {
       for (int n = _cards.length - nCards + 1; n < _cards.length; n++) {
         // print('SEQUENCE-TEST ${_cards[n]} versus $prevCard');
         switch (pileSpec.multiCardsRule) {
-          case MultiCardsRule.inAnyOrder:
-            // print('DO NOT CHECK SEQUENCE');
-            break; // Do not check the order (e.g. Yukon).
-          case MultiCardsRule.descendingSameSuitBy1:
-            // print('Apply MultiCardsRule.descendingSameSuitBy1');
+          case MultiCardsRule.inAnyOrder: // (e.g. Yukon).
+            break;
+          case MultiCardsRule.descendingSameSuitBy1: // (e.g. Forty & Eight).
             if ((_cards[n].suit != prevCard.suit) ||
                 (_cards[n].rank != prevCard.rank - 1)) {
               return MoveResult.notValid;
             }
-          case MultiCardsRule.descendingAlternateColorsBy1:
-            // print('Apply MultiCardsRule.descendingAlternateColorsBy1');
+          case MultiCardsRule.descendingAlternateColorsBy1: // (e.g. Freecell).
             if ((_cards[n].isRed == prevCard.isRed) ||
                 (_cards[n].rank != prevCard.rank - 1)) {
               return MoveResult.notValid;
@@ -131,25 +129,20 @@ class Pile extends PositionComponent with HasWorldReference<PatWorld> {
         }
         prevCard = _cards[n];
       }
-      // print('SEQUENCE OK TO DRAG');
     }
 
     // If any of the cards is already moving, cancel the drag.
     for (int n = 1; n <= nCards; n++) {
-      // print('$message nCards is card $n moving? ${_cards[_cards.length - n]}');
       if (_cards[_cards.length - n].isMoving) {
-        // print('Card ${_cards[_cards.length - n]} IS MOVING!!!!!');
         return MoveResult.notValid;
       }
     }
 
-    // print('Grabbing $grabbing');
     if (grabbing) {
       // The dragged cards leave the Pile and it adjusts its FanOut and hitArea.
       dragList.addAll(grabCards(nCards));
-      // print('$message nCards $nCards dragList $dragList');
     } else {
-      // Get a copy of the cards that could be dragged, as a possible move.
+      // Get a COPY of the cards that could be dragged, as a possible move.
       int index = _cards.length - nCards;
       dragList.addAll(_cards.getRange(index, _cards.length).toList());
     }
@@ -197,7 +190,6 @@ class Pile extends PositionComponent with HasWorldReference<PatWorld> {
       case PileType.foundation:
         // Maybe the card was dealt here but does not belong (e.g. Mod 3).
         // Then it might be able to go out on another Foundation Pile.
-        // print('Tap Fndn: $pileIndex length ${_cards.length} rank ${card.name} putFirst ${pileSpec.putFirst}');
         return ((_cards.length == 1) && (card.rank != pileSpec.putFirst)) ?
             MoveResult.valid : MoveResult.notValid;
       case PileType.excludedCards:
@@ -222,7 +214,6 @@ class Pile extends PositionComponent with HasWorldReference<PatWorld> {
       }
       tailCards.addAll(temp);
     }
-    // print('Grab $tailCards from $pileType index $pileIndex');
     if (_checkFanOut(_cards, tailCards, adding:false) || isKlondikeDraw3Waste) {
       // If Fan Out changed or Klondike 3 Draw, reposition any cards remaining.
       _fanOutPileCards();
@@ -272,10 +263,6 @@ class Pile extends PositionComponent with HasWorldReference<PatWorld> {
     final nCardsToMove = movingCards.length;
     final nPrevCardsInPile = _cards.length;
     final newFaceUp = movingCards.first.isFaceUpView || (flipTime > 0.0);
-    // print('NEW RECV $movingCards on $pileType index $pileIndex, '
-        // 'position $position contents $_cards');
-    // print('Flip? ${flipTime > 0.0} '
-        // 'last FaceUp? ${movingCards.last.isFaceUpView} newFaceUp $newFaceUp');
 
     double distancePerFrame = /*speed * */9.0 * movingCards.first.size.x / 60.0;
     bool noFanOutChange = true;
@@ -331,9 +318,6 @@ class Pile extends PositionComponent with HasWorldReference<PatWorld> {
         start: startAt,
         startPriority: movePriority,
         whenDone: () {
-          // print('ARRIVING: pile $pileIndex $pileType card ${card.name} '
-              // 'pri ${card.priority} '
-              // 'new pri ${card.newPriority} count $_transitCount');
           card.priority = card.newPriority;
           _transitCount--;
           if (card.position != card.newPosition) {
@@ -342,7 +326,6 @@ class Pile extends PositionComponent with HasWorldReference<PatWorld> {
           // N.B. _transitCount can apply to SEVERAL receives of cards.
           if (_transitCount == 0) {
             if (isFullFoundationPile && world.gameplay.checkForAWin()) {
-              // print("Let's celebrate!!!");
               final gameEnd = GameEnd(world.game, world.cards, world.piles);
               gameEnd.letsCelebrate();
             } else {
@@ -422,7 +405,7 @@ class Pile extends PositionComponent with HasWorldReference<PatWorld> {
 
     int nCardsToBePut = cardsToBePut.length;
     if (pileType == PileType.foundation) {
-      // Foundations usually accept just 1 card: Simple Simon accepts 13.
+      // Foundations usually accept just 1 card: Simple Simon requires 13.
       if (nCardsToBePut != ((pileSpec.putRule == PutRule.wholeSuit) ? 13 : 1)) {
         // print('$message Foundation cannot accept $nCardsToBePut cards');
         return false;
@@ -564,7 +547,6 @@ class Pile extends PositionComponent with HasWorldReference<PatWorld> {
     final excludedRank = world.gameSpec.excludedRank;
     final redealEmptyTableau = world.gameSpec.redealEmptyTableau;
 
-    // print('Pile.replenishTableauFromStock: $pileIndex $pileType');
     if (pileType != PileType.tableau) {
       throw StateError('replenishTableauFromStock() requires a Tableau Pile');
     }
@@ -590,8 +572,6 @@ class Pile extends PositionComponent with HasWorldReference<PatWorld> {
     if (nCards > 0) {
       excludedCardOnTop = (_cards.last.rank == excludedRank);
     }
-    // print('\n\n\n>>>>>>>> Entered replenishTableauFromStock $pileIndex '
-        // '$nCards cards, Ace on top $excludedCardOnTop');
 
     // Option 1: One card in Pile (poss. excluded), it leaves and is replaced.
     //        2: Last of >1 cards is excluded: it leaves and is not replaced.
@@ -673,11 +653,6 @@ class Pile extends PositionComponent with HasWorldReference<PatWorld> {
         speed: 10.0,
         flipTime: 0.3, // Flip card.
         onComplete: () {
-          // print('Replacement card arrived');
-          // print('Pile $pileIndex: indexOfCard $topCardIndex '
-              // 'card ${_cards.last} arrived...');
-          // dump();
-          // print('Cards to deal $_cardsToDeal');
           if (_cards.last.rank == world.gameSpec.excludedRank) {
             _replaceTableauCard();
           }
@@ -706,8 +681,6 @@ class Pile extends PositionComponent with HasWorldReference<PatWorld> {
       if (!_hasFanOut) {
         fanOutStart = cardCount; // All cards go at Pile position.
       }
-      // print('Calc Positions, Pile $pileIndex $pileType: '
-          // '$cardCount cards, fan out start $fanOutStart');
       for (int n = 0; n < cardCount; n++) {
         if (n < fanOutStart) {
           positions.add(Vector2(position.x, position.y));

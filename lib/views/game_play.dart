@@ -104,11 +104,9 @@ class Gameplay {
 
   void undoMove() {
     UndoRedoResult result = _cardMoves.undoMove();
-    // print('UNDO MOVE GameID $_gameID RESULT $result');
     if ((_gameID == PatGameID.grandfather) &&
         (result == UndoRedoResult.undidRedeal)) {
       _redealCount--;
-      // print('UNDID GRANDFATHER REDEAL $result _redealCount $_redealCount');
     }
   }
 
@@ -117,15 +115,12 @@ class Gameplay {
     if ((_gameID == PatGameID.grandfather) &&
         (result == UndoRedoResult.redidRedeal)) {
       _redealCount++;
-      // print('REDID GRANDFATHER REDEAL $result _redealCount $_redealCount');
     }
   }
 
   bool tapMove(CardView card) {
     Pile fromPile = card.pile;
     MoveResult tapResult = fromPile.isTapMoveValid(card);
-    // print('\n\nflutter: Tap Pile ${fromPile.pileIndex}, '
-        // '${fromPile.pileType}: seen, result $tapResult');
     if (tapResult == MoveResult.notValid) {
       return false;
     }
@@ -210,17 +205,12 @@ class Gameplay {
 
   bool _tapOnStockPile(CardView card, Pile stockPile, MoveResult tapResult) {
     // Check and perform three different kinds of Stock Pile move.
-    // print('Tap Stock Pile: $tapResult Waste Pile present $hasWastePile');
-    stockPile.dump();
-
     if (tapResult == MoveResult.pileEmpty) {
       if (stockPile.pileSpec.tapEmptyRule == TapEmptyRule.tapNotAllowed) {
-        // print('${stockPile.pileType} TAP ON EMPTY PILE WAS IGNORED');
         return false;
       }
 
       if (_gameID == PatGameID.grandfather) {
-        // print('REDEAL GRANDFATHER GAME _redealCount $_redealCount');
         if (_redealGrandfatherGame()) {
           _cardMoves.storeMove( // Record a successful Grandfather Redeal Move.
             from: stockPile,
@@ -266,13 +256,11 @@ class Gameplay {
         continue;
       }
       putOK = target.checkPut([card]);
-      // print('Try Pile ${target.pileIndex} ${target.pileType}: putOK $putOK');
       if (putOK) { // The card goes out.
         if (_redealEmptyTableau && (fromPile.nCards == 1) &&
             (fromPile.pileType == PileType.tableau)) {
           if ((_stockPileIndex >= 0) && (_piles[_stockPileIndex].nCards > 0))
           { // Deal a card to a Tableau that will be empty after this Move.
-            // print('CARD $card GOES OUT: replenish ${fromPile.toString()}');
             fromPile.replenishTableauFromStock(
               _stockPileIndex,
               _excludedCardsPileIndex,
@@ -334,9 +322,7 @@ class Gameplay {
   }
 
   bool _redealGrandfatherGame() {
-    // print('ENTERED _redealGrandfatherGame() redeals $_grandfatherRedeals');
     if (_redealCount >= _grandfatherRedeals) {
-      // print('RETURN REDEAL false _redealCount $_redealCount');
       return false;
     }
 
@@ -357,7 +343,6 @@ class Gameplay {
     final cardDealer = Dealer(_cards, _piles, _stockPileIndex, _gameSpec, -1);
     cardDealer.grandfatherDeal(stockPile, _tableaus);
     _redealCount++;
-    // print('REDEAL SUCCESSFUL _redealCount $_redealCount');
     return true;
   }
 
@@ -392,7 +377,6 @@ class Gameplay {
     // Deal a card from the Stock Pile to each Tableau Pile.
     assert(stockPile.pileType == PileType.stock);
     if (stockPile.hasNoCards) {
-      // print('NO MORE STOCK CARDS - NO _dealToTableausFromStockPile');
       return false;
     }
 
@@ -402,13 +386,10 @@ class Gameplay {
 
     for (Pile pile in _tableaus) {
       if (stockPile.hasNoCards) {
-        // print('NO MORE STOCK CARDS - _dealToTableausFromStockPile '
-            // 'TERMINATED EARLY');
         break; // No more Stock cards.
       }
       List<CardView> dealtCards = stockPile.grabCards(1);
       if (dealtCards.first.rank == _excludedRank) {
-        // print('EXCLUDED CARD: ${dealtCards.first} going to $pile');
         foundExcludedCard = true;
       }
 
@@ -417,8 +398,6 @@ class Gameplay {
         speed: 15.0,
         flipTime: 0.3, // Flip the card as it moves.
         onComplete: () {
-          // print('Pile $pile: card $dealtCards '
-              // 'index ${dealtCards.first.indexOfCard} arrived...');
           nCardsArrived++;
           if ((nCardsArrived == nDealtCards) && foundExcludedCard) {
             _adjustDealToTableausFromStockPile();

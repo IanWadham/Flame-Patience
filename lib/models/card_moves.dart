@@ -177,7 +177,6 @@ class CardMoves {
   }
 
   List<CardView> getPossibleMoves() {
-    // TODO - In 48, undesired moves are shown if there are empty Tableaus.
     // TODO - If Game has a Stock Pile and we get to the end of it and cannot
     //        turn it over, the pile should NOT be highlighted as a move.
     // TODO - Find first empty Tableau, if any (e.g. for dropping a King).
