@@ -325,9 +325,11 @@ class Pile extends PositionComponent with HasWorldReference<PatWorld> {
           }
           // N.B. _transitCount can apply to SEVERAL receives of cards.
           if (_transitCount == 0) {
+            // TODO - Limit the amount of calculation for each card played. Just
+            //        check for PileType.foundation and length PatWorld.pileFull.
             if (isFullFoundationPile && world.gameplay.checkForAWin()) {
               final gameEnd = GameEnd(world.game, world.cards, world.piles);
-              gameEnd.letsCelebrate();
+              gameEnd.showGameWon();
             } else {
               onComplete?.call(); // Optional callback for receiveMovingCards().
             }

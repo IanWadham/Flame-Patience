@@ -195,10 +195,9 @@ class Gameplay {
 
   bool checkForAWin() {
     for (Pile pile in _foundations) {
-      if (pile.isFullFoundationPile) {
-        continue;
+      if (!pile.isFullFoundationPile) {
+        return false;
       }
-      return false;
     }
     return true;
   }
