@@ -1,0 +1,18 @@
+The 53 images in file pat/assets/images/Ancient_Egyptians.png and derived screen
+shots of Patience (Solitaire) game-layouts are under Copyright as follows:
+
+   Copyright:  April 2009  Sean Wilson, digital artist, Toronto, Canada.
+
+I am grateful to Sean for the use of these cards in this game, under Creative
+Commons License Version 1.0.
+
+The originals are part of the carddecks library within the KDE Community
+Software libkdegames library.
+
+The formal Creative Commons Attribution is as follows:
+
+"Ancient Egyptians card deck" at https://invent.kde.org/games/libkdegames
+    sub-folder src/carddecks/svg-ancient-egyptians
+    by Sean Wilson CC BY 1.0 https://creativecommons.org/licenses/by/1.0/
+
+Signed, Ian Wadham.
